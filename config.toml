@@ -1,0 +1,27 @@
+[feeds]
+max_stories = 5
+sources = [
+    { name = "Hacker News AI", url = "https://hnrss.org/newest?q=AI&points=30" },
+    { name = "Simon Willison Weblog", url = "https://simonwillison.net/atom/everything/" },
+    { name = "Import AI (Jack Clark)", url = "https://jack-clark.net/feed/" },
+    { name = "OpenAI News", url = "https://openai.com/news/rss.xml" },
+    { name = "Google AI Blog", url = "https://blog.google/technology/ai/rss/" },
+    { name = "ArXiv cs.AI", url = "https://export.arxiv.org/rss/cs.AI" }
+]
+
+[llm]
+model = "qwen2.5:3b"
+ollama_url = "http://localhost:11434"
+script_word_target = 750
+
+[tts]
+# Kokoro-mlx voice name (e.g. bm_george, af_heart, am_michael)
+voice = "bm_george"
+speed = 1.0
+sample_rate = 24000
+chunk_words = 150
+
+[output]
+dir = "output"
+# Max audio file size in MB before splitting (Telegram limit is 50MB)
+max_file_size_mb = 45.0
