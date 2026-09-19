@@ -334,17 +334,17 @@ def generate_briefing_llm(
     text_digest = ""
     audio_script = ""
 
-    # Step 1: Text Digest Generation
+    today_date = datetime.now().strftime("%B %d, %Y")
     digest_prompt = (
         f"You are an expert AI systems engineer and tech writer. Today's theme: '{theme_dict.get('name')}'.\n"
-        f"Theme Description: {theme_dict.get('description')}.\n\n"
+        f"Theme Description: {theme_dict.get('description')}.\n"
+        f"Date: {today_date}\n\n"
         f"Here are the top AI stories:\n{stories_block}\n\n"
         f"Task:\n"
         f"Write a rich, concise markdown briefing suitable for Telegram:\n"
-        f"- Start with a sharp title and current date.\n"
+        f"- Start directly with a sharp headline and today's date ({today_date}). Never write '[Current Date]'.\n"
         f"- For each of the {len(stories)} stories, write a 2-sentence technical breakdown explaining why it matters and include the markdown link to the source.\n"
-        f"- End with a one-sentence forward-looking takeaway.\n"
-        f"Output markdown text directly."
+        f"- Output raw markdown only. Do NOT enclose in markdown code blocks (no ```). Do NOT add closing meta-commentary."
     )
 
     try:
@@ -354,16 +354,17 @@ def generate_briefing_llm(
                 "model": model,
                 "prompt": digest_prompt,
                 "stream": False,
-                "options": {"temperature": 0.5, "num_ctx": 4096},
+                "options": {"temperature": 0.4, "num_ctx": 4096},
             },
             timeout=180,
         )
         resp.raise_for_status()
         raw_digest = resp.json().get("response", "").strip()
         if raw_digest:
-            # Strip enclosing markdown code fences if model wrapped response in ```markdown ... ```
-            cleaned_digest = re.sub(r"^```(?:markdown)?\s*\n", "", raw_digest, flags=re.IGNORECASE)
-            cleaned_digest = re.sub(r"\n```\s*$", "", cleaned_digest)
+            # Strip enclosing markdown code fences anywhere in the string
+            cleaned_digest = re.sub(r"```(?:markdown)?\s*", "", raw_digest, flags=re.IGNORECASE)
+            # Remove trailing meta commentary like "This briefing provides a concise yet..."
+            cleaned_digest = re.sub(r"(?i)\n*(?:This (?:concise )?briefing encapsulates|This briefing provides).*$", "", cleaned_digest)
             text_digest = cleaned_digest.strip()
     except Exception as e:
         logger.error(f"Error generating text digest: {e}")
