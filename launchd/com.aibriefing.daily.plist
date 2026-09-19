@@ -15,11 +15,11 @@
     <key>WorkingDirectory</key>
     <string>/Users/prithis/QuestWorld/AI_news_voice_feed</string>
 
-    <!-- Run every day at 07:00 AM local time -->
+    <!-- Run every day at 12:00 PM (Noon) local time -->
     <key>StartCalendarInterval</key>
     <dict>
         <key>Hour</key>
-        <integer>7</integer>
+        <integer>12</integer>
         <key>Minute</key>
         <integer>0</integer>
     </dict>

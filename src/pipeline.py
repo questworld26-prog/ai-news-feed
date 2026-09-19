@@ -9,10 +9,12 @@ from __future__ import annotations
 
 import argparse
 from datetime import datetime, timezone
+from difflib import SequenceMatcher
 import json
 import logging
 import os
 from pathlib import Path
+import random
 import re
 import sys
 import time
@@ -43,25 +45,23 @@ def load_config(config_path: Path) -> dict[str, Any]:
 
 
 def clean_html_text(raw_html: str) -> str:
-    """Strip basic HTML tags and excessive whitespace."""
+    """Strip basic HTML tags, metadata lines, and excessive whitespace."""
     if not raw_html:
         return ""
     text = re.sub(r"<[^>]+>", " ", raw_html)
     text = re.sub(r"&[a-zA-Z0-9#]+;", " ", text)
+    # Strip common RSS boilerplate lines from HN/aggregators
+    text = re.sub(r"(?i)\b(Article URL|Comments URL|Points|# Comments)\b:?\s*\S*", "", text)
     text = re.sub(r"\s+", " ", text).strip()
     return text
 
 
-from difflib import SequenceMatcher
-
 def is_similar_title(title1: str, title2: str, threshold: float = 0.65) -> bool:
     """Check if two story titles are fuzzy duplicates."""
-    # Normalize strings: lowercase and remove non-alphanumeric chars
     t1 = re.sub(r"[^\w\s]", "", title1.lower()).strip()
     t2 = re.sub(r"[^\w\s]", "", title2.lower()).strip()
     if not t1 or not t2:
         return False
-    # Check direct substring overlap
     if t1 in t2 or t2 in t1:
         return True
     return SequenceMatcher(None, t1, t2).ratio() >= threshold
@@ -71,15 +71,16 @@ def clean_script_for_audio(raw_script: str) -> str:
     """Remove URLs, bracketed paths, markdown formatting, and technical metadata from spoken scripts."""
     if not raw_script:
         return ""
+    # Remove metadata lines first
+    text = re.sub(r"(?i)\b(Article URL|Comments URL|Points|# Comments)\b:?\s*\S*", "", raw_script)
+    text = re.sub(r"(?i)\b(URL|Link)\b:?\s*", "", text)
     # Remove URLs (http, https, www)
-    text = re.sub(r"https?://\S+", "", raw_script)
+    text = re.sub(r"https?://\S+", "", text)
     text = re.sub(r"www\.\S+", "", text)
     # Remove bracketed domain paths e.g. [simonwillison.net/2026/Sep/18/...]
     text = re.sub(r"\[[a-zA-Z0-9\.\-/_ ]+\]", "", text)
     # Remove phrases like "The link to the original source is on ... at" or "available at"
-    text = re.sub(r"(The link to the original source is|available at|you can read more at)\s*", "", text, flags=re.IGNORECASE)
-    # Remove metadata tags (Article URL, Comments URL, Points, # Comments)
-    text = re.sub(r"(Article URL|Comments URL|Points|# Comments):\s*\S*", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"(?i)(The link to the original source is|available at|you can read more at)\s*", "", text)
     # Remove markdown links [Text](url) -> Text
     text = re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", text)
     # Remove leftover markdown symbols
@@ -100,35 +101,44 @@ def score_entry(entry: dict[str, Any]) -> float:
     # Recency score: decays over 48h window
     recency_score = max(0.0, 1.0 - (age_hours / 48.0))
 
-    # Popularity boost: extract HN points from raw summary text
+    # Popularity boost: use entry['points'] if available or regex fallback
     popularity_score = 0.0
     if "Hacker News" in entry.get("source", ""):
-        points_match = re.search(r"Points:\s*(\d+)", entry.get("summary", ""))
-        if points_match:
-            points = int(points_match.group(1))
-            # Normalize: 200+ points = 1.0, scales proportionally
+        points = entry.get("points", 0)
+        if not points:
+            points_match = re.search(r"Points:\s*(\d+)", entry.get("summary", ""))
+            if points_match:
+                points = int(points_match.group(1))
+        if points:
             popularity_score = min(1.0, points / 200.0)
 
     # Combined score: 60% recency, 40% popularity
     return (0.6 * recency_score) + (0.4 * popularity_score)
 
 
-def fetch_stories(config: dict[str, Any]) -> list[dict[str, str]]:
+def matches_hard_filters(title: str, summary: str, hard_filters: list[str]) -> bool:
+    """Check if title or summary contains any excluded terms."""
+    full_text = f"{title} {summary}".lower()
+    for term in hard_filters:
+        if term.lower() in full_text:
+            return True
+    return False
+
+
+def fetch_stories_for_theme(theme_dict: dict[str, Any], config: dict[str, Any]) -> list[dict[str, Any]]:
     """
-    Fetch AI stories from configured RSS feeds.
-    Stage 1: Score every entry (recency + HN popularity) and build a
-             de-duplicated candidate pool of up to candidate_pool_size entries.
-    Stage 2: LLM curation picks the final max_stories from the candidate pool.
-    Returns the candidate pool; LLM curation happens in llm_curate_stories().
+    Fetch AI stories from RSS feeds specific to a chosen theme.
+    Filters out noise using hard_filters, scores remaining stories,
+    deduplicates fuzzy titles, and returns a candidate pool.
     """
-    feeds = config.get("feeds", {})
-    sources = feeds.get("sources", [])
-    candidate_pool_size = feeds.get("candidate_pool_size", 15)
+    sources = theme_dict.get("sources", [])
+    hard_filters = theme_dict.get("hard_filters", [])
+    candidate_pool_size = config.get("feeds", {}).get("candidate_pool_size", 15)
 
     all_entries = []
     now = datetime.now(timezone.utc)
 
-    logger.info(f"Fetching from {len(sources)} RSS feeds...")
+    logger.info(f"Fetching from {len(sources)} sources for theme '{theme_dict.get('name')}'...")
     for src in sources:
         name = src.get("name", "Unknown")
         url = src.get("url", "")
@@ -153,11 +163,19 @@ def fetch_stories(config: dict[str, Any]) -> list[dict[str, str]]:
                 else:
                     pub_dt = now
 
-                summary = clean_html_text(getattr(entry, "summary", "") or getattr(entry, "description", ""))
+                raw_summary = getattr(entry, "summary", "") or getattr(entry, "description", "")
+                points_match = re.search(r"Points:\s*(\d+)", raw_summary)
+                points = int(points_match.group(1)) if points_match else 0
+
+                summary = clean_html_text(raw_summary)
                 title = clean_html_text(getattr(entry, "title", "Untitled"))
                 link = getattr(entry, "link", "")
 
                 if not title or not link:
+                    continue
+
+                if matches_hard_filters(title, summary, hard_filters):
+                    logger.debug(f"Filtered out by theme hard filter: {title}")
                     continue
 
                 all_entries.append({
@@ -166,6 +184,7 @@ def fetch_stories(config: dict[str, Any]) -> list[dict[str, str]]:
                     "link": link,
                     "summary": summary[:400] if summary else "",
                     "pub_dt": pub_dt,
+                    "points": points,
                 })
         except Exception as e:
             logger.warning(f"Error fetching from {name}: {e}")
@@ -175,29 +194,49 @@ def fetch_stories(config: dict[str, Any]) -> list[dict[str, str]]:
         entry["score"] = score_entry(entry)
     all_entries.sort(key=lambda x: x["score"], reverse=True)
 
-    # Fuzzy title deduplication → build candidate pool
+    # Fuzzy title deduplication and source-diversity capping -> build candidate pool
     candidate_pool = []
+    source_counts: dict[str, int] = {}
+    max_per_source = 2  # Max stories from any single RSS feed in candidate pool
+
     for item in all_entries:
+        src = item["source"]
+        if source_counts.get(src, 0) >= max_per_source:
+            continue
+
         is_dup = any(is_similar_title(item["title"], existing["title"]) for existing in candidate_pool)
         if is_dup:
-            logger.info(f"Skipping duplicate: '{item['title'][:60]}...' (source: {item['source']})")
+            logger.debug(f"Skipping duplicate: '{item['title'][:60]}...' (source: {item['source']})")
             continue
+
         candidate_pool.append(item)
+        source_counts[src] = source_counts.get(src, 0) + 1
         if len(candidate_pool) >= candidate_pool_size:
             break
 
-    logger.info(f"Built candidate pool of {len(candidate_pool)} unique stories (from {len(all_entries)} total entries).")
+    # If pool is smaller than candidate_pool_size, backfill from remaining entries
+    if len(candidate_pool) < candidate_pool_size:
+        for item in all_entries:
+            if item in candidate_pool:
+                continue
+            is_dup = any(is_similar_title(item["title"], existing["title"]) for existing in candidate_pool)
+            if not is_dup:
+                candidate_pool.append(item)
+                if len(candidate_pool) >= candidate_pool_size:
+                    break
+
+    logger.info(f"Built candidate pool of {len(candidate_pool)} unique stories across {len(source_counts)} sources for '{theme_dict.get('name')}'.")
     return candidate_pool
 
 
 def llm_curate_stories(
-    candidates: list[dict[str, str]],
+    candidates: list[dict[str, Any]],
+    theme_dict: dict[str, Any],
     config: dict[str, Any],
-) -> list[dict[str, str]]:
+) -> list[dict[str, Any]]:
     """
-    Stage 2 story selection: ask Ollama to pick the most technically significant
-    stories from the candidate pool. Returns max_stories entries.
-    Falls back to top-N by score if LLM call fails.
+    Stage 2 story selection: ask Ollama to pick the most relevant stories
+    matching the current theme. Returns max_stories entries.
     """
     llm_cfg = config.get("llm", {})
     ollama_url = llm_cfg.get("ollama_url", "http://localhost:11434").rstrip("/")
@@ -207,23 +246,24 @@ def llm_curate_stories(
     if len(candidates) <= max_stories:
         return candidates
 
-    # Build a compact numbered list for the curation prompt
     story_list = ""
     for idx, s in enumerate(candidates, 1):
         story_list += f"{idx}. [{s['source']}] {s['title']}\n   {s['summary'][:200]}\n\n"
 
     prompt = (
-        f"You are an expert AI/ML engineer curating a daily briefing for software engineers.\n"
-        f"From the {len(candidates)} stories below, select the {max_stories} that are most technically "
-        f"significant for a practitioner audience (model releases, agent frameworks, safety incidents, "
-        f"benchmark breakthroughs, tooling launches). Prefer diversity of topics over recency.\n\n"
-        f"Return ONLY a JSON object with a single key 'selected' containing a list of "
-        f"{max_stories} integer indices (1-based) in your preferred order.\n"
+        f"You are an expert AI engineer curating a briefing on the theme '{theme_dict.get('name')}'.\n"
+        f"Theme Description: {theme_dict.get('description')}\n"
+        f"Audience & Tone: {theme_dict.get('tone')}\n\n"
+        f"From the {len(candidates)} candidate stories below, select the top {max_stories} stories "
+        f"that BEST fit this theme. Favor concrete technical implementations, tools, real architectural patterns, "
+        f"or creative breakthroughs. Exclude hype, trivial announcements, or funding deals.\n\n"
+        f"Return ONLY a JSON object with a single key 'selected' containing a list of {max_stories} "
+        f"integer indices (1-based) in priority order.\n"
         f"Example: {{\"selected\": [3, 1, 7, 12, 5]}}\n\n"
         f"Stories:\n{story_list}"
     )
 
-    logger.info(f"LLM curation: asking {model} to pick {max_stories} from {len(candidates)} candidates...")
+    logger.info(f"LLM curation: asking {model} to pick {max_stories} stories for theme '{theme_dict.get('name')}'...")
     try:
         response = requests.post(
             f"{ollama_url}/api/generate",
@@ -241,7 +281,6 @@ def llm_curate_stories(
         data = json.loads(raw)
         indices = data.get("selected", [])
 
-        # Validate and clamp indices to candidate range
         valid_indices = [i for i in indices if isinstance(i, int) and 1 <= i <= len(candidates)]
         if len(valid_indices) < max_stories:
             logger.warning(f"LLM returned {len(valid_indices)} valid indices, expected {max_stories}. Padding with top-scored.")
@@ -262,16 +301,23 @@ def llm_curate_stories(
         return candidates[:max_stories]
 
 
-def generate_briefing_llm(stories: list[dict[str, str]], config: dict[str, Any]) -> dict[str, str]:
+def generate_briefing_llm(
+    stories: list[dict[str, Any]],
+    theme_dict: dict[str, Any],
+    config: dict[str, Any],
+    text_only: bool = False,
+) -> dict[str, str]:
     """
     Call local Ollama endpoint with qwen2.5:3b to produce:
-    1. text_digest: markdown summary with links for Telegram
-    2. audio_script: ~1,400 words podcast host script, spoken English, no URLs or markdown
+    1. text_digest: markdown summary with links for Telegram, prefixed with Theme header.
+    2. audio_script: ~750 words podcast host script adhering to the theme's tone.
     """
     llm_cfg = config.get("llm", {})
     ollama_url = llm_cfg.get("ollama_url", "http://localhost:11434").rstrip("/")
     model = llm_cfg.get("model", "qwen2.5:3b")
-    word_target = llm_cfg.get("script_word_target", 1400)
+    word_target = llm_cfg.get("script_word_target", 750)
+
+    theme_badge = f"{theme_dict.get('emoji', '🎙️')} **{theme_dict.get('name', 'Daily Briefing')}**\n_{theme_dict.get('description', '')}_\n"
 
     stories_context = []
     for idx, s in enumerate(stories, 1):
@@ -284,116 +330,101 @@ def generate_briefing_llm(stories: list[dict[str, str]], config: dict[str, Any])
         )
     stories_block = "\n".join(stories_context)
 
-    system_prompt = (
-        "You are a professional tech podcast host and senior AI systems engineer briefing an engineering colleague. "
-        "Your style is conversational, sharp, engaging, and authoritative. "
-        "You must output STRICT, VALID JSON with exactly two fields: 'text_digest' and 'audio_script'. "
-        "Do NOT enclose the JSON in markdown code blocks like ```json ... ```. Return raw JSON only."
+    logger.info(f"Generating text digest for theme '{theme_dict.get('name')}'...")
+    text_digest = ""
+    audio_script = ""
+
+    # Step 1: Text Digest Generation
+    digest_prompt = (
+        f"You are an expert AI systems engineer and tech writer. Today's theme: '{theme_dict.get('name')}'.\n"
+        f"Theme Description: {theme_dict.get('description')}.\n\n"
+        f"Here are the top AI stories:\n{stories_block}\n\n"
+        f"Task:\n"
+        f"Write a rich, concise markdown briefing suitable for Telegram:\n"
+        f"- Start with a sharp title and current date.\n"
+        f"- For each of the {len(stories)} stories, write a 2-sentence technical breakdown explaining why it matters and include the markdown link to the source.\n"
+        f"- End with a one-sentence forward-looking takeaway.\n"
+        f"Output markdown text directly."
     )
 
-    user_prompt = f"""Here are the top AI stories for today:
-
-{stories_block}
-
-Task:
-Produce a JSON object with exactly two keys:
-1. "text_digest": A rich markdown brief intended for reading on Telegram.
-   - Start with a punchy title and date.
-   - For each story, provide an insightful 2-sentence breakdown explaining why it matters technically, along with a markdown hyperlink to the original source.
-   - End with a one-line conclusion.
-
-2. "audio_script": A complete conversational monologue script for spoken audio (~{word_target} words).
-   - Tone: Friendly, sharp colleague hosting a morning podcast briefing.
-   - Spoken cadence: Natural transitions, conversational pacing ("Welcome back", "Let's dive into", "Now onto our next story").
-   - STRICT RULES FOR AUDIO_SCRIPT:
-     * Write purely phonetically friendly spoken words.
-     * Absolutely NO markdown (no asterisks, hash signs, bullet points, brackets).
-     * Absolutely NO URLs, domain names, website links, or bracketed paths (e.g. do NOT say "link is available at..." or "[domain.com/path]").
-     * Speak naturally as a podcast host describing the news (e.g., "reported on Simon Willison's blog" or "according to Anthropic").
-     * Pronounce acronyms or clarify them naturally if needed.
-     * Provide substantive depth for each of the {len(stories)} stories so the listener gets genuine technical takeaways.
-
-Return ONLY the raw JSON object with keys "text_digest" and "audio_script".
-"""
-
-    logger.info(f"Calling Ollama ({model}) at {ollama_url}...")
-    endpoint = f"{ollama_url}/api/generate"
-    payload = {
-        "model": model,
-        "prompt": f"{system_prompt}\n\n{user_prompt}",
-        "format": "json",
-        "stream": False,
-        "options": {
-            "temperature": 0.7,
-            "num_ctx": 8192,
-        },
-    }
-
     try:
-        response = requests.post(endpoint, json=payload, timeout=300)
-        response.raise_for_status()
-        result_json = response.json()
-        raw_response = result_json.get("response", "").strip()
-
-        # Parse JSON from model output
-        try:
-            data = json.loads(raw_response)
-        except json.JSONDecodeError:
-            match = re.search(r"\{.*\}", raw_response, re.DOTALL)
-            if match:
-                data = json.loads(match.group(0))
-            else:
-                raise ValueError("Could not parse JSON from Ollama response")
-
-        # Flexible key search (handling case differences or nested structure)
-        text_digest = (
-            data.get("text_digest")
-            or data.get("textDigest")
-            or data.get("digest")
-            or data.get("summary")
+        resp = requests.post(
+            f"{ollama_url}/api/generate",
+            json={
+                "model": model,
+                "prompt": digest_prompt,
+                "stream": False,
+                "options": {"temperature": 0.5, "num_ctx": 4096},
+            },
+            timeout=180,
         )
-        audio_script = (
-            data.get("audio_script")
-            or data.get("audioScript")
-            or data.get("script")
-            or data.get("podcast_script")
-        )
-
-        if not text_digest or not audio_script:
-            # Check if keys are nested under an outer key
-            for k, v in data.items():
-                if isinstance(v, dict):
-                    if not text_digest:
-                        text_digest = v.get("text_digest") or v.get("digest") or v.get("summary")
-                    if not audio_script:
-                        audio_script = v.get("audio_script") or v.get("script")
-
-        if not text_digest or not audio_script:
-            raise KeyError(f"JSON missing expected keys. Received keys: {list(data.keys())}")
-
-        audio_script = clean_script_for_audio(audio_script)
-        logger.info(f"Ollama generated script: ~{len(audio_script.split())} words.")
-        return {"text_digest": text_digest, "audio_script": audio_script}
-
+        resp.raise_for_status()
+        raw_digest = resp.json().get("response", "").strip()
+        if raw_digest:
+            # Strip enclosing markdown code fences if model wrapped response in ```markdown ... ```
+            cleaned_digest = re.sub(r"^```(?:markdown)?\s*\n", "", raw_digest, flags=re.IGNORECASE)
+            cleaned_digest = re.sub(r"\n```\s*$", "", cleaned_digest)
+            text_digest = cleaned_digest.strip()
     except Exception as e:
-        logger.error(f"Error during Ollama inference: {e}")
-        # Graceful fallback: construct basic digest & clean script from raw stories
-        logger.warning("Generating fallback digest & script from fetched stories.")
-        digest_lines = ["# 🎙️ Daily AI Engineering Briefing\n"]
-        script_parts = ["Good morning. Here is your daily artificial intelligence news briefing. "]
+        logger.error(f"Error generating text digest: {e}")
+
+    # Fallback text digest if generation failed
+    if not text_digest:
+        digest_lines = [f"### Daily AI Tech Briefing\n"]
         for idx, s in enumerate(stories, 1):
             digest_lines.append(f"**{idx}. [{s['title']}]({s['link']})** ({s['source']})\n{s['summary']}\n")
-            # Clean title and summary to ensure zero URLs or raw tags in fallback script
-            clean_t = clean_script_for_audio(s['title'])
-            clean_s = clean_script_for_audio(s['summary'])
-            script_parts.append(f"Story number {idx}. From {s['source']}. {clean_t}. {clean_s}. ")
-        script_parts.append("That wraps up today's briefing. Have a productive day.")
-        
-        fallback_script = clean_script_for_audio(" ".join(script_parts))
-        return {
-            "text_digest": "\n".join(digest_lines),
-            "audio_script": fallback_script,
-        }
+        digest_lines.append("Stay curious and keep shipping.")
+        text_digest = "\n".join(digest_lines)
+
+    full_text_digest = f"{theme_badge}\n{text_digest.strip()}"
+
+    # Step 2: Audio Script Generation (if not text_only)
+    if not text_only:
+        logger.info(f"Generating spoken audio script (~{word_target} words) for theme '{theme_dict.get('name')}'...")
+        script_prompt = (
+            f"You are a professional tech podcast host briefing an engineering peer. "
+            f"Today's thematic lens is: '{theme_dict.get('name')}'. Tone: {theme_dict.get('tone')}.\n\n"
+            f"Here are the stories to cover:\n{stories_block}\n\n"
+            f"Task:\n"
+            f"Write a complete, natural spoken podcast monologue script of approximately {word_target} words.\n"
+            f"STRICT RULES:\n"
+            f"- Open smoothly with today's theme (e.g., 'Welcome back. Today we're looking through our {theme_dict.get('name')} lens...').\n"
+            f"- Walk through all {len(stories)} stories with natural conversational transitions and genuine technical depth.\n"
+            f"- Write phonetically clean spoken English: absolutely NO markdown asterisks, hashes, bullets, brackets, or code symbols.\n"
+            f"- Absolutely NO URLs, domain names, links, or 'available at' phrases.\n"
+            f"- Conclude with a warm, professional wrap-up.\n"
+            f"Output ONLY the spoken script text."
+        )
+        try:
+            resp_audio = requests.post(
+                f"{ollama_url}/api/generate",
+                json={
+                    "model": model,
+                    "prompt": script_prompt,
+                    "stream": False,
+                    "options": {"temperature": 0.7, "num_ctx": 4096},
+                },
+                timeout=240,
+            )
+            resp_audio.raise_for_status()
+            raw_audio = resp_audio.json().get("response", "").strip()
+            audio_script = clean_script_for_audio(raw_audio)
+        except Exception as e:
+            logger.error(f"Error generating audio script: {e}")
+
+        # Fallback audio script if failed
+        if not audio_script or len(audio_script.split()) < 40:
+            logger.warning("Using fallback audio script from stories.")
+            script_parts = [f"Welcome to today's {theme_dict.get('name')} briefing. "]
+            for idx, s in enumerate(stories, 1):
+                clean_t = clean_script_for_audio(s['title'])
+                clean_s = clean_script_for_audio(s['summary'])
+                script_parts.append(f"Story number {idx}. From {s['source']}. {clean_t}. {clean_s}. ")
+            script_parts.append("That concludes today's theme update.")
+            audio_script = clean_script_for_audio(" ".join(script_parts))
+
+    logger.info(f"Generated text digest and audio script (~{len(audio_script.split())} words).")
+    return {"text_digest": full_text_digest, "audio_script": audio_script}
 
 
 def chunk_text(text: str, max_words: int = 150) -> list[str]:
@@ -463,7 +494,6 @@ def synthesize_audio(
     duration_secs = len(combined_audio) / sample_rate
     logger.info(f"Total audio synthesized: {duration_secs:.1f} seconds ({duration_secs / 60:.1f} minutes).")
 
-    # Estimate size in bytes for 16-bit PCM WAV (sample_rate * 2 bytes/sample)
     raw_size_bytes = len(combined_audio) * 2
     max_bytes = max_mb * 1024 * 1024
 
@@ -510,7 +540,6 @@ def send_to_telegram(
     logger.info(f"Sending text summary to Telegram chat {chat_id}...")
     text_endpoint = f"{base_url}/sendMessage"
     
-    # Chunk text if exceeds Telegram 4096 limit
     max_tg_len = 4000
     text_chunks = [text_digest[i:i + max_tg_len] for i in range(0, len(text_digest), max_tg_len)]
 
@@ -524,7 +553,6 @@ def send_to_telegram(
         try:
             r = requests.post(text_endpoint, json=payload, timeout=30)
             if not r.ok:
-                # Retry without markdown parse_mode if formatting had invalid tags
                 logger.warning(f"Telegram sendMessage failed ({r.text}). Retrying with plain text...")
                 payload.pop("parse_mode", None)
                 r = requests.post(text_endpoint, json=payload, timeout=30)
@@ -555,11 +583,43 @@ def send_to_telegram(
     return True
 
 
+def run_all_themes(config: dict[str, Any], output_dir: Path, today_str: str) -> None:
+    """
+    Generate a comprehensive multi-theme digest covering all themes.
+    Intended for catch-up reviews or dry-run evaluation (no TTS or Telegram).
+    """
+    themes = config.get("themes", {})
+    if not themes:
+        logger.error("No themes configured in config.toml.")
+        return
+
+    logger.info(f"=== Running All Themes Review ({len(themes)} themes) ===")
+    combined_report = [f"# 🌐 All-Themes AI Comprehensive Briefing — {today_str}\n\n"]
+
+    for key, theme_dict in themes.items():
+        logger.info(f"\n--- Processing Theme: {theme_dict.get('name')} ---")
+        candidates = fetch_stories_for_theme(theme_dict, config)
+        if not candidates:
+            logger.warning(f"No candidate stories found for theme {key}. Skipping.")
+            continue
+
+        curated = llm_curate_stories(candidates, theme_dict, config)
+        briefing = generate_briefing_llm(curated, theme_dict, config, text_only=True)
+        text_digest = briefing.get("text_digest", "")
+        combined_report.append(text_digest + "\n\n---\n\n")
+
+    out_file = output_dir / f"{today_str}_all_themes.md"
+    out_file.write_text("".join(combined_report), encoding="utf-8")
+    logger.info(f"Successfully saved all-themes report to {out_file}")
+    print("\n" + "".join(combined_report))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="AI News Daily Voice Briefing Pipeline")
     parser.add_argument("--config", default="config.toml", help="Path to config.toml")
     parser.add_argument("--dry-run", action="store_true", help="Fetch and generate script only; skip TTS and Telegram")
     parser.add_argument("--skip-tts", action="store_true", help="Skip audio synthesis and only send text digest")
+    parser.add_argument("--all-themes", action="store_true", help="Generate full digest for all 4 themes in dry-run mode")
     args = parser.parse_args()
 
     project_root = Path(__file__).resolve().parent.parent
@@ -572,24 +632,44 @@ def main() -> None:
     output_dir = project_root / config.get("output", {}).get("dir", "output")
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    logger.info("=== Starting AI News Daily Briefing Pipeline ===")
+    # All-themes mode branch (bypasses weekday gate for deliberate manual runs)
+    if args.all_themes:
+        run_all_themes(config, output_dir, today_str)
+        return
 
-    # Step 1: RSS Aggregation → scored candidate pool
-    candidates = fetch_stories(config)
-    if not candidates:
-        logger.error("No stories retrieved from any feeds. Exiting.")
+    # Check weekday gate (0=Monday, 6=Sunday)
+    weekday = datetime.now().weekday()
+    weekdays_only = config.get("schedule", {}).get("weekdays_only", True)
+    if weekdays_only and weekday >= 5 and not args.dry_run:
+        logger.info(f"Today is {'Saturday' if weekday == 5 else 'Sunday'} and weekdays_only is enabled. Skipping scheduled briefing.")
+        sys.exit(0)
+
+    # Pick random theme for the day
+    themes = config.get("themes", {})
+    if not themes:
+        logger.error("No themes found in config.toml under [themes].")
         sys.exit(1)
 
-    # Step 1b: LLM Curation → pick best max_stories from candidate pool
-    stories = llm_curate_stories(candidates, config)
+    theme_key = random.choice(list(themes.keys()))
+    theme_dict = themes[theme_key]
+    logger.info(f"=== Selected Daily Theme: {theme_dict.get('emoji')} {theme_dict.get('name')} ===")
 
-    # Step 2: LLM Inference via Ollama
-    briefing_data = generate_briefing_llm(stories, config)
+    # Step 1: RSS Aggregation for selected theme -> candidate pool
+    candidates = fetch_stories_for_theme(theme_dict, config)
+    if not candidates:
+        logger.error(f"No stories retrieved for theme {theme_key}. Exiting.")
+        sys.exit(1)
+
+    # Step 2: LLM Curation -> pick top max_stories
+    stories = llm_curate_stories(candidates, theme_dict, config)
+
+    # Step 3: LLM Script & Digest Generation via Ollama
+    briefing_data = generate_briefing_llm(stories, theme_dict, config)
     text_digest = briefing_data.get("text_digest", "")
     audio_script = briefing_data.get("audio_script", "")
 
     # Save outputs locally
-    summary_file = output_dir / f"{today_str}_summary.md"
+    summary_file = output_dir / f"{today_str}_{theme_key}_summary.md"
     summary_file.write_text(f"{text_digest}\n\n## Spoken Audio Script\n\n{audio_script}", encoding="utf-8")
     logger.info(f"Saved text digest & script to {summary_file}")
 
@@ -602,14 +682,14 @@ def main() -> None:
         logger.info("Dry-run complete. Exiting without TTS or Telegram.")
         return
 
-    # Step 3: Local TTS Audio Synthesis
+    # Step 4: Local TTS Audio Synthesis
     audio_files: list[Path] = []
     if not args.skip_tts:
         audio_files = synthesize_audio(audio_script, output_dir, config, today_str)
     else:
         logger.info("Skipping TTS synthesis per --skip-tts flag.")
 
-    # Step 4: Dispatch to Telegram
+    # Step 5: Dispatch to Telegram
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
     chat_id = os.getenv("TELEGRAM_CHAT_ID", "").strip()
     send_to_telegram(text_digest, audio_files, bot_token, chat_id)

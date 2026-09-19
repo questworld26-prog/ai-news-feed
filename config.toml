@@ -2,12 +2,65 @@
 max_stories = 5
 # How many unique candidates to collect before LLM curation picks the final max_stories
 candidate_pool_size = 15
+
+[schedule]
+weekdays_only = true
+
+[themes.practitioner_radar]
+name = "Practitioner's Radar"
+emoji = "🧭"
+description = "What you need to know to stay credible in AI and prototype smarter"
+tone = "collegial, sharp, and focused on production patterns, tooling, and engineering architecture"
+hard_filters = ["funding round", "valuation", "raises", "series A", "series B", "benchmark score", "AGI by"]
 sources = [
-    { name = "Hacker News AI", url = "https://hnrss.org/newest?q=AI&points=30" },
+    { name = "Hacker News AI (Practitioner)", url = "https://hnrss.org/newest?q=AI&points=50" },
+    { name = "Hacker News (MLOps & Production Systems)", url = "https://hnrss.org/newest?q=MLOps+OR+Kubeflow+OR+vLLM+OR+Triton&points=25" },
     { name = "Simon Willison Weblog", url = "https://simonwillison.net/atom/everything/" },
-    { name = "Import AI (Jack Clark)", url = "https://jack-clark.net/feed/" },
+    { name = "AWS ML Blog", url = "https://aws.amazon.com/blogs/machine-learning/feed/" },
+    { name = "Weights & Biases Blog", url = "https://wandb.ai/fully-connected/rss.xml" }
+]
+
+[themes.executive_lens]
+name = "Executive Lens"
+emoji = "🏛️"
+description = "Big strategic moves, industry risks, and enterprise shifts worth having opinions on"
+tone = "analytical, strategic, and authoritative, focused on business impact and systemic risks"
+hard_filters = ["funding round", "valuation", "raises", "seed round", "benchmark score", "minor bugfix"]
+sources = [
     { name = "OpenAI News", url = "https://openai.com/news/rss.xml" },
     { name = "Google AI Blog", url = "https://blog.google/technology/ai/rss/" },
+    { name = "Google DeepMind Blog", url = "https://deepmind.google/blog/feed/basic/" },
+    { name = "Microsoft Research Blog", url = "https://www.microsoft.com/en-us/research/blog/feed/" },
+    { name = "Meta Engineering", url = "https://engineering.fb.com/feed/" },
+    { name = "Hacker News (Policy & Safety)", url = "https://hnrss.org/newest?q=AI+regulation+OR+AI+safety+OR+AI+policy&points=30" }
+]
+
+[themes.builders_digest]
+name = "Builder's Digest"
+emoji = "🔨"
+description = "Concrete techniques, tools, and patterns you can actually use in a weekend project"
+tone = "hands-on, energetic, and practical, highlighting developer workflows and implementation details"
+hard_filters = ["funding round", "valuation", "speculation", "opinion piece without code", "AGI"]
+sources = [
+    { name = "Hugging Face Blog", url = "https://huggingface.co/blog/feed.xml" },
+    { name = "Hacker News (Claude, Cursor & AI Dev Tools)", url = "https://hnrss.org/newest?q=Claude+OR+Antigravity+OR+Cursor+OR+Copilot&points=25" },
+    { name = "Simon Willison Weblog", url = "https://simonwillison.net/atom/everything/" },
+    { name = "Hacker News (Open Source & Local)", url = "https://hnrss.org/newest?q=AI+open+source+OR+local+LLM+OR+MLX&points=30" },
+    { name = "ArXiv cs.AI", url = "https://export.arxiv.org/rss/cs.AI" },
+    { name = "Anthropic Engineering (Community)", url = "https://conoro.github.io/anthropic-engineering-rss-feed/anthropic_engineering_rss.xml" }
+]
+
+[themes.innovation_scout]
+name = "Innovation Scout"
+emoji = "🔭"
+description = "New, surprising, and creative applications of AI worth experimenting with"
+tone = "curious, visionary, and exploratory, uncovering unconventional and cross-disciplinary AI breakthroughs"
+hard_filters = ["funding round", "valuation", "enterprise CRM", "minor patch release", "routine vendor announcement"]
+sources = [
+    { name = "Import AI (Jack Clark)", url = "https://jack-clark.net/feed/" },
+    { name = "Google DeepMind Blog", url = "https://deepmind.google/blog/feed/basic/" },
+    { name = "The Gradient", url = "https://thegradient.pub/rss/" },
+    { name = "Hacker News (Creative & Science)", url = "https://hnrss.org/newest?q=AI+AND+(creative+OR+medicine+OR+science)&points=25" },
     { name = "ArXiv cs.AI", url = "https://export.arxiv.org/rss/cs.AI" }
 ]
 

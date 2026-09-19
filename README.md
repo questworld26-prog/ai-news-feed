@@ -1,6 +1,6 @@
 # AI News Daily Voice Briefing Pipeline 🎙️
 
-A local, automated daily AI news briefing pipeline on macOS (Apple Silicon M1). Fetches top AI headlines across curated RSS feeds, generates a conversational script using local Ollama (`qwen2.5:3b`), synthesizes audio locally with Metal-accelerated `kokoro-mlx`, saves files locally, and delivers formatted markdown briefs + audio recordings directly to your private Telegram bot.
+A local, automated daily AI news briefing pipeline on macOS (Apple Silicon M1). Uses theme-driven story selection across curated RSS feeds, generates a tailored briefing digest and spoken monologue with local Ollama (`qwen2.5:3b`), synthesizes audio with Metal-accelerated `kokoro-mlx`, and delivers formatted briefs + audio directly to your private Telegram bot.
 
 ---
 
@@ -8,14 +8,22 @@ A local, automated daily AI news briefing pipeline on macOS (Apple Silicon M1). 
 
 - **Package & Runtime Manager**: Managed strictly with `uv` and Python 3.11.
 - **Hardware-Tailored**: Tuned for Apple Silicon M1 (8GB unified memory), running sequential chunked synthesis with zero heavy cloud API requirements.
-- **Two-Stage Story Selection Pipeline**:
-  1. **Candidate Pool & Scoring**: Aggregates RSS feeds, applies weighted scoring (60% recency + 40% Hacker News popularity), and eliminates duplicate stories via title similarity matching (`difflib.SequenceMatcher`) to form a candidate pool (default: 15 stories).
-  2. **LLM Story Curation (Call #1)**: Ollama (`qwen2.5:3b` @ `temp=0.2`) evaluates candidate titles/summaries and selects the top 5 most technically impactful and distinct stories.
-  3. **Script & Digest Generation (Call #2)**: Ollama (`qwen2.5:3b` @ `temp=0.7`, ~750 word target) generates a dual JSON payload containing a structured markdown text digest and an engaging spoken monologue script.
-- **Spoken Audio Sanitization**: Dedicated `clean_script_for_audio()` sanitizer strips URLs, bracketed paths (e.g. `[domain/path]`), "link available at..." filler phrases, and markdown artifacts to ensure smooth, natural narration.
+- **Randomized Theme Selection & Per-Theme Sources**:
+  Every day, the pipeline selects one of 4 curated engineering themes at random:
+  - 🧭 **Practitioner's Radar**: Production deployment patterns, MLOps, inference optimization, and engineering architecture.
+  - 🏛️ **Executive Lens**: Big strategic moves, industry risks, enterprise shifts, safety, and regulation.
+  - 🔨 **Builder's Digest**: Concrete tools, open-source libraries, local AI, and developer tooling (Claude, Antigravity, Cursor, Copilot).
+  - 🔭 **Innovation Scout**: Unexpected cross-disciplinary AI breakthroughs in science, biology, robotics, and creative domains.
+- **Multi-Source Diversity & De-duplication**:
+  - Enforces a maximum cap of 2 stories per single RSS source in candidate pools.
+  - Employs fuzzy title de-duplication (`difflib.SequenceMatcher`) to prevent repetitive coverage.
+  - Applies negative keyword filters (`funding round`, `valuation`, `series A/B`, etc.) to keep content strictly technical and hype-free.
+- **Two-Stage Generation Pipeline**:
+  1. **LLM Story Curation**: Ollama (`qwen2.5:3b` @ `temp=0.2`) evaluates the candidate pool against the chosen theme's audience and selects the top 5 stories.
+  2. **Dedicated Digest & Script Generation**: Produces a rich markdown digest with source links and a natural, conversational monologue (~750 words) free of URLs or markdown artifacts.
 - **Local TTS**: `kokoro-mlx` Metal acceleration using British male voice `bm_george` (configurable in `config.toml`).
-- **Telegram Dispatch**: Delivers markdown summary and WAV audio directly via Telegram Bot API (handles Telegram's 50MB file limit by automatically splitting large files if necessary).
-- **Automation**: macOS `launchd` service running unattended every morning at 07:00 AM.
+- **Telegram Dispatch**: Delivers markdown summary with theme badges and WAV audio directly via Telegram Bot API (handles Telegram's 50MB file limit by automatically splitting large files if necessary).
+- **Automation & Scheduling**: Configured for weekdays only (Monday through Friday) at 12:00 PM (Noon).
 
 ---
 
@@ -23,12 +31,12 @@ A local, automated daily AI news briefing pipeline on macOS (Apple Silicon M1). 
 
 ```
 AI_news_voice_feed/
-├── config.toml                   # Centralized knobs: candidate_pool_size, max_stories, lookback, voice, model
+├── config.toml                   # Centralized knobs: themes, per-theme sources, schedule, voice, model
 ├── pyproject.toml                # UV project configuration
 ├── .env.example                  # Environment secrets template
 ├── .gitignore                    # Git ignore for .env, output/, .venv
 ├── launchd/
-│   └── com.aibriefing.daily.plist # macOS LaunchAgent configuration
+│   └── com.aibriefing.daily.plist # macOS LaunchAgent configuration (12:00 PM)
 ├── output/                       # Local audio (.wav) & summary (.md) storage
 ├── src/
 │   └── pipeline.py               # Complete end-to-end pipeline script
@@ -60,8 +68,10 @@ TELEGRAM_CHAT_ID="987654321"
 
 ### 3. Tuning Configuration (`config.toml`)
 You can freely customize:
-- `feeds.candidate_pool_size`: Size of pre-filtered candidate pool scored by recency and HN points (default: `15`).
-- `feeds.max_stories`: Number of top stories selected by LLM curation for the final briefing (default: `5`).
+- `schedule.weekdays_only`: Restricts automatic runs to Monday–Friday (default: `true`).
+- `feeds.max_stories`: Number of top stories selected per briefing (default: `5`).
+- `feeds.candidate_pool_size`: Size of pre-filtered candidate pool (default: `15`).
+- `themes.*.sources`: RSS feed URLs for each theme.
 - `tts.voice`: Voice name (default: `"bm_george"`).
 - `tts.speed`: Speaking speed multiplier (default: `1.0`).
 - `llm.model`: Ollama model tag (default: `"qwen2.5:3b"`).
@@ -71,9 +81,15 @@ You can freely customize:
 ## 🧪 Running the Pipeline
 
 ### Dry Run (Test Feeds & Script Generation)
-Verify RSS feeds aggregation and Ollama generation without synthesizing audio or sending to Telegram:
+Verify RSS feeds aggregation, theme selection, and Ollama generation without synthesizing audio or sending to Telegram:
 ```bash
 uv run python src/pipeline.py --dry-run
+```
+
+### Comprehensive All-Themes Catch-up Mode
+Generate a multi-section comprehensive briefing covering all 4 themes in one Markdown file (saved locally to `output/YYYY-MM-DD_all_themes.md`, without TTS or Telegram):
+```bash
+uv run python src/pipeline.py --all-themes
 ```
 
 ### Text-Only Run (Skip Audio Synthesis)
@@ -89,10 +105,10 @@ uv run python src/pipeline.py
 ```
 
 Outputs will be saved in `output/`:
-- `output/YYYY-MM-DD_summary.md` (Markdown notes with links & full spoken script)
+- `output/YYYY-MM-DD_<theme>_summary.md` (Markdown notes with links & spoken script)
 - `output/YYYY-MM-DD_briefing.wav` (Native 24kHz 16-bit PCM WAV audio)
 
-You can also play the generated audio directly in macOS Terminal:
+You can play the generated audio directly in macOS Terminal:
 ```bash
 afplay output/*_briefing.wav
 ```
@@ -101,7 +117,7 @@ afplay output/*_briefing.wav
 
 ## ⏰ macOS Daily Automation (`launchd`)
 
-To run the briefing automatically every day at 07:00 AM:
+To run the briefing automatically every weekday at 12:00 PM (Noon):
 
 ### 1. Copy the Plist to LaunchAgents
 ```bash
