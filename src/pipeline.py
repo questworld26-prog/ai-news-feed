@@ -52,14 +52,78 @@ def clean_html_text(raw_html: str) -> str:
     return text
 
 
+from difflib import SequenceMatcher
+
+def is_similar_title(title1: str, title2: str, threshold: float = 0.65) -> bool:
+    """Check if two story titles are fuzzy duplicates."""
+    # Normalize strings: lowercase and remove non-alphanumeric chars
+    t1 = re.sub(r"[^\w\s]", "", title1.lower()).strip()
+    t2 = re.sub(r"[^\w\s]", "", title2.lower()).strip()
+    if not t1 or not t2:
+        return False
+    # Check direct substring overlap
+    if t1 in t2 or t2 in t1:
+        return True
+    return SequenceMatcher(None, t1, t2).ratio() >= threshold
+
+
+def clean_script_for_audio(raw_script: str) -> str:
+    """Remove URLs, bracketed paths, markdown formatting, and technical metadata from spoken scripts."""
+    if not raw_script:
+        return ""
+    # Remove URLs (http, https, www)
+    text = re.sub(r"https?://\S+", "", raw_script)
+    text = re.sub(r"www\.\S+", "", text)
+    # Remove bracketed domain paths e.g. [simonwillison.net/2026/Sep/18/...]
+    text = re.sub(r"\[[a-zA-Z0-9\.\-/_ ]+\]", "", text)
+    # Remove phrases like "The link to the original source is on ... at" or "available at"
+    text = re.sub(r"(The link to the original source is|available at|you can read more at)\s*", "", text, flags=re.IGNORECASE)
+    # Remove metadata tags (Article URL, Comments URL, Points, # Comments)
+    text = re.sub(r"(Article URL|Comments URL|Points|# Comments):\s*\S*", "", text, flags=re.IGNORECASE)
+    # Remove markdown links [Text](url) -> Text
+    text = re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", text)
+    # Remove leftover markdown symbols
+    text = re.sub(r"[*_#`~>|-]", " ", text)
+    # Clean up whitespace
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+def score_entry(entry: dict[str, Any]) -> float:
+    """
+    Compute a relevance score for a feed entry.
+    Hacker News entries are boosted by popularity (points).
+    All entries are boosted by recency (newer = higher score).
+    """
+    now = datetime.now(timezone.utc)
+    age_hours = max(0.0, (now - entry["pub_dt"]).total_seconds() / 3600)
+    # Recency score: decays over 48h window
+    recency_score = max(0.0, 1.0 - (age_hours / 48.0))
+
+    # Popularity boost: extract HN points from raw summary text
+    popularity_score = 0.0
+    if "Hacker News" in entry.get("source", ""):
+        points_match = re.search(r"Points:\s*(\d+)", entry.get("summary", ""))
+        if points_match:
+            points = int(points_match.group(1))
+            # Normalize: 200+ points = 1.0, scales proportionally
+            popularity_score = min(1.0, points / 200.0)
+
+    # Combined score: 60% recency, 40% popularity
+    return (0.6 * recency_score) + (0.4 * popularity_score)
+
+
 def fetch_stories(config: dict[str, Any]) -> list[dict[str, str]]:
     """
-    Fetch and prioritize AI stories across configured RSS feeds.
-    Returns up to config['feeds']['max_stories'] articles.
+    Fetch AI stories from configured RSS feeds.
+    Stage 1: Score every entry (recency + HN popularity) and build a
+             de-duplicated candidate pool of up to candidate_pool_size entries.
+    Stage 2: LLM curation picks the final max_stories from the candidate pool.
+    Returns the candidate pool; LLM curation happens in llm_curate_stories().
     """
     feeds = config.get("feeds", {})
     sources = feeds.get("sources", [])
-    max_stories = feeds.get("max_stories", 5)
+    candidate_pool_size = feeds.get("candidate_pool_size", 15)
 
     all_entries = []
     now = datetime.now(timezone.utc)
@@ -106,22 +170,96 @@ def fetch_stories(config: dict[str, Any]) -> list[dict[str, str]]:
         except Exception as e:
             logger.warning(f"Error fetching from {name}: {e}")
 
-    # Sort newest first
-    all_entries.sort(key=lambda x: x["pub_dt"], reverse=True)
+    # Score and sort: highest score first
+    for entry in all_entries:
+        entry["score"] = score_entry(entry)
+    all_entries.sort(key=lambda x: x["score"], reverse=True)
 
-    # Pick unique stories by link/title
-    seen_urls = set()
-    selected_stories = []
+    # Fuzzy title deduplication → build candidate pool
+    candidate_pool = []
     for item in all_entries:
-        if item["link"] in seen_urls:
+        is_dup = any(is_similar_title(item["title"], existing["title"]) for existing in candidate_pool)
+        if is_dup:
+            logger.info(f"Skipping duplicate: '{item['title'][:60]}...' (source: {item['source']})")
             continue
-        seen_urls.add(item["link"])
-        selected_stories.append(item)
-        if len(selected_stories) >= max_stories:
+        candidate_pool.append(item)
+        if len(candidate_pool) >= candidate_pool_size:
             break
 
-    logger.info(f"Selected top {len(selected_stories)} stories for briefing.")
-    return selected_stories
+    logger.info(f"Built candidate pool of {len(candidate_pool)} unique stories (from {len(all_entries)} total entries).")
+    return candidate_pool
+
+
+def llm_curate_stories(
+    candidates: list[dict[str, str]],
+    config: dict[str, Any],
+) -> list[dict[str, str]]:
+    """
+    Stage 2 story selection: ask Ollama to pick the most technically significant
+    stories from the candidate pool. Returns max_stories entries.
+    Falls back to top-N by score if LLM call fails.
+    """
+    llm_cfg = config.get("llm", {})
+    ollama_url = llm_cfg.get("ollama_url", "http://localhost:11434").rstrip("/")
+    model = llm_cfg.get("model", "qwen2.5:3b")
+    max_stories = config.get("feeds", {}).get("max_stories", 5)
+
+    if len(candidates) <= max_stories:
+        return candidates
+
+    # Build a compact numbered list for the curation prompt
+    story_list = ""
+    for idx, s in enumerate(candidates, 1):
+        story_list += f"{idx}. [{s['source']}] {s['title']}\n   {s['summary'][:200]}\n\n"
+
+    prompt = (
+        f"You are an expert AI/ML engineer curating a daily briefing for software engineers.\n"
+        f"From the {len(candidates)} stories below, select the {max_stories} that are most technically "
+        f"significant for a practitioner audience (model releases, agent frameworks, safety incidents, "
+        f"benchmark breakthroughs, tooling launches). Prefer diversity of topics over recency.\n\n"
+        f"Return ONLY a JSON object with a single key 'selected' containing a list of "
+        f"{max_stories} integer indices (1-based) in your preferred order.\n"
+        f"Example: {{\"selected\": [3, 1, 7, 12, 5]}}\n\n"
+        f"Stories:\n{story_list}"
+    )
+
+    logger.info(f"LLM curation: asking {model} to pick {max_stories} from {len(candidates)} candidates...")
+    try:
+        response = requests.post(
+            f"{ollama_url}/api/generate",
+            json={
+                "model": model,
+                "prompt": prompt,
+                "format": "json",
+                "stream": False,
+                "options": {"temperature": 0.2, "num_ctx": 4096},
+            },
+            timeout=120,
+        )
+        response.raise_for_status()
+        raw = response.json().get("response", "").strip()
+        data = json.loads(raw)
+        indices = data.get("selected", [])
+
+        # Validate and clamp indices to candidate range
+        valid_indices = [i for i in indices if isinstance(i, int) and 1 <= i <= len(candidates)]
+        if len(valid_indices) < max_stories:
+            logger.warning(f"LLM returned {len(valid_indices)} valid indices, expected {max_stories}. Padding with top-scored.")
+            seen = set(valid_indices)
+            for i in range(1, len(candidates) + 1):
+                if i not in seen:
+                    valid_indices.append(i)
+                    if len(valid_indices) >= max_stories:
+                        break
+
+        curated = [candidates[i - 1] for i in valid_indices[:max_stories]]
+        titles = [f"  {i}. {s['title'][:55]}..." for i, s in zip(valid_indices, curated)]
+        logger.info(f"LLM curated {max_stories} stories:\n" + "\n".join(titles))
+        return curated
+
+    except Exception as e:
+        logger.warning(f"LLM curation failed ({e}). Falling back to top-{max_stories} by popularity/recency score.")
+        return candidates[:max_stories]
 
 
 def generate_briefing_llm(stories: list[dict[str, str]], config: dict[str, Any]) -> dict[str, str]:
@@ -170,7 +308,8 @@ Produce a JSON object with exactly two keys:
    - STRICT RULES FOR AUDIO_SCRIPT:
      * Write purely phonetically friendly spoken words.
      * Absolutely NO markdown (no asterisks, hash signs, bullet points, brackets).
-     * Absolutely NO URLs or website links (speak names of sources naturally instead, e.g., "reported on Simon Willison's blog" or "according to Anthropic").
+     * Absolutely NO URLs, domain names, website links, or bracketed paths (e.g. do NOT say "link is available at..." or "[domain.com/path]").
+     * Speak naturally as a podcast host describing the news (e.g., "reported on Simon Willison's blog" or "according to Anthropic").
      * Pronounce acronyms or clarify them naturally if needed.
      * Provide substantive depth for each of the {len(stories)} stories so the listener gets genuine technical takeaways.
 
@@ -232,22 +371,28 @@ Return ONLY the raw JSON object with keys "text_digest" and "audio_script".
         if not text_digest or not audio_script:
             raise KeyError(f"JSON missing expected keys. Received keys: {list(data.keys())}")
 
+        audio_script = clean_script_for_audio(audio_script)
         logger.info(f"Ollama generated script: ~{len(audio_script.split())} words.")
         return {"text_digest": text_digest, "audio_script": audio_script}
 
     except Exception as e:
         logger.error(f"Error during Ollama inference: {e}")
-        # Graceful fallback: construct basic digest & script from raw stories
+        # Graceful fallback: construct basic digest & clean script from raw stories
         logger.warning("Generating fallback digest & script from fetched stories.")
         digest_lines = ["# 🎙️ Daily AI Engineering Briefing\n"]
-        script_parts = ["Good morning. Here is your daily artificial intelligence news briefing.\n"]
+        script_parts = ["Good morning. Here is your daily artificial intelligence news briefing. "]
         for idx, s in enumerate(stories, 1):
             digest_lines.append(f"**{idx}. [{s['title']}]({s['link']})** ({s['source']})\n{s['summary']}\n")
-            script_parts.append(f"Story number {idx}. From {s['source']}. {s['title']}. {s['summary']}. ")
+            # Clean title and summary to ensure zero URLs or raw tags in fallback script
+            clean_t = clean_script_for_audio(s['title'])
+            clean_s = clean_script_for_audio(s['summary'])
+            script_parts.append(f"Story number {idx}. From {s['source']}. {clean_t}. {clean_s}. ")
         script_parts.append("That wraps up today's briefing. Have a productive day.")
+        
+        fallback_script = clean_script_for_audio(" ".join(script_parts))
         return {
             "text_digest": "\n".join(digest_lines),
-            "audio_script": " ".join(script_parts),
+            "audio_script": fallback_script,
         }
 
 
@@ -429,11 +574,14 @@ def main() -> None:
 
     logger.info("=== Starting AI News Daily Briefing Pipeline ===")
 
-    # Step 1: RSS Aggregation
-    stories = fetch_stories(config)
-    if not stories:
+    # Step 1: RSS Aggregation → scored candidate pool
+    candidates = fetch_stories(config)
+    if not candidates:
         logger.error("No stories retrieved from any feeds. Exiting.")
         sys.exit(1)
+
+    # Step 1b: LLM Curation → pick best max_stories from candidate pool
+    stories = llm_curate_stories(candidates, config)
 
     # Step 2: LLM Inference via Ollama
     briefing_data = generate_briefing_llm(stories, config)

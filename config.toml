@@ -1,5 +1,7 @@
 [feeds]
 max_stories = 5
+# How many unique candidates to collect before LLM curation picks the final max_stories
+candidate_pool_size = 15
 sources = [
     { name = "Hacker News AI", url = "https://hnrss.org/newest?q=AI&points=30" },
     { name = "Simon Willison Weblog", url = "https://simonwillison.net/atom/everything/" },
