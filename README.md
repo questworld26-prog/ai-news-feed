@@ -8,9 +8,11 @@ A local, automated daily AI news briefing pipeline on macOS (Apple Silicon M1). 
 
 - **Package & Runtime Manager**: Managed strictly with `uv` and Python 3.11.
 - **Hardware-Tailored**: Tuned for Apple Silicon M1 (8GB unified memory), running sequential chunked synthesis with zero heavy cloud API requirements.
-- **Local LLM**: Local Ollama instance running `qwen2.5:3b` producing a dual output:
-  1. A structured markdown brief with embedded original source hyperlinks.
-  2. A natural spoken-cadence monologue script (~1,400 words) without markdown symbols or URLs.
+- **Two-Stage Story Selection Pipeline**:
+  1. **Candidate Pool & Scoring**: Aggregates RSS feeds, applies weighted scoring (60% recency + 40% Hacker News popularity), and eliminates duplicate stories via title similarity matching (`difflib.SequenceMatcher`) to form a candidate pool (default: 15 stories).
+  2. **LLM Story Curation (Call #1)**: Ollama (`qwen2.5:3b` @ `temp=0.2`) evaluates candidate titles/summaries and selects the top 5 most technically impactful and distinct stories.
+  3. **Script & Digest Generation (Call #2)**: Ollama (`qwen2.5:3b` @ `temp=0.7`, ~750 word target) generates a dual JSON payload containing a structured markdown text digest and an engaging spoken monologue script.
+- **Spoken Audio Sanitization**: Dedicated `clean_script_for_audio()` sanitizer strips URLs, bracketed paths (e.g. `[domain/path]`), "link available at..." filler phrases, and markdown artifacts to ensure smooth, natural narration.
 - **Local TTS**: `kokoro-mlx` Metal acceleration using British male voice `bm_george` (configurable in `config.toml`).
 - **Telegram Dispatch**: Delivers markdown summary and WAV audio directly via Telegram Bot API (handles Telegram's 50MB file limit by automatically splitting large files if necessary).
 - **Automation**: macOS `launchd` service running unattended every morning at 07:00 AM.
@@ -21,7 +23,7 @@ A local, automated daily AI news briefing pipeline on macOS (Apple Silicon M1). 
 
 ```
 AI_news_voice_feed/
-├── config.toml                   # Centralized knobs: max stories, lookback, voice, model
+├── config.toml                   # Centralized knobs: candidate_pool_size, max_stories, lookback, voice, model
 ├── pyproject.toml                # UV project configuration
 ├── .env.example                  # Environment secrets template
 ├── .gitignore                    # Git ignore for .env, output/, .venv
@@ -58,7 +60,8 @@ TELEGRAM_CHAT_ID="987654321"
 
 ### 3. Tuning Configuration (`config.toml`)
 You can freely customize:
-- `feeds.max_stories`: Number of top stories to select per run (default: `5`).
+- `feeds.candidate_pool_size`: Size of pre-filtered candidate pool scored by recency and HN points (default: `15`).
+- `feeds.max_stories`: Number of top stories selected by LLM curation for the final briefing (default: `5`).
 - `tts.voice`: Voice name (default: `"bm_george"`).
 - `tts.speed`: Speaking speed multiplier (default: `1.0`).
 - `llm.model`: Ollama model tag (default: `"qwen2.5:3b"`).
