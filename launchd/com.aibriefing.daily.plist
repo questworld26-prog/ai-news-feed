@@ -9,7 +9,7 @@
     <array>
         <string>/Users/prithis/.local/bin/uv</string>
         <string>run</string>
-        <string>src/pipeline.py</string>
+        <string>src/generate_news_digest.py</string>
     </array>
 
     <key>WorkingDirectory</key>

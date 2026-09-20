@@ -39,7 +39,10 @@ AI_news_voice_feed/
 │   └── com.aibriefing.daily.plist # macOS LaunchAgent configuration (12:00 PM)
 ├── output/                       # Local audio (.wav) & summary (.md) storage
 ├── src/
-│   └── pipeline.py               # Complete end-to-end pipeline script
+│   ├── generate_news_digest.py   # Main CLI entrypoint & orchestrator
+│   ├── news_fetcher.py           # RSS fetching, cleaning, scoring & filtering
+│   ├── briefing_generator.py     # LLM story curation, markdown digest & monologue generator
+│   └── notifier.py               # Kokoro-mlx TTS audio synthesis & Telegram dispatch
 └── README.md
 ```
 
@@ -49,9 +52,9 @@ AI_news_voice_feed/
 
 ### 1. Prerequisites
 - **uv**: Installed at `~/.local/bin/uv` (or install via `curl -LsSf https://astral.sh/uv/install.sh | sh`).
-- **Ollama**: Running locally with `qwen2.5:3b`:
+- **Ollama**: Running locally with `phi4-mini:3.8b` (or your chosen model):
   ```bash
-  ollama pull qwen2.5:3b
+  ollama pull phi4-mini:3.8b
   ```
 
 ### 2. Configure Environment Secrets
@@ -83,7 +86,7 @@ You can freely customize:
 ### CLI Options Summary
 
 ```text
-usage: uv run python src/pipeline.py [-h] [--config CONFIG] [--dry-run] [--skip-tts] [--all-themes]
+usage: uv run python src/generate_news_digest.py [-h] [--config CONFIG] [--dry-run] [--skip-tts] [--all-themes]
 
 AI News Daily Voice Briefing Pipeline
 
@@ -99,27 +102,27 @@ options:
 
 - **Full Production Run** (Fetch → Ollama → Kokoro TTS → Telegram):
   ```bash
-  uv run python src/pipeline.py
+  uv run python src/generate_news_digest.py
   ```
 
 - **Dry Run** (Test story fetch & text/script generation without TTS or Telegram):
   ```bash
-  uv run python src/pipeline.py --dry-run
+  uv run python src/generate_news_digest.py --dry-run
   ```
 
 - **All-Themes Digest Catch-up** (Generate combined digest for all 4 themes without sending to Telegram):
   ```bash
-  uv run python src/pipeline.py --all-themes
+  uv run python src/generate_news_digest.py --all-themes
   ```
 
 - **Text-Only Telegram Dispatch** (Send text digest to Telegram, skip audio generation):
   ```bash
-  uv run python src/pipeline.py --skip-tts
+  uv run python src/generate_news_digest.py --skip-tts
   ```
 
 - **Use Custom Configuration File**:
   ```bash
-  uv run python src/pipeline.py --config custom_config.toml
+  uv run python src/generate_news_digest.py --config custom_config.toml
   ```
 
 Outputs are saved in `output/`:
