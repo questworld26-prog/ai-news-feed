@@ -147,7 +147,9 @@ def generate_briefing_llm(
         f"Task:\n"
         f"Write a rich, concise markdown briefing suitable for Telegram:\n"
         f"- Start directly with a sharp headline and today's date ({today_date}). Never write '[Current Date]'.\n"
-        f"- For each of the {len(stories)} stories, write a 2-sentence technical breakdown explaining why it matters and include the markdown link to the source.\n"
+        f"- For each of the {len(stories)} stories, write a section with a header using ONLY the markdown link format: `## [Story Title](URL)`. Do NOT repeat the title outside the brackets.\n"
+        f"- Follow the header with a 2-sentence technical breakdown explaining why it matters.\n"
+        f"- Do NOT add a separate 'Article URL', 'Link', or '[Read more]' line.\n"
         f"- Output raw markdown only. Do NOT enclose in markdown code blocks (no ```). Do NOT add closing meta-commentary."
     )
 
@@ -174,7 +176,7 @@ def generate_briefing_llm(
     if not text_digest:
         digest_lines = [f"### Daily AI Tech Briefing\n"]
         for idx, s in enumerate(stories, 1):
-            digest_lines.append(f"**{idx}. [{s['title']}]({s['link']})** ({s['source']})\n{s['summary']}\n")
+            digest_lines.append(f"## [{s['title']}]({s['link']})\n({s['source']})\n{s['summary']}\n")
         digest_lines.append("Stay curious and keep shipping.")
         text_digest = "\n".join(digest_lines)
 

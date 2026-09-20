@@ -86,16 +86,29 @@ You can freely customize:
 ### CLI Options Summary
 
 ```text
-usage: uv run python src/generate_news_digest.py [-h] [--config CONFIG] [--dry-run] [--skip-tts] [--all-themes]
+usage: uv run python src/generate_news_digest.py [-h] [--config CONFIG] [--dry-run] [--skip-tts] [--all-themes] [--validate]
 
 AI News Daily Voice Briefing Pipeline
 
 options:
   -h, --help       show this help message and exit
-  --config CONFIG  Path to configuration file (default: config.toml)
+  -c, --config     Path to configuration file (default: config.toml)
   --dry-run        Fetch and generate script only; skip TTS synthesis and Telegram dispatch
   --skip-tts       Skip audio synthesis and dispatch only the markdown text digest to Telegram
   --all-themes     Generate a full digest for all 4 themes in dry-run mode (saved to output/YYYY-MM-DD_all_themes.md)
+  --validate       Run anti-hallucination factual validation on generated summaries
+```
+
+### Testing & Quality Verification
+
+Run unit & accuracy test suite (golden stories):
+```bash
+uv run python -m pytest tests/ -v
+```
+
+Run live anti-hallucination verification during digest generation:
+```bash
+uv run python src/generate_news_digest.py --dry-run --validate
 ```
 
 ### Common Command Examples
