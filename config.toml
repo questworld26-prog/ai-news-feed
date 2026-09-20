@@ -65,7 +65,8 @@ sources = [
 ]
 
 [llm]
-model = "qwen2.5:3b"
+#model = "qwen2.5:3b"
+model = "phi4-mini:3.8b"
 ollama_url = "http://localhost:11434"
 script_word_target = 750
 

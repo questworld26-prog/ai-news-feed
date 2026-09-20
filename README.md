@@ -74,41 +74,59 @@ You can freely customize:
 - `themes.*.sources`: RSS feed URLs for each theme.
 - `tts.voice`: Voice name (default: `"bm_george"`).
 - `tts.speed`: Speaking speed multiplier (default: `1.0`).
-- `llm.model`: Ollama model tag (default: `"qwen2.5:3b"`).
+- `llm.model`: Ollama model tag (default: `"phi4-mini:3.8b"`).
 
 ---
 
-## 🧪 Running the Pipeline
+## 🧪 Command Line Usage & Options
 
-### Dry Run (Test Feeds & Script Generation)
-Verify RSS feeds aggregation, theme selection, and Ollama generation without synthesizing audio or sending to Telegram:
-```bash
-uv run python src/pipeline.py --dry-run
+### CLI Options Summary
+
+```text
+usage: uv run python src/pipeline.py [-h] [--config CONFIG] [--dry-run] [--skip-tts] [--all-themes]
+
+AI News Daily Voice Briefing Pipeline
+
+options:
+  -h, --help       show this help message and exit
+  --config CONFIG  Path to configuration file (default: config.toml)
+  --dry-run        Fetch and generate script only; skip TTS synthesis and Telegram dispatch
+  --skip-tts       Skip audio synthesis and dispatch only the markdown text digest to Telegram
+  --all-themes     Generate a full digest for all 4 themes in dry-run mode (saved to output/YYYY-MM-DD_all_themes.md)
 ```
 
-### Comprehensive All-Themes Catch-up Mode
-Generate a multi-section comprehensive briefing covering all 4 themes in one Markdown file (saved locally to `output/YYYY-MM-DD_all_themes.md`, without TTS or Telegram):
-```bash
-uv run python src/pipeline.py --all-themes
-```
+### Common Command Examples
 
-### Text-Only Run (Skip Audio Synthesis)
-Test RSS fetch, Ollama script creation, and Telegram message dispatch without running TTS:
-```bash
-uv run python src/pipeline.py --skip-tts
-```
+- **Full Production Run** (Fetch → Ollama → Kokoro TTS → Telegram):
+  ```bash
+  uv run python src/pipeline.py
+  ```
 
-### Full End-to-End Run
-Run all stages (Fetch → Ollama → Kokoro TTS → Local Files → Telegram):
-```bash
-uv run python src/pipeline.py
-```
+- **Dry Run** (Test story fetch & text/script generation without TTS or Telegram):
+  ```bash
+  uv run python src/pipeline.py --dry-run
+  ```
 
-Outputs will be saved in `output/`:
-- `output/YYYY-MM-DD_<theme>_summary.md` (Markdown notes with links & spoken script)
+- **All-Themes Digest Catch-up** (Generate combined digest for all 4 themes without sending to Telegram):
+  ```bash
+  uv run python src/pipeline.py --all-themes
+  ```
+
+- **Text-Only Telegram Dispatch** (Send text digest to Telegram, skip audio generation):
+  ```bash
+  uv run python src/pipeline.py --skip-tts
+  ```
+
+- **Use Custom Configuration File**:
+  ```bash
+  uv run python src/pipeline.py --config custom_config.toml
+  ```
+
+Outputs are saved in `output/`:
+- `output/YYYY-MM-DD_<theme>_summary.md` (Markdown notes with source links & spoken script)
 - `output/YYYY-MM-DD_briefing.wav` (Native 24kHz 16-bit PCM WAV audio)
 
-You can play the generated audio directly in macOS Terminal:
+Play generated audio directly in macOS Terminal:
 ```bash
 afplay output/*_briefing.wav
 ```
