@@ -70,6 +70,11 @@ model = "phi4-mini:3.8b"
 ollama_url = "http://localhost:11434"
 script_word_target = 750
 
+[testing]
+# Model used specifically for anti-hallucination fact checking and verification tests
+test_model = "qwen2.5:3b"
+
+
 [tts]
 # Kokoro-mlx voice name (e.g. bm_george, af_heart, am_michael)
 voice = "bm_george"

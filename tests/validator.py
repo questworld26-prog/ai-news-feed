@@ -84,8 +84,9 @@ def detect_fabrications(source_text: str, digest_text: str) -> list[str]:
 def llm_fact_check(source_text: str, digest_summary: str, config: dict[str, Any]) -> tuple[bool, str]:
     """Use local Ollama model to perform a factual adherence audit."""
     llm_cfg = config.get("llm", {})
+    testing_cfg = config.get("testing", {})
     ollama_url = llm_cfg.get("ollama_url", "http://localhost:11434").rstrip("/")
-    model = llm_cfg.get("model", "phi4-mini:3.8b")
+    model = testing_cfg.get("test_model") or llm_cfg.get("model", "qwen2.5:3b")
 
     prompt = (
         f"You are a strict fact-checker auditing an AI-generated summary for factual accuracy against its source text.\n\n"
