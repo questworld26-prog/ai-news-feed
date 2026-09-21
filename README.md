@@ -24,12 +24,12 @@ options:
 
 ### Testing & Quality Verification
 
-Run the full evaluation test suite (Golden Dataset, HHH Guardrails, and Regex rules):
+Run the full evaluation test suite (Golden Dataset, HHH Guardrails, 1–5 Rubrics, and Regex rules):
 ```bash
 uv run python -m pytest tests/ -v
 ```
 
-*Note: Multi-layer evaluation checks Structural Regex (`## [Title](URL)`), HHH Guardrails (Helpful, Honest, Harmless), and LLM-as-a-Judge pass rates automatically on every run.*
+*Note: Multi-layer evaluation checks Structural Regex (`## [Title](URL)`), HHH Guardrails (Helpful, Honest, Harmless), 1–5 Rubric Scoring, and multi-run Pass@K / Pass Rate % metrics.*
 
 ---
 
@@ -49,7 +49,10 @@ uv run python -m pytest tests/ -v
 - **Three-Stage LLM Pipeline & Multi-Layer Evaluation**:
   1. **Curation**: Local LLM evaluates candidate stories against the active theme.
   2. **Digest & Script Generation**: Produces a rich Markdown briefing with embedded title links (`## [Title](URL)`) and a conversational monologue script (~750 words).
-  3. **Multi-Layer Validation & HHH Guardrails**: An independent LLM judge, Regex checker, and HHH (Helpful, Honest, Harmless) audit engine verify every output against raw source text.
+  3. **Multi-Layer Evaluation & HHH Guardrails**:
+     - **Layer 1 (Regex & Structure)**: Enforces heading link syntax `## [Title](URL)` and detects bare URL leaks.
+     - **Layer 2 (HHH Guardrails & 1–5 Rubrics)**: Audits outputs on a 1.0–5.0 scale for **Honest** (zero hallucinated figures), **Helpful** (technical depth), and **Harmless** (objective, hype-free tone).
+     - **Layer 3 (LLM-as-a-Judge & Multi-Run Metrics)**: Runs multi-trial evaluations (`eval_runs=N`), calculating **Pass Rate %** and **Pass@K** metrics.
 - **Local TTS**: Synthesizes natural spoken audio using `kokoro-mlx`.
 - **Telegram Dispatch**: Delivers formatted summaries and WAV audio files via Telegram Bot API (handles 50MB file splitting automatically).
 

@@ -1,6 +1,6 @@
 """
 Pytest test suite for Golden Dataset evaluation harness.
-Tests Layer 1 (Regex & Structure), Layer 2 (HHH Guardrails), and Layer 3 (LLM-as-a-Judge Pass Rate).
+Tests Layer 1 (Regex & Structure), Layer 2 (HHH Guardrails & 1-5 Rubric Matrix), and Layer 3 (LLM-as-a-Judge Pass Rate & Multi-Run).
 """
 
 import json
@@ -14,6 +14,7 @@ sys.path.insert(0, str(project_root / "src"))
 from evaluator import (
     evaluate_hhh_guardrails,
     evaluate_regex_rules,
+    evaluate_rubrics,
     run_full_evaluation,
 )
 
@@ -71,7 +72,19 @@ def test_evaluate_hhh_guardrails_catches_fabrication_and_hype(sample_story):
     assert verdict.honest_pass is False or verdict.harmless_pass is False
 
 
-def test_run_full_evaluation_on_golden_dataset(monkeypatch):
+def test_evaluate_rubrics_1_to_5_scoring(sample_story):
+    valid_digest = (
+        "## [vLLM 0.7.0 Released with Chunked Prefill](https://github.com/vllm-project/vllm/releases/tag/v0.7.0)\n\n"
+        "vLLM team announced version 0.7.0 featuring chunked prefill enabled by default, reducing TTFT by up to 3x on Llama 3 70B workloads."
+    )
+    rubric = evaluate_rubrics(valid_digest, sample_story)
+    assert rubric.honest_score >= 4.0
+    assert rubric.helpful_score == 5.0
+    assert rubric.harmless_score == 5.0
+    assert rubric.average_score >= 4.5
+
+
+def test_run_full_evaluation_multi_run(monkeypatch):
     fixtures_path = Path(__file__).parent / "fixtures" / "golden_dataset.json"
 
     # Mock requests to return LLM pass for test verification
@@ -85,10 +98,14 @@ def test_run_full_evaluation_on_golden_dataset(monkeypatch):
     monkeypatch.setattr(requests, "post", lambda *args, **kwargs: MockResponse())
 
     dummy_config = {"llm": {"model": "phi4-mini:3.8b", "ollama_url": "http://localhost:11434"}}
-    report = run_full_evaluation(fixtures_path, dummy_config)
+    report = run_full_evaluation(fixtures_path, dummy_config, eval_runs=3)
 
     assert report.total_cases >= 4
-    assert report.regex_pass_count == report.total_cases
-    assert report.hhh_pass_count == report.total_cases
-    assert report.llm_judge_pass_count == report.total_cases
     assert report.overall_pass_rate == 1.0
+    assert report.mean_rubric_score >= 4.5
+    assert len(report.multi_run_summary) == report.total_cases
+    for mr in report.multi_run_summary:
+        assert mr.total_runs == 3
+        assert mr.passed_runs == 3
+        assert mr.pass_rate == 1.0
+        assert mr.pass_at_k is True

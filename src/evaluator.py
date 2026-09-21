@@ -2,8 +2,8 @@
 Evaluation Harness for AI News Voice Feed Pipeline.
 Evaluates digest summaries across three rigorous layers:
 1. Regex & Structural Check (header format, link hygiene, date presence)
-2. HHH Guardrails (Helpful, Honest, Harmless)
-3. LLM-as-a-Judge Factual Adherence & Pass Rate Metrics
+2. HHH Guardrails (Helpful, Honest, Harmless) with 1-5 Rubric Scoring Matrix
+3. LLM-as-a-Judge Factual Adherence & Multi-Run Pass@K / Pass Rate Metrics
 """
 
 from __future__ import annotations
@@ -31,13 +31,34 @@ class HHHVerdict(NamedTuple):
     passed: bool
 
 
+class RubricScore(NamedTuple):
+    honest_score: float    # 1.0 to 5.0
+    helpful_score: float   # 1.0 to 5.0
+    harmless_score: float  # 1.0 to 5.0
+    average_score: float   # Mean of the 3 scores
+    reasoning: list[str]
+
+
+class MultiRunResult(NamedTuple):
+    case_id: str
+    story_title: str
+    total_runs: int
+    passed_runs: int
+    pass_rate: float        # passed_runs / total_runs
+    pass_at_k: bool         # True if at least 1 run passed
+    mean_rubric_score: float # Average 1-5 rubric score across runs
+    run_details: list[dict[str, Any]]
+
+
 class EvaluationReport(NamedTuple):
     total_cases: int
     regex_pass_count: int
     hhh_pass_count: int
     llm_judge_pass_count: int
     overall_pass_rate: float
+    mean_rubric_score: float
     details: list[dict[str, Any]]
+    multi_run_summary: list[MultiRunResult]
 
 
 def evaluate_regex_rules(digest_text: str, story: dict[str, Any], custom_regex: list[str] = None) -> tuple[bool, list[str]]:
@@ -52,14 +73,12 @@ def evaluate_regex_rules(digest_text: str, story: dict[str, Any], custom_regex: 
     # Check header link format: ## [Title](URL)
     expected_header_pattern = rf"##\s*\[{re.escape(title)}\]\({re.escape(link)}\)"
     if not re.search(expected_header_pattern, digest_text):
-        # Fallback check: title inside brackets and link inside parenthesised URL
         sub_pattern = rf"##\s*\[.*?{re.escape(title[:20])}.*?\]\(\s*{re.escape(link[:20])}.*?\)"
         if not re.search(sub_pattern, digest_text, re.IGNORECASE):
             errors.append(f"Header does not match required markdown link format: `## [{title}]({link})`")
 
     # Check for unformatted raw URLs (bare http:// or https:// outside markdown brackets)
     bare_urls = re.findall(r"(?<!\()https?://\S+(?!\))", digest_text)
-    # Exclude links enclosed in markdown links
     for bu in bare_urls:
         if not re.search(rf"\]\({re.escape(bu)}\)", digest_text):
             errors.append(f"Bare URL found outside markdown link brackets: {bu}")
@@ -124,26 +143,88 @@ def evaluate_hhh_guardrails(digest_text: str, story: dict[str, Any]) -> HHHVerdi
     )
 
 
+def evaluate_rubrics(digest_text: str, story: dict[str, Any], config: dict[str, Any] = None) -> RubricScore:
+    """
+    Calculates 1-5 Rubric Scores for Honest, Helpful, and Harmless axes.
+    Score 5 = Excellent, Score 3 = Acceptable, Score 1 = Unacceptable.
+    """
+    source_text = f"{story.get('title', '')}\n{story.get('summary', '')}\n{story.get('link', '')}"
+    reasons = []
+
+    # Honest Rubric (1-5)
+    fabrications = detect_fabrications(source_text, digest_text)
+    overlap = compute_keyword_overlap(source_text, digest_text)
+
+    if fabrications:
+        honest_score = 1.0
+        reasons.append(f"Honest Score 1.0: Fabrications detected ({', '.join(fabrications)})")
+    elif overlap < 0.35:
+        honest_score = 2.5
+        reasons.append(f"Honest Score 2.5: Low keyword overlap ({overlap:.2f})")
+    elif overlap < 0.60:
+        honest_score = 4.0
+        reasons.append(f"Honest Score 4.0: Acceptable factual accuracy ({overlap:.2f})")
+    else:
+        honest_score = 5.0
+        reasons.append(f"Honest Score 5.0: High factual fidelity ({overlap:.2f})")
+
+    # Helpful Rubric (1-5)
+    words = len(digest_text.split())
+    has_header = "## [" in digest_text
+    if not has_header or words < 10:
+        helpful_score = 1.0
+        reasons.append("Helpful Score 1.0: Missing markdown title header link or empty content")
+    elif words < 25:
+        helpful_score = 3.0
+        reasons.append("Helpful Score 3.0: Brief technical summary")
+    else:
+        helpful_score = 5.0
+        reasons.append("Helpful Score 5.0: Rich technical breakdown with valid title link")
+
+    # Harmless Rubric (1-5)
+    hype_terms = ["guaranteed agi", "skyrocket valuation", "breakthrough hype", "game-changer"]
+    found_hype = [t for t in hype_terms if t in digest_text.lower() and t not in source_text.lower()]
+    if found_hype:
+        harmless_score = 1.0
+        reasons.append(f"Harmless Score 1.0: Hype terms present ({', '.join(found_hype)})")
+    else:
+        harmless_score = 5.0
+        reasons.append("Harmless Score 5.0: Clean, objective engineering tone")
+
+    avg_score = round((honest_score + helpful_score + harmless_score) / 3.0, 2)
+
+    return RubricScore(
+        honest_score=honest_score,
+        helpful_score=helpful_score,
+        harmless_score=harmless_score,
+        average_score=avg_score,
+        reasoning=reasons,
+    )
+
+
 def evaluate_llm_judge(digest_summary: str, story: dict[str, Any], config: dict[str, Any]) -> tuple[bool, float, str]:
     """
     Layer 3: LLM-as-a-Judge Factual Adherence Check.
     Returns (pass_boolean, score_float, reasoning_string).
     """
-    source_text = f"{story.get('title', '')}\n{story.get('summary', '')}"
     validation_res = validate_story(story, digest_summary, config, run_llm_check=True)
     score = validation_res.keyword_overlap_score if validation_res.passed else 0.0
     return validation_res.passed, score, validation_res.llm_reasoning
 
 
-def run_full_evaluation(golden_dataset_path: Path, config: dict[str, Any], generate_fn=None) -> EvaluationReport:
+def run_full_evaluation(
+    golden_dataset_path: Path,
+    config: dict[str, Any],
+    generate_fn=None,
+    eval_runs: int = 1,
+) -> EvaluationReport:
     """
-    Run evaluation across the full Golden Dataset.
-    If generate_fn is provided, it generates a digest for each story dynamically.
-    Otherwise, it checks pre-generated digests or fallback mock digest format.
+    Run evaluation across the full Golden Dataset over eval_runs (default 1).
+    Calculates Pass Rate %, Pass@K, and Mean Rubric Scores across multi-run trials.
     """
     if not golden_dataset_path.exists():
         logger.error(f"Golden dataset file not found at {golden_dataset_path}")
-        return EvaluationReport(0, 0, 0, 0, 0.0, [])
+        return EvaluationReport(0, 0, 0, 0, 0.0, 0.0, [], [])
 
     with open(golden_dataset_path, "r", encoding="utf-8") as f:
         cases = json.load(f)
@@ -151,44 +232,85 @@ def run_full_evaluation(golden_dataset_path: Path, config: dict[str, Any], gener
     regex_passes = 0
     hhh_passes = 0
     llm_passes = 0
+    all_rubric_scores = []
     details = []
+    multi_run_summaries = []
 
     for item in cases:
         story = item.get("story", {})
         custom_regex = item.get("required_regex", [])
+        case_id = item.get("id", "unknown")
 
-        if generate_fn:
-            digest_text = generate_fn(story, item.get("theme", "practitioner_radar"))
-        else:
-            # Create standard formatted digest text for static checking
-            digest_text = f"## [{story.get('title')}]({story.get('link')})\n\n{story.get('summary')}"
+        run_details = []
+        passed_runs = 0
+        case_rubric_scores = []
 
-        regex_ok, regex_errors = evaluate_regex_rules(digest_text, story, custom_regex)
-        if regex_ok:
-            regex_passes += 1
+        for run_idx in range(1, eval_runs + 1):
+            if generate_fn:
+                digest_text = generate_fn(story, item.get("theme", "practitioner_radar"))
+            else:
+                digest_text = f"## [{story.get('title')}]({story.get('link')})\n\n{story.get('summary')}"
 
-        hhh = evaluate_hhh_guardrails(digest_text, story)
-        if hhh.passed:
-            hhh_passes += 1
+            regex_ok, regex_errors = evaluate_regex_rules(digest_text, story, custom_regex)
+            hhh = evaluate_hhh_guardrails(digest_text, story)
+            llm_pass, score, reasoning = evaluate_llm_judge(digest_text, story, config)
+            rubric = evaluate_rubrics(digest_text, story, config)
 
-        llm_pass, score, reasoning = evaluate_llm_judge(digest_text, story, config)
-        if llm_pass:
-            llm_passes += 1
+            run_passed = regex_ok and hhh.passed and llm_pass
+            if run_passed:
+                passed_runs += 1
 
-        details.append({
-            "id": item.get("id"),
-            "title": story.get("title"),
-            "regex_pass": regex_ok,
-            "regex_errors": regex_errors,
-            "hhh_pass": hhh.passed,
-            "hhh_verdict": hhh,
-            "llm_pass": llm_pass,
-            "llm_score": score,
-            "llm_reasoning": reasoning,
-        })
+            case_rubric_scores.append(rubric.average_score)
+            all_rubric_scores.append(rubric.average_score)
+
+            run_details.append({
+                "run_idx": run_idx,
+                "regex_pass": regex_ok,
+                "hhh_pass": hhh.passed,
+                "llm_pass": llm_pass,
+                "rubric_score": rubric.average_score,
+                "reasoning": reasoning,
+            })
+
+            # Use first run for primary summary counters
+            if run_idx == 1:
+                if regex_ok:
+                    regex_passes += 1
+                if hhh.passed:
+                    hhh_passes += 1
+                if llm_pass:
+                    llm_passes += 1
+
+                details.append({
+                    "id": case_id,
+                    "title": story.get("title"),
+                    "regex_pass": regex_ok,
+                    "regex_errors": regex_errors,
+                    "hhh_pass": hhh.passed,
+                    "hhh_verdict": hhh,
+                    "llm_pass": llm_pass,
+                    "llm_score": score,
+                    "llm_reasoning": reasoning,
+                    "rubric": rubric,
+                })
+
+        pass_rate = passed_runs / float(eval_runs)
+        mean_case_rubric = round(sum(case_rubric_scores) / len(case_rubric_scores), 2)
+
+        multi_run_summaries.append(MultiRunResult(
+            case_id=case_id,
+            story_title=story.get("title", ""),
+            total_runs=eval_runs,
+            passed_runs=passed_runs,
+            pass_rate=pass_rate,
+            pass_at_k=(passed_runs > 0),
+            mean_rubric_score=mean_case_rubric,
+            run_details=run_details,
+        ))
 
     total = len(cases)
     overall_pass_rate = (llm_passes / total) if total > 0 else 0.0
+    overall_mean_rubric = round(sum(all_rubric_scores) / len(all_rubric_scores), 2) if all_rubric_scores else 0.0
 
     return EvaluationReport(
         total_cases=total,
@@ -196,5 +318,7 @@ def run_full_evaluation(golden_dataset_path: Path, config: dict[str, Any], gener
         hhh_pass_count=hhh_passes,
         llm_judge_pass_count=llm_passes,
         overall_pass_rate=overall_pass_rate,
+        mean_rubric_score=overall_mean_rubric,
         details=details,
+        multi_run_summary=multi_run_summaries,
     )
