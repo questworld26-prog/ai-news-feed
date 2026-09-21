@@ -5,6 +5,7 @@ __pycache__/
 .venv/
 build/
 dist/
+output/
 *.egg-info/
 
 # Local Output & Briefings
