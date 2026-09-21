@@ -64,6 +64,7 @@ uv run python -m pytest tests/ -v
 AI_news_voice_feed/
 ├── config.toml                   # Central configuration (themes, RSS sources, schedule, voice, LLM)
 ├── pyproject.toml                # Project metadata & dependencies
+├── ADR.md                        # Architectural Decision Record (architecture, decisions & testing)
 ├── .env.example                  # Environment template for Telegram credentials
 ├── .gitignore                    # Local storage ignore rules
 ├── launchd/
