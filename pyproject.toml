@@ -1,13 +1,20 @@
 [project]
 name = "ai-news-voice-feed"
 version = "0.1.0"
-description = "Add your description here"
+description = "Automated daily AI news briefing pipeline with theme curation, local TTS, anti-hallucination validation, and Telegram delivery"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "feedparser>=6.0.14",
     "kokoro-mlx>=0.1.2",
+    "numpy>=1.26.0",
     "python-dotenv>=1.2.3",
     "requests>=2.34.2",
     "soundfile>=0.14.0",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.0",
+]
+

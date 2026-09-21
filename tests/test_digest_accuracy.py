@@ -88,3 +88,40 @@ def test_detect_fabrications_catches_hallucinated_tool():
     # Low overlap score indicates hallucination
     assert overlap < 0.35
 
+
+def test_llm_fact_check_passes_mocked(monkeypatch):
+    from validator import llm_fact_check
+
+    class MockResponse:
+        def raise_for_status(self):
+            pass
+        def json(self):
+            return {"response": json.dumps({"pass": True, "reasoning": "Factual and supported."})}
+
+    import requests
+    monkeypatch.setattr(requests, "post", lambda *args, **kwargs: MockResponse())
+
+    dummy_config = {"llm": {"model": "phi4-mini:3.8b", "ollama_url": "http://localhost:11434"}}
+    passed, reasoning = llm_fact_check("Source text here", "Digest summary here", dummy_config)
+    assert passed is True
+    assert "Factual and supported" in reasoning
+
+
+def test_llm_fact_check_fails_mocked(monkeypatch):
+    from validator import llm_fact_check
+
+    class MockResponse:
+        def raise_for_status(self):
+            pass
+        def json(self):
+            return {"response": json.dumps({"pass": False, "reasoning": "Summary contains unsupported claims."})}
+
+    import requests
+    monkeypatch.setattr(requests, "post", lambda *args, **kwargs: MockResponse())
+
+    dummy_config = {"llm": {"model": "phi4-mini:3.8b", "ollama_url": "http://localhost:11434"}}
+    passed, reasoning = llm_fact_check("Source text here", "Hallucinated summary", dummy_config)
+    assert passed is False
+    assert "unsupported claims" in reasoning
+
+

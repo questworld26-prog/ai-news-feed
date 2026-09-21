@@ -23,11 +23,11 @@ def clean_script_for_audio(raw_script: str) -> str:
         return ""
     text = re.sub(r"(?i)\b(Article URL|Comments URL|Points|# Comments)\b:?\s*\S*", "", raw_script)
     text = re.sub(r"(?i)\b(URL|Link)\b:?\s*", "", text)
+    text = re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", text)
     text = re.sub(r"https?://\S+", "", text)
     text = re.sub(r"www\.\S+", "", text)
     text = re.sub(r"\[[a-zA-Z0-9\.\-/_ ]+\]", "", text)
     text = re.sub(r"(?i)(The link to the original source is|available at|you can read more at)\s*", "", text)
-    text = re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", text)
     text = re.sub(r"[*_#`~>|-]", " ", text)
     text = re.sub(r"\s+", " ", text).strip()
     return text

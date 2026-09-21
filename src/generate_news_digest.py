@@ -22,6 +22,7 @@ from dotenv import load_dotenv
 from briefing_generator import generate_briefing_llm, llm_curate_stories
 from news_fetcher import fetch_stories_for_theme
 from notifier import send_to_telegram, synthesize_audio
+from validator import validate_story
 
 logging.basicConfig(
     level=logging.INFO,
@@ -38,6 +39,23 @@ def load_config(config_path: Path) -> dict[str, Any]:
         sys.exit(1)
     with open(config_path, "rb") as f:
         return tomllib.load(f)
+
+
+def _run_validation(stories: list[dict[str, Any]], text_digest: str, config: dict[str, Any]) -> None:
+    """Run anti-hallucination validation check on generated digest summaries."""
+    logger.info("=== Running Anti-Hallucination Validation ===")
+    try:
+        for idx, story in enumerate(stories, 1):
+            res = validate_story(story, text_digest, config, run_llm_check=True)
+            status = "PASSED" if res.passed else "FAILED / WARN"
+            logger.info(f"Story {idx} [{story['title'][:40]}...] Fact-Check: {status} (Overlap: {res.keyword_overlap_score:.2f})")
+            if res.fabrication_warnings:
+                for w in res.fabrication_warnings:
+                    logger.warning(f"  └─ {w}")
+            if not res.llm_fact_check_passed:
+                logger.warning(f"  └─ LLM Fact-Check Reasoning: {res.llm_reasoning}")
+    except Exception as ve:
+        logger.error(f"Validation step error: {ve}")
 
 
 def run_all_themes(config: dict[str, Any], output_dir: Path, today_str: str) -> None:
@@ -63,6 +81,7 @@ def run_all_themes(config: dict[str, Any], output_dir: Path, today_str: str) -> 
         curated = llm_curate_stories(candidates, theme_dict, config)
         briefing = generate_briefing_llm(curated, theme_dict, config, text_only=True)
         text_digest = briefing.get("text_digest", "")
+        _run_validation(curated, text_digest, config)
         combined_report.append(text_digest + "\n\n---\n\n")
 
     out_file = output_dir / f"{today_str}_all_themes.md"
@@ -124,21 +143,7 @@ def main() -> None:
     audio_script = briefing_data.get("audio_script", "")
 
     # Always perform anti-hallucination validation check
-    logger.info("=== Running Anti-Hallucination Validation ===")
-    sys.path.insert(0, str(project_root / "tests"))
-    try:
-        from validator import validate_story
-        for idx, story in enumerate(stories, 1):
-            res = validate_story(story, text_digest, config, run_llm_check=True)
-            status = "PASSED" if res.passed else "FAILED / WARN"
-            logger.info(f"Story {idx} [{story['title'][:40]}...] Fact-Check: {status} (Overlap: {res.keyword_overlap_score:.2f})")
-            if res.fabrication_warnings:
-                for w in res.fabrication_warnings:
-                    logger.warning(f"  └─ {w}")
-            if not res.llm_fact_check_passed:
-                logger.warning(f"  └─ LLM Fact-Check Reasoning: {res.llm_reasoning}")
-    except Exception as ve:
-        logger.error(f"Validation step error: {ve}")
+    _run_validation(stories, text_digest, config)
 
     summary_file = output_dir / f"{today_str}_{theme_key}_summary.md"
     summary_file.write_text(f"{text_digest}\n\n## Spoken Audio Script\n\n{audio_script}", encoding="utf-8")

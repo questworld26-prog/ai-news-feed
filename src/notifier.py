@@ -20,7 +20,7 @@ logger = logging.getLogger("ai_briefing")
 def chunk_text(text: str, max_words: int = 150) -> list[str]:
     """
     Split script into sentence-bounded chunks of ~max_words
-    to keep memory footprint minimal on 8GB Apple Silicon M1.
+    to limit peak memory usage per synthesis call.
     """
     sentences = re.split(r"(?<=[.?!])\s+", text.strip())
     chunks = []
@@ -116,6 +116,7 @@ def send_to_telegram(
 ) -> bool:
     """
     Send formatted markdown summary and audio files to Telegram bot.
+    Returns True if all dispatches succeeded, False otherwise.
     """
     bot_token = bot_token.strip().strip("'").strip('"')
     chat_id = chat_id.strip().strip("'").strip('"')
@@ -131,6 +132,8 @@ def send_to_telegram(
     
     max_tg_len = 4000
     text_chunks = [text_digest[i:i + max_tg_len] for i in range(0, len(text_digest), max_tg_len)]
+
+    overall_success = True
 
     for chunk in text_chunks:
         payload = {
@@ -148,6 +151,7 @@ def send_to_telegram(
             r.raise_for_status()
         except Exception as e:
             logger.error(f"Failed to send Telegram text message: {e}")
+            overall_success = False
 
     audio_endpoint = f"{base_url}/sendAudio"
     for audio_path in audio_files:
@@ -167,5 +171,6 @@ def send_to_telegram(
                 logger.info(f"Successfully uploaded {audio_path.name} to Telegram!")
         except Exception as e:
             logger.error(f"Failed to upload audio {audio_path.name} to Telegram: {e}")
+            overall_success = False
 
-    return True
+    return overall_success

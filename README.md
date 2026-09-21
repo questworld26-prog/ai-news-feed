@@ -29,7 +29,7 @@ Run the test suite (golden stories and anti-hallucination unit tests):
 uv run python -m pytest tests/ -v
 ```
 
-*Note: Anti-hallucination validation with `qwen2.5:3b` as an LLM judge runs automatically on every pipeline execution.*
+*Note: Anti-hallucination validation with the configured LLM judge runs automatically on every pipeline execution.*
 
 ---
 
@@ -70,8 +70,9 @@ AI_news_voice_feed/
 │   ├── generate_news_digest.py   # Main CLI entrypoint & orchestrator
 │   ├── news_fetcher.py           # RSS aggregation, cleaning, scoring & filtering
 │   ├── briefing_generator.py     # LLM story curation, markdown digest & monologue generator
-│   └── notifier.py               # Local TTS synthesis & Telegram dispatch
-└── tests/                        # Factual accuracy and validator test suite
+│   ├── notifier.py               # Local TTS synthesis & Telegram dispatch
+│   └── validator.py              # Anti-hallucination validation module
+└── tests/                        # Accuracy, audio sanitizer, and validator test suite
 ```
 
 ---
