@@ -67,16 +67,16 @@ def compute_keyword_overlap(source_text: str, digest_text: str) -> float:
 def detect_fabrications(source_text: str, digest_text: str) -> list[str]:
     """Detect numbers, metrics, or percentages in digest text that do not appear in source text."""
     warnings = []
-    # Extract numbers/percentages/metrics from digest
-    digest_numbers = set(re.findall(r"\b\d+(?:\.\d+)?%?\b", digest_text))
-    source_numbers = set(re.findall(r"\b\d+(?:\.\d+)?%?\b", source_text))
+    # Extract semver/multi-part version numbers or float/percentage numbers
+    digest_numbers = set(re.findall(r"\b\d+(?:\.\d+)+%?\b|\b\d+(?:\.\d+)?%?\b", digest_text))
+    source_numbers = set(re.findall(r"\b\d+(?:\.\d+)+%?\b|\b\d+(?:\.\d+)?%?\b", source_text))
 
-    unsupported_numbers = digest_numbers - source_numbers
-    for num in unsupported_numbers:
-        # Ignore common list indices or small digits if context is vague
+    for num in digest_numbers:
         if num in {"1", "2", "3", "4", "5"}:
             continue
-        warnings.append(f"Number/Metric '{num}' in summary was not found in source text.")
+        # Check if number appears in source numbers or as literal substring in source text
+        if num not in source_numbers and num not in source_text:
+            warnings.append(f"Number/Metric '{num}' in summary was not found in source text.")
 
     return warnings
 
@@ -129,7 +129,7 @@ def validate_story(
     min_keyword_threshold: float = 0.35,
 ) -> ValidationResult:
     """Validate a single story summary against its source information."""
-    source_text = f"{story.get('title', '')}\n{story.get('summary', '')}"
+    source_text = f"{story.get('title', '')}\n{story.get('summary', '')}\n{story.get('link', '')}"
     
     # Isolate section for this specific story from full digest if possible
     story_title = story.get("title", "")

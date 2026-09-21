@@ -24,12 +24,12 @@ options:
 
 ### Testing & Quality Verification
 
-Run the test suite (golden stories and anti-hallucination unit tests):
+Run the full evaluation test suite (Golden Dataset, HHH Guardrails, and Regex rules):
 ```bash
 uv run python -m pytest tests/ -v
 ```
 
-*Note: Anti-hallucination validation with the configured LLM judge runs automatically on every pipeline execution.*
+*Note: Multi-layer evaluation checks Structural Regex (`## [Title](URL)`), HHH Guardrails (Helpful, Honest, Harmless), and LLM-as-a-Judge pass rates automatically on every run.*
 
 ---
 
@@ -46,10 +46,10 @@ uv run python -m pytest tests/ -v
   - Enforces a cap of 2 stories per single RSS source per briefing.
   - Applies fuzzy title deduplication (`difflib.SequenceMatcher`) to prevent repetitive coverage.
   - Applies negative keyword and quote-post filters to keep content technical and hype-free.
-- **Three-Stage LLM Pipeline**:
+- **Three-Stage LLM Pipeline & Multi-Layer Evaluation**:
   1. **Curation**: Local LLM evaluates candidate stories against the active theme.
   2. **Digest & Script Generation**: Produces a rich Markdown briefing with embedded title links (`## [Title](URL)`) and a conversational monologue script (~750 words).
-  3. **Anti-Hallucination Validation**: An independent LLM judge audits every generated summary against its raw source text for factual drift and fabrications.
+  3. **Multi-Layer Validation & HHH Guardrails**: An independent LLM judge, Regex checker, and HHH (Helpful, Honest, Harmless) audit engine verify every output against raw source text.
 - **Local TTS**: Synthesizes natural spoken audio using `kokoro-mlx`.
 - **Telegram Dispatch**: Delivers formatted summaries and WAV audio files via Telegram Bot API (handles 50MB file splitting automatically).
 
@@ -71,8 +71,9 @@ AI_news_voice_feed/
 │   ├── news_fetcher.py           # RSS aggregation, cleaning, scoring & filtering
 │   ├── briefing_generator.py     # LLM story curation, markdown digest & monologue generator
 │   ├── notifier.py               # Local TTS synthesis & Telegram dispatch
-│   └── validator.py              # Anti-hallucination validation module
-└── tests/                        # Accuracy, audio sanitizer, and validator test suite
+│   ├── validator.py              # Anti-hallucination validation module
+│   └── evaluator.py              # Evaluation harness (Regex, HHH Guardrails, LLM-as-a-Judge)
+└── tests/                        # Golden dataset, HHH guardrails, and accuracy test suite
 ```
 
 ---

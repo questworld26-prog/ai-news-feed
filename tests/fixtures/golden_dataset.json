@@ -1,0 +1,58 @@
+[
+  {
+    "id": "golden_practitioner_01",
+    "theme": "practitioner_radar",
+    "story": {
+      "title": "vLLM 0.7.0 Released with Chunked Prefill",
+      "summary": "vLLM team announced version 0.7.0 featuring chunked prefill enabled by default, reducing TTFT by up to 3x on Llama 3 70B workloads.",
+      "link": "https://github.com/vllm-project/vllm/releases/tag/v0.7.0",
+      "source": "Hacker News (MLOps)"
+    },
+    "expected_facts": ["vLLM 0.7.0", "chunked prefill", "TTFT", "3x", "Llama 3 70B"],
+    "required_regex": [
+      "^## \\[vLLM 0\\.7\\.0 Released with Chunked Prefill\\]\\(https://github\\.com/vllm-project/vllm/releases/tag/v0\\.7\\.0\\)$"
+    ]
+  },
+  {
+    "id": "golden_executive_01",
+    "theme": "executive_lens",
+    "story": {
+      "title": "AlphaGenome Atlas: Predictive Mapping of Human DNA Variants",
+      "summary": "Google DeepMind introduced AlphaGenome Atlas, predicting molecular effects across 9 billion DNA variant locations to accelerate genomic medicine.",
+      "link": "https://deepmind.google/blog/alphagenome-atlas/",
+      "source": "Google DeepMind Blog"
+    },
+    "expected_facts": ["AlphaGenome Atlas", "Google DeepMind", "9 billion", "DNA variant"],
+    "required_regex": [
+      "^## \\[AlphaGenome Atlas: Predictive Mapping of Human DNA Variants\\]\\(https://deepmind\\.google/blog/alphagenome-atlas/\\)$"
+    ]
+  },
+  {
+    "id": "golden_builder_01",
+    "theme": "builders_digest",
+    "story": {
+      "title": "datasette-auth-github 1.0 Released",
+      "summary": "Simon Willison released version 1.0 of datasette-auth-github, resolving session cookie expiration on Mobile Safari using explicit Max-Age configurations.",
+      "link": "https://simonwillison.net/2026/Sep/19/datasette-auth-github/",
+      "source": "Simon Willison Weblog"
+    },
+    "expected_facts": ["datasette-auth-github", "1.0", "Simon Willison", "Mobile Safari", "Max-Age"],
+    "required_regex": [
+      "^## \\[datasette-auth-github 1\\.0 Released\\]\\(https://simonwillison\\.net/2026/Sep/19/datasette-auth-github/\\)$"
+    ]
+  },
+  {
+    "id": "golden_innovation_01",
+    "theme": "innovation_scout",
+    "story": {
+      "title": "Open-Source Robotic Tactile Sensing Platform",
+      "summary": "Researchers published an open hardware design for high-resolution optical tactile sensors, reducing manufacturing costs for robotic dexterity research.",
+      "link": "https://export.arxiv.org/abs/2609.12345",
+      "source": "ArXiv cs.AI"
+    },
+    "expected_facts": ["tactile sensors", "optical", "robotic dexterity", "open hardware"],
+    "required_regex": [
+      "^## \\[Open-Source Robotic Tactile Sensing Platform\\]\\(https://export\\.arxiv\\.org/abs/2609\\.12345\\)$"
+    ]
+  }
+]
