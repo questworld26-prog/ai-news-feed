@@ -130,13 +130,22 @@ def validate_story(
 ) -> ValidationResult:
     """Validate a single story summary against its source information."""
     source_text = f"{story.get('title', '')}\n{story.get('summary', '')}"
-    overlap_score = compute_keyword_overlap(source_text, digest_summary)
-    fabrication_warnings = detect_fabrications(source_text, digest_summary)
+    
+    # Isolate section for this specific story from full digest if possible
+    story_title = story.get("title", "")
+    target_digest = digest_summary
+    if story_title and story_title in digest_summary:
+        parts = digest_summary.split(story_title)
+        if len(parts) > 1:
+            target_digest = parts[1].split("\n\n##")[0][:600]
+
+    overlap_score = compute_keyword_overlap(source_text, target_digest)
+    fabrication_warnings = detect_fabrications(source_text, target_digest)
 
     llm_passed = True
     llm_reasoning = "Skipped LLM self-check."
     if run_llm_check:
-        llm_passed, llm_reasoning = llm_fact_check(source_text, digest_summary, config)
+        llm_passed, llm_reasoning = llm_fact_check(source_text, target_digest, config)
 
     passed = (overlap_score >= min_keyword_threshold) and (len(fabrication_warnings) == 0) and llm_passed
 

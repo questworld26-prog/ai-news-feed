@@ -78,6 +78,7 @@ def main() -> None:
     parser.add_argument("--skip-tts", action="store_true", help="Skip audio synthesis and dispatch only the markdown text digest to Telegram")
     parser.add_argument("--all-themes", action="store_true", help="Generate full digest for all 4 themes in dry-run mode")
     parser.add_argument("--validate", action="store_true", help="Run anti-hallucination factual validation on generated summaries")
+    parser.add_argument("--force", action="store_true", help="Force execution even on weekends")
     args = parser.parse_args()
 
     project_root = Path(__file__).resolve().parent.parent
@@ -96,7 +97,7 @@ def main() -> None:
 
     weekday = datetime.now().weekday()
     weekdays_only = config.get("schedule", {}).get("weekdays_only", True)
-    if weekdays_only and weekday >= 5 and not args.dry_run:
+    if weekdays_only and weekday >= 5 and not args.dry_run and not args.force:
         logger.info(f"Today is {'Saturday' if weekday == 5 else 'Sunday'} and weekdays_only is enabled. Skipping scheduled briefing.")
         sys.exit(0)
 
