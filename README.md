@@ -49,7 +49,7 @@ uv run python -m pytest tests/ -v
 - **Three-Stage LLM Pipeline**:
   1. **Curation**: Local LLM evaluates candidate stories against the active theme.
   2. **Digest & Script Generation**: Produces a rich Markdown briefing with embedded title links (`## [Title](URL)`) and a conversational monologue script (~750 words).
-  3. **Anti-Hallucination Validation**: An independent LLM judge (`qwen2.5:3b`) audits every generated summary against its raw source text for factual drift and fabrications.
+  3. **Anti-Hallucination Validation**: An independent LLM judge audits every generated summary against its raw source text for factual drift and fabrications.
 - **Local TTS**: Synthesizes natural spoken audio using `kokoro-mlx`.
 - **Telegram Dispatch**: Delivers formatted summaries and WAV audio files via Telegram Bot API (handles 50MB file splitting automatically).
 

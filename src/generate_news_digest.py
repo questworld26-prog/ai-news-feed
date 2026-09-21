@@ -77,7 +77,6 @@ def main() -> None:
     parser.add_argument("--dry-run", action="store_true", help="Fetch and generate script only; skip TTS synthesis and Telegram dispatch")
     parser.add_argument("--skip-tts", action="store_true", help="Skip audio synthesis and dispatch only the markdown text digest to Telegram")
     parser.add_argument("--all-themes", action="store_true", help="Generate full digest for all 4 themes in dry-run mode")
-    parser.add_argument("--validate", action="store_true", help="Run anti-hallucination factual validation on generated summaries")
     parser.add_argument("--force", action="store_true", help="Force execution even on weekends")
     args = parser.parse_args()
 
@@ -124,22 +123,22 @@ def main() -> None:
     text_digest = briefing_data.get("text_digest", "")
     audio_script = briefing_data.get("audio_script", "")
 
-    if args.validate:
-        logger.info("=== Running Anti-Hallucination Validation ===")
-        sys.path.insert(0, str(project_root / "tests"))
-        try:
-            from validator import validate_story
-            for idx, story in enumerate(stories, 1):
-                res = validate_story(story, text_digest, config, run_llm_check=True)
-                status = "PASSED" if res.passed else "FAILED / WARN"
-                logger.info(f"Story {idx} [{story['title'][:40]}...] Fact-Check: {status} (Overlap: {res.keyword_overlap_score:.2f})")
-                if res.fabrication_warnings:
-                    for w in res.fabrication_warnings:
-                        logger.warning(f"  └─ {w}")
-                if not res.llm_fact_check_passed:
-                    logger.warning(f"  └─ LLM Fact-Check Reasoning: {res.llm_reasoning}")
-        except Exception as ve:
-            logger.error(f"Validation step error: {ve}")
+    # Always perform anti-hallucination validation check
+    logger.info("=== Running Anti-Hallucination Validation ===")
+    sys.path.insert(0, str(project_root / "tests"))
+    try:
+        from validator import validate_story
+        for idx, story in enumerate(stories, 1):
+            res = validate_story(story, text_digest, config, run_llm_check=True)
+            status = "PASSED" if res.passed else "FAILED / WARN"
+            logger.info(f"Story {idx} [{story['title'][:40]}...] Fact-Check: {status} (Overlap: {res.keyword_overlap_score:.2f})")
+            if res.fabrication_warnings:
+                for w in res.fabrication_warnings:
+                    logger.warning(f"  └─ {w}")
+            if not res.llm_fact_check_passed:
+                logger.warning(f"  └─ LLM Fact-Check Reasoning: {res.llm_reasoning}")
+    except Exception as ve:
+        logger.error(f"Validation step error: {ve}")
 
     summary_file = output_dir / f"{today_str}_{theme_key}_summary.md"
     summary_file.write_text(f"{text_digest}\n\n## Spoken Audio Script\n\n{audio_script}", encoding="utf-8")
