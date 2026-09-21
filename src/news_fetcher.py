@@ -62,7 +62,19 @@ def score_entry(entry: dict[str, Any]) -> float:
 
 
 def matches_hard_filters(title: str, summary: str, hard_filters: list[str]) -> bool:
-    """Check if title or summary contains any excluded terms."""
+    """
+    Check if title or summary contains any excluded terms, quote prefixes,
+    or low-context placeholders.
+    """
+    t_lower = title.lower().strip()
+    # Filter out quote posts, links, and non-technical observations
+    if re.match(r"^(quoting\s|quote:\s|re:\s|sighting\s)", t_lower):
+        return True
+    
+    # Require at least 25 characters of summary text if title is vague (< 20 chars)
+    if len(t_lower) < 20 and len(summary.strip()) < 25:
+        return True
+
     full_text = f"{title} {summary}".lower()
     for term in hard_filters:
         if term.lower() in full_text:

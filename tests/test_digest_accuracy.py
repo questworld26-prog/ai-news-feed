@@ -59,3 +59,32 @@ def test_golden_story_validation(golden_stories):
     assert result.passed
     assert result.keyword_overlap_score > 0.4
     assert len(result.fabrication_warnings) == 0
+
+
+def test_matches_hard_filters_filters_quote_and_low_context():
+    from news_fetcher import matches_hard_filters
+    
+    # Test quote prefix titles (Strategy 2)
+    assert matches_hard_filters("Quoting voxium", "Some quote text here", [])
+    assert matches_hard_filters("Quote: AI in 2026", "Some quote text", [])
+    assert matches_hard_filters("Re: LLM scaling laws", "Discussion on scaling", [])
+    assert matches_hard_filters("Sighting 401567", "California Sea Lion", [])
+    
+    # Test low-context short summaries (Strategy 2)
+    assert matches_hard_filters("Short Title", "Very short", [])
+    
+    # Test legitimate technical post (should pass)
+    assert not matches_hard_filters("vLLM High Performance Serving", "In-depth guide on vLLM inference engine architecture and KV-cache optimization.", [])
+
+
+def test_detect_fabrications_catches_hallucinated_tool():
+    # Test prompt guardrail / fabrication detection on quote-like summary
+    source = "Quoting voxium: It has been half a month since I started a new role. Everything is made by Claude Code."
+    hallucinated_digest = "A new AI-powered tool for automating documentation tasks and writing specs."
+    
+    warnings = detect_fabrications(source, hallucinated_digest)
+    overlap = compute_keyword_overlap(source, hallucinated_digest)
+    
+    # Low overlap score indicates hallucination
+    assert overlap < 0.35
+

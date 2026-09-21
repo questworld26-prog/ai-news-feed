@@ -149,6 +149,7 @@ def generate_briefing_llm(
         f"- Start directly with a sharp headline and today's date ({today_date}). Never write '[Current Date]'.\n"
         f"- For each of the {len(stories)} stories, write a section with a header using ONLY the markdown link format: `## [Story Title](URL)`. Do NOT repeat the title outside the brackets.\n"
         f"- Follow the header with a 2-sentence technical breakdown explaining why it matters.\n"
+        f"- FACTUAL GUARDRAIL: Base your breakdown STRICTLY on the facts provided in the story title and summary. Do NOT invent capabilities, tools, features, metrics, or announcements not present in the text.\n"
         f"- Do NOT add a separate 'Article URL', 'Link', or '[Read more]' line.\n"
         f"- Output raw markdown only. Do NOT enclose in markdown code blocks (no ```). Do NOT add closing meta-commentary."
     )
