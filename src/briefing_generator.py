@@ -6,10 +6,10 @@ and audio text sanitization.
 
 from __future__ import annotations
 
-from datetime import datetime
 import json
 import logging
 import re
+from datetime import datetime
 from typing import Any
 
 import requests
@@ -63,7 +63,7 @@ def llm_curate_stories(
         f"or creative breakthroughs. Exclude hype, trivial announcements, or funding deals.\n\n"
         f"Return ONLY a JSON object with a single key 'selected' containing a list of {max_stories} "
         f"integer indices (1-based) in priority order.\n"
-        f"Example: {{\"selected\": [3, 1, 7, 12, 5]}}\n\n"
+        f'Example: {{"selected": [3, 1, 7, 12, 5]}}\n\n'
         f"Stories:\n{story_list}"
     )
 
@@ -87,7 +87,9 @@ def llm_curate_stories(
 
         valid_indices = [i for i in indices if isinstance(i, int) and 1 <= i <= len(candidates)]
         if len(valid_indices) < max_stories:
-            logger.warning(f"LLM returned {len(valid_indices)} valid indices, expected {max_stories}. Padding with top-scored.")
+            logger.warning(
+                f"LLM returned {len(valid_indices)} valid indices, expected {max_stories}. Padding with top-scored."
+            )
             seen = set(valid_indices)
             for i in range(1, len(candidates) + 1):
                 if i not in seen:
@@ -96,7 +98,7 @@ def llm_curate_stories(
                         break
 
         curated = [candidates[i - 1] for i in valid_indices[:max_stories]]
-        titles = [f"  {i}. {s['title'][:55]}..." for i, s in zip(valid_indices, curated)]
+        titles = [f"  {i}. {s['title'][:55]}..." for i, s in zip(valid_indices, curated, strict=False)]
         logger.info(f"LLM curated {max_stories} stories:\n" + "\n".join(titles))
         return curated
 
@@ -169,14 +171,16 @@ def generate_briefing_llm(
         raw_digest = resp.json().get("response", "").strip()
         if raw_digest:
             cleaned_digest = re.sub(r"```(?:markdown)?\s*", "", raw_digest, flags=re.IGNORECASE)
-            cleaned_digest = re.sub(r"(?i)\n*(?:This (?:concise )?briefing encapsulates|This briefing provides).*$", "", cleaned_digest)
+            cleaned_digest = re.sub(
+                r"(?i)\n*(?:This (?:concise )?briefing encapsulates|This briefing provides).*$", "", cleaned_digest
+            )
             text_digest = cleaned_digest.strip()
     except Exception as e:
         logger.error(f"Error generating text digest: {e}")
 
     if not text_digest:
-        digest_lines = [f"### Daily AI Tech Briefing\n"]
-        for idx, s in enumerate(stories, 1):
+        digest_lines = ["### Daily AI Tech Briefing\n"]
+        for s in stories:
             digest_lines.append(f"## [{s['title']}]({s['link']})\n({s['source']})\n{s['summary']}\n")
         digest_lines.append("Stay curious and keep shipping.")
         text_digest = "\n".join(digest_lines)
@@ -220,8 +224,8 @@ def generate_briefing_llm(
             logger.warning("Using fallback audio script from stories.")
             script_parts = [f"Welcome to today's {theme_dict.get('name')} briefing. "]
             for idx, s in enumerate(stories, 1):
-                clean_t = clean_script_for_audio(s['title'])
-                clean_s = clean_script_for_audio(s['summary'])
+                clean_t = clean_script_for_audio(s["title"])
+                clean_s = clean_script_for_audio(s["summary"])
                 script_parts.append(f"Story number {idx}. From {s['source']}. {clean_t}. {clean_s}. ")
             script_parts.append("That concludes today's theme update.")
             audio_script = clean_script_for_audio(" ".join(script_parts))

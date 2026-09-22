@@ -10,11 +10,9 @@ from __future__ import annotations
 
 import json
 import logging
-from pathlib import Path
 import re
+from pathlib import Path
 from typing import Any, NamedTuple
-
-import requests
 
 from validator import compute_keyword_overlap, detect_fabrications, validate_story
 
@@ -32,10 +30,10 @@ class HHHVerdict(NamedTuple):
 
 
 class RubricScore(NamedTuple):
-    honest_score: float    # 1.0 to 5.0
-    helpful_score: float   # 1.0 to 5.0
+    honest_score: float  # 1.0 to 5.0
+    helpful_score: float  # 1.0 to 5.0
     harmless_score: float  # 1.0 to 5.0
-    average_score: float   # Mean of the 3 scores
+    average_score: float  # Mean of the 3 scores
     reasoning: list[str]
 
 
@@ -44,9 +42,9 @@ class MultiRunResult(NamedTuple):
     story_title: str
     total_runs: int
     passed_runs: int
-    pass_rate: float        # passed_runs / total_runs
-    pass_at_k: bool         # True if at least 1 run passed
-    mean_rubric_score: float # Average 1-5 rubric score across runs
+    pass_rate: float  # passed_runs / total_runs
+    pass_at_k: bool  # True if at least 1 run passed
+    mean_rubric_score: float  # Average 1-5 rubric score across runs
     run_details: list[dict[str, Any]]
 
 
@@ -61,7 +59,9 @@ class EvaluationReport(NamedTuple):
     multi_run_summary: list[MultiRunResult]
 
 
-def evaluate_regex_rules(digest_text: str, story: dict[str, Any], custom_regex: list[str] = None) -> tuple[bool, list[str]]:
+def evaluate_regex_rules(
+    digest_text: str, story: dict[str, Any], custom_regex: list[str] | None = None
+) -> tuple[bool, list[str]]:
     """
     Layer 1: Structural & Regex Checks.
     Validates markdown link format `## [Title](URL)`, date header, and link hygiene.
@@ -97,7 +97,7 @@ def evaluate_hhh_guardrails(digest_text: str, story: dict[str, Any]) -> HHHVerdi
     Layer 2: HHH Guardrails Evaluation (Helpful, Honest, Harmless).
     """
     source_text = f"{story.get('title', '')}\n{story.get('summary', '')}\n{story.get('link', '')}"
-    
+
     # 1. Honest (Factual accuracy & zero unsupported fabrications)
     honest_reasons = []
     fabrications = detect_fabrications(source_text, digest_text)
@@ -143,7 +143,7 @@ def evaluate_hhh_guardrails(digest_text: str, story: dict[str, Any]) -> HHHVerdi
     )
 
 
-def evaluate_rubrics(digest_text: str, story: dict[str, Any], config: dict[str, Any] = None) -> RubricScore:
+def evaluate_rubrics(digest_text: str, story: dict[str, Any], config: dict[str, Any] | None = None) -> RubricScore:
     """
     Calculates 1-5 Rubric Scores for Honest, Helpful, and Harmless axes.
     Score 5 = Excellent, Score 3 = Acceptable, Score 1 = Unacceptable.
@@ -226,7 +226,7 @@ def run_full_evaluation(
         logger.error(f"Golden dataset file not found at {golden_dataset_path}")
         return EvaluationReport(0, 0, 0, 0, 0.0, 0.0, [], [])
 
-    with open(golden_dataset_path, "r", encoding="utf-8") as f:
+    with open(golden_dataset_path, encoding="utf-8") as f:
         cases = json.load(f)
 
     regex_passes = 0
@@ -263,14 +263,16 @@ def run_full_evaluation(
             case_rubric_scores.append(rubric.average_score)
             all_rubric_scores.append(rubric.average_score)
 
-            run_details.append({
-                "run_idx": run_idx,
-                "regex_pass": regex_ok,
-                "hhh_pass": hhh.passed,
-                "llm_pass": llm_pass,
-                "rubric_score": rubric.average_score,
-                "reasoning": reasoning,
-            })
+            run_details.append(
+                {
+                    "run_idx": run_idx,
+                    "regex_pass": regex_ok,
+                    "hhh_pass": hhh.passed,
+                    "llm_pass": llm_pass,
+                    "rubric_score": rubric.average_score,
+                    "reasoning": reasoning,
+                }
+            )
 
             # Use first run for primary summary counters
             if run_idx == 1:
@@ -281,32 +283,36 @@ def run_full_evaluation(
                 if llm_pass:
                     llm_passes += 1
 
-                details.append({
-                    "id": case_id,
-                    "title": story.get("title"),
-                    "regex_pass": regex_ok,
-                    "regex_errors": regex_errors,
-                    "hhh_pass": hhh.passed,
-                    "hhh_verdict": hhh,
-                    "llm_pass": llm_pass,
-                    "llm_score": score,
-                    "llm_reasoning": reasoning,
-                    "rubric": rubric,
-                })
+                details.append(
+                    {
+                        "id": case_id,
+                        "title": story.get("title"),
+                        "regex_pass": regex_ok,
+                        "regex_errors": regex_errors,
+                        "hhh_pass": hhh.passed,
+                        "hhh_verdict": hhh,
+                        "llm_pass": llm_pass,
+                        "llm_score": score,
+                        "llm_reasoning": reasoning,
+                        "rubric": rubric,
+                    }
+                )
 
         pass_rate = passed_runs / float(eval_runs)
         mean_case_rubric = round(sum(case_rubric_scores) / len(case_rubric_scores), 2)
 
-        multi_run_summaries.append(MultiRunResult(
-            case_id=case_id,
-            story_title=story.get("title", ""),
-            total_runs=eval_runs,
-            passed_runs=passed_runs,
-            pass_rate=pass_rate,
-            pass_at_k=(passed_runs > 0),
-            mean_rubric_score=mean_case_rubric,
-            run_details=run_details,
-        ))
+        multi_run_summaries.append(
+            MultiRunResult(
+                case_id=case_id,
+                story_title=story.get("title", ""),
+                total_runs=eval_runs,
+                passed_runs=passed_runs,
+                pass_rate=pass_rate,
+                pass_at_k=(passed_runs > 0),
+                mean_rubric_score=mean_case_rubric,
+                run_details=run_details,
+            )
+        )
 
     total = len(cases)
     overall_pass_rate = (llm_passes / total) if total > 0 else 0.0

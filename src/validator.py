@@ -33,16 +33,90 @@ def extract_key_tokens(text: str) -> set[str]:
     clean = re.sub(r"[^\w\s]", " ", text)
     tokens = clean.split()
     stopwords = {
-        "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for", "with",
-        "by", "about", "against", "between", "into", "through", "during", "before",
-        "after", "above", "below", "from", "up", "down", "of", "off", "over", "under",
-        "again", "further", "then", "once", "here", "there", "when", "where", "why",
-        "how", "all", "any", "both", "each", "few", "more", "most", "other", "some",
-        "such", "no", "nor", "not", "only", "own", "same", "so", "than", "too", "very",
-        "s", "t", "can", "will", "just", "don", "should", "now", "this", "that", "these",
-        "those", "is", "are", "was", "were", "be", "been", "being", "have", "has", "had"
+        "the",
+        "a",
+        "an",
+        "and",
+        "or",
+        "but",
+        "in",
+        "on",
+        "at",
+        "to",
+        "for",
+        "with",
+        "by",
+        "about",
+        "against",
+        "between",
+        "into",
+        "through",
+        "during",
+        "before",
+        "after",
+        "above",
+        "below",
+        "from",
+        "up",
+        "down",
+        "of",
+        "off",
+        "over",
+        "under",
+        "again",
+        "further",
+        "then",
+        "once",
+        "here",
+        "there",
+        "when",
+        "where",
+        "why",
+        "how",
+        "all",
+        "any",
+        "both",
+        "each",
+        "few",
+        "more",
+        "most",
+        "other",
+        "some",
+        "such",
+        "no",
+        "nor",
+        "not",
+        "only",
+        "own",
+        "same",
+        "so",
+        "than",
+        "too",
+        "very",
+        "s",
+        "t",
+        "can",
+        "will",
+        "just",
+        "don",
+        "should",
+        "now",
+        "this",
+        "that",
+        "these",
+        "those",
+        "is",
+        "are",
+        "was",
+        "were",
+        "be",
+        "been",
+        "being",
+        "have",
+        "has",
+        "had",
     }
-    
+
     meaningful = set()
     for tok in tokens:
         lower = tok.lower()
@@ -59,7 +133,7 @@ def compute_keyword_overlap(source_text: str, digest_text: str) -> float:
     source_tokens = extract_key_tokens(source_text)
     if not source_tokens:
         return 0.0
-    
+
     matched = digest_tokens.intersection(source_tokens)
     return len(matched) / len(digest_tokens)
 
@@ -95,9 +169,9 @@ def llm_fact_check(source_text: str, digest_summary: str, config: dict[str, Any]
         f"Task:\n"
         f"Determine if the GENERATED SUMMARY contains any hallucinated claims, unsupported figures, or fake facts not present in the SOURCE TEXT.\n"
         f"Respond ONLY in valid JSON format with two keys:\n"
-        f"1. \"pass\": boolean (true if completely accurate and supported, false if hallucinated or misleading)\n"
-        f"2. \"reasoning\": string (brief explanation of your verdict)\n\n"
-        f"Example: {{\"pass\": true, \"reasoning\": \"Summary accurately reflects the source without added facts.\"}}"
+        f'1. "pass": boolean (true if completely accurate and supported, false if hallucinated or misleading)\n'
+        f'2. "reasoning": string (brief explanation of your verdict)\n\n'
+        f'Example: {{"pass": true, "reasoning": "Summary accurately reflects the source without added facts."}}'
     )
 
     try:
@@ -130,7 +204,7 @@ def validate_story(
 ) -> ValidationResult:
     """Validate a single story summary against its source information."""
     source_text = f"{story.get('title', '')}\n{story.get('summary', '')}\n{story.get('link', '')}"
-    
+
     # Isolate section for this specific story from full digest if possible
     story_title = story.get("title", "")
     target_digest = digest_summary

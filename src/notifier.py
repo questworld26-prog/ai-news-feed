@@ -6,8 +6,8 @@ Handles local audio synthesis with kokoro-mlx and Telegram dispatch (text digest
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 import re
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -62,6 +62,7 @@ def synthesize_audio(
 
     logger.info(f"Initializing KokoroTTS (voice={voice}, speed={speed})...")
     from kokoro_mlx import KokoroTTS
+
     tts = KokoroTTS.from_pretrained()
 
     chunks = chunk_text(script, max_words=chunk_words)
@@ -92,9 +93,11 @@ def synthesize_audio(
         out_path = output_dir / f"{date_str}_briefing.wav"
         sf.write(str(out_path), combined_audio, sample_rate, subtype="PCM_16")
         output_files.append(out_path)
-        logger.info(f"Saved audio briefing to {out_path} ({out_path.stat().st_size / (1024*1024):.1f} MB)")
+        logger.info(f"Saved audio briefing to {out_path} ({out_path.stat().st_size / (1024 * 1024):.1f} MB)")
     else:
-        logger.info(f"Audio size ({raw_size_bytes / (1024*1024):.1f} MB) exceeds {max_mb} MB limit. Splitting into 2 parts.")
+        logger.info(
+            f"Audio size ({raw_size_bytes / (1024 * 1024):.1f} MB) exceeds {max_mb} MB limit. Splitting into 2 parts."
+        )
         midpoint = len(combined_audio) // 2
         part1_path = output_dir / f"{date_str}_briefing_part1.wav"
         part2_path = output_dir / f"{date_str}_briefing_part2.wav"
@@ -129,9 +132,9 @@ def send_to_telegram(
 
     logger.info(f"Sending text summary to Telegram chat {chat_id}...")
     text_endpoint = f"{base_url}/sendMessage"
-    
+
     max_tg_len = 4000
-    text_chunks = [text_digest[i:i + max_tg_len] for i in range(0, len(text_digest), max_tg_len)]
+    text_chunks = [text_digest[i : i + max_tg_len] for i in range(0, len(text_digest), max_tg_len)]
 
     overall_success = True
 
@@ -157,7 +160,7 @@ def send_to_telegram(
     for audio_path in audio_files:
         if not audio_path.exists():
             continue
-        logger.info(f"Uploading audio file: {audio_path.name} ({audio_path.stat().st_size / (1024*1024):.1f} MB)...")
+        logger.info(f"Uploading audio file: {audio_path.name} ({audio_path.stat().st_size / (1024 * 1024):.1f} MB)...")
         try:
             with open(audio_path, "rb") as f:
                 files = {"audio": (audio_path.name, f, "audio/wav")}

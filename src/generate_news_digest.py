@@ -8,13 +8,13 @@ and delivers markdown summaries + audio briefings to Telegram and local storage.
 from __future__ import annotations
 
 import argparse
-from datetime import datetime
 import logging
 import os
-from pathlib import Path
 import random
 import sys
 import tomllib
+from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
@@ -48,7 +48,9 @@ def _run_validation(stories: list[dict[str, Any]], text_digest: str, config: dic
         for idx, story in enumerate(stories, 1):
             res = validate_story(story, text_digest, config, run_llm_check=True)
             status = "PASSED" if res.passed else "FAILED / WARN"
-            logger.info(f"Story {idx} [{story['title'][:40]}...] Fact-Check: {status} (Overlap: {res.keyword_overlap_score:.2f})")
+            logger.info(
+                f"Story {idx} [{story['title'][:40]}...] Fact-Check: {status} (Overlap: {res.keyword_overlap_score:.2f})"
+            )
             if res.fabrication_warnings:
                 for w in res.fabrication_warnings:
                     logger.warning(f"  └─ {w}")
@@ -93,9 +95,19 @@ def run_all_themes(config: dict[str, Any], output_dir: Path, today_str: str) -> 
 def main() -> None:
     parser = argparse.ArgumentParser(description="AI News Daily Voice Briefing Pipeline")
     parser.add_argument("--config", default="config.toml", help="Path to configuration TOML file")
-    parser.add_argument("--dry-run", action="store_true", help="Fetch and generate script only; skip TTS synthesis and Telegram dispatch")
-    parser.add_argument("--skip-tts", action="store_true", help="Skip audio synthesis and dispatch only the markdown text digest to Telegram")
-    parser.add_argument("--all-themes", action="store_true", help="Generate full digest for all 4 themes in dry-run mode")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Fetch and generate script only; skip TTS synthesis and Telegram dispatch",
+    )
+    parser.add_argument(
+        "--skip-tts",
+        action="store_true",
+        help="Skip audio synthesis and dispatch only the markdown text digest to Telegram",
+    )
+    parser.add_argument(
+        "--all-themes", action="store_true", help="Generate full digest for all 4 themes in dry-run mode"
+    )
     parser.add_argument("--force", action="store_true", help="Force execution even on weekends")
     args = parser.parse_args()
 
@@ -116,7 +128,9 @@ def main() -> None:
     weekday = datetime.now().weekday()
     weekdays_only = config.get("schedule", {}).get("weekdays_only", True)
     if weekdays_only and weekday >= 5 and not args.dry_run and not args.force:
-        logger.info(f"Today is {'Saturday' if weekday == 5 else 'Sunday'} and weekdays_only is enabled. Skipping scheduled briefing.")
+        logger.info(
+            f"Today is {'Saturday' if weekday == 5 else 'Sunday'} and weekdays_only is enabled. Skipping scheduled briefing."
+        )
         sys.exit(0)
 
     themes = config.get("themes", {})

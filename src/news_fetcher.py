@@ -126,6 +126,104 @@ def matches_hard_filters(title: str, summary: str, hard_filters: list[str]) -> b
     return False
 
 
+def parse_feed_entry(entry: Any, name: str, hard_filters: list[str], now: datetime) -> dict[str, Any] | None:
+    """Parse, clean, filter, and enrich a single feed entry."""
+    pub_parsed = getattr(entry, "published_parsed", None) or getattr(entry, "updated_parsed", None)
+    pub_dt = datetime(*pub_parsed[:6], tzinfo=UTC) if pub_parsed else now
+
+    raw_summary = getattr(entry, "summary", "") or getattr(entry, "description", "")
+    points_match = re.search(r"Points:\s*(\d+)", raw_summary)
+    points = int(points_match.group(1)) if points_match else 0
+
+    summary = clean_html_text(raw_summary)
+    title = clean_html_text(getattr(entry, "title", "Untitled"))
+    link = getattr(entry, "link", "")
+
+    if not title or not link or matches_hard_filters(title, summary, hard_filters):
+        return None
+
+    if len(summary.strip()) < _SNIPPET_MIN_CHARS:
+        fetched = fetch_article_excerpt(link)
+        if fetched:
+            summary = fetched
+            logger.debug(f"Summary enriched via live fetch: '{title[:55]}'")
+
+    return {
+        "source": name,
+        "title": title,
+        "link": link,
+        "summary": summary[:400] if summary else "",
+        "pub_dt": pub_dt,
+        "points": points,
+    }
+
+
+def fetch_entries_from_source(src: dict[str, Any], hard_filters: list[str], now: datetime) -> list[dict[str, Any]]:
+    """Fetch and parse all valid entries from a single RSS feed source."""
+    name = src.get("name", "Unknown")
+    url = src.get("url", "")
+    if not url:
+        return []
+
+    entries = []
+    try:
+        logger.info(f"Querying feed: {name}...")
+        parsed = feedparser.parse(url, request_headers={"User-Agent": "Mozilla/5.0 (compatible; AIBriefingBot/1.0)"})
+
+        if parsed.bozo and not parsed.entries:
+            logger.warning(f"Could not parse entries from {name}: {parsed.bozo_exception}")
+            return []
+
+        for entry in parsed.entries:
+            parsed_item = parse_feed_entry(entry, name, hard_filters, now)
+            if parsed_item:
+                entries.append(parsed_item)
+
+    except Exception as e:
+        logger.warning(f"Error fetching from {name}: {e}")
+
+    return entries
+
+
+def build_candidate_pool(
+    all_entries: list[dict[str, Any]], candidate_pool_size: int, max_per_source: int = 2
+) -> list[dict[str, Any]]:
+    """Filter duplicates, apply per-source limits, and select top candidate stories."""
+    for entry in all_entries:
+        entry["score"] = score_entry(entry)
+    all_entries.sort(key=lambda x: x["score"], reverse=True)
+
+    candidate_pool = []
+    source_counts: dict[str, int] = {}
+
+    # Primary pass: enforce per-source limit and title deduplication
+    for item in all_entries:
+        src = item["source"]
+        if source_counts.get(src, 0) >= max_per_source:
+            continue
+
+        if any(is_similar_title(item["title"], existing["title"]) for existing in candidate_pool):
+            logger.debug(f"Skipping duplicate: '{item['title'][:60]}...' (source: {item['source']})")
+            continue
+
+        candidate_pool.append(item)
+        source_counts[src] = source_counts.get(src, 0) + 1
+        if len(candidate_pool) >= candidate_pool_size:
+            break
+
+    # Secondary fallback pass: backfill if pool size target wasn't met
+    if len(candidate_pool) < candidate_pool_size:
+        for item in all_entries:
+            if item in candidate_pool:
+                continue
+            if not any(is_similar_title(item["title"], existing["title"]) for existing in candidate_pool):
+                candidate_pool.append(item)
+                if len(candidate_pool) >= candidate_pool_size:
+                    break
+
+    return candidate_pool
+
+
 def fetch_stories_for_theme(theme_dict: dict[str, Any], config: dict[str, Any]) -> list[dict[str, Any]]:
     """
     Fetch AI stories from RSS feeds specific to a chosen theme.
@@ -141,98 +239,9 @@ def fetch_stories_for_theme(theme_dict: dict[str, Any], config: dict[str, Any]) 
 
     logger.info(f"Fetching from {len(sources)} sources for theme '{theme_dict.get('name')}'...")
     for src in sources:
-        name = src.get("name", "Unknown")
-        url = src.get("url", "")
-        if not url:
-            continue
+        all_entries.extend(fetch_entries_from_source(src, hard_filters, now))
 
-        try:
-            logger.info(f"Querying feed: {name}...")
-            parsed = feedparser.parse(
-                url, request_headers={"User-Agent": "Mozilla/5.0 (compatible; AIBriefingBot/1.0)"}
-            )
+    candidate_pool = build_candidate_pool(all_entries, candidate_pool_size)
 
-            if parsed.bozo and not parsed.entries:
-                logger.warning(f"Could not parse entries from {name}: {parsed.bozo_exception}")
-                continue
-
-            for entry in parsed.entries:
-                pub_parsed = getattr(entry, "published_parsed", None) or getattr(entry, "updated_parsed", None)
-                if pub_parsed:
-                    pub_dt = datetime(*pub_parsed[:6], tzinfo=UTC)
-                else:
-                    pub_dt = now
-
-                raw_summary = getattr(entry, "summary", "") or getattr(entry, "description", "")
-                points_match = re.search(r"Points:\s*(\d+)", raw_summary)
-                points = int(points_match.group(1)) if points_match else 0
-
-                summary = clean_html_text(raw_summary)
-                title = clean_html_text(getattr(entry, "title", "Untitled"))
-                link = getattr(entry, "link", "")
-
-                if not title or not link:
-                    continue
-
-                if matches_hard_filters(title, summary, hard_filters):
-                    logger.debug(f"Filtered out by theme hard filter: {title}")
-                    continue
-
-                # Enrich thin summaries with a live article fetch so downstream
-                # consumers (curation LLM, digest) always have meaningful context.
-                if len(summary.strip()) < _SNIPPET_MIN_CHARS:
-                    fetched = fetch_article_excerpt(link)
-                    if fetched:
-                        summary = fetched
-                        logger.debug(f"Summary enriched via live fetch: '{title[:55]}'")
-
-                all_entries.append(
-                    {
-                        "source": name,
-                        "title": title,
-                        "link": link,
-                        "summary": summary[:400] if summary else "",
-                        "pub_dt": pub_dt,
-                        "points": points,
-                    }
-                )
-        except Exception as e:
-            logger.warning(f"Error fetching from {name}: {e}")
-
-    for entry in all_entries:
-        entry["score"] = score_entry(entry)
-    all_entries.sort(key=lambda x: x["score"], reverse=True)
-
-    candidate_pool = []
-    source_counts: dict[str, int] = {}
-    max_per_source = 2
-
-    for item in all_entries:
-        src = item["source"]
-        if source_counts.get(src, 0) >= max_per_source:
-            continue
-
-        is_dup = any(is_similar_title(item["title"], existing["title"]) for existing in candidate_pool)
-        if is_dup:
-            logger.debug(f"Skipping duplicate: '{item['title'][:60]}...' (source: {item['source']})")
-            continue
-
-        candidate_pool.append(item)
-        source_counts[src] = source_counts.get(src, 0) + 1
-        if len(candidate_pool) >= candidate_pool_size:
-            break
-
-    if len(candidate_pool) < candidate_pool_size:
-        for item in all_entries:
-            if item in candidate_pool:
-                continue
-            is_dup = any(is_similar_title(item["title"], existing["title"]) for existing in candidate_pool)
-            if not is_dup:
-                candidate_pool.append(item)
-                if len(candidate_pool) >= candidate_pool_size:
-                    break
-
-    logger.info(
-        f"Built candidate pool of {len(candidate_pool)} unique stories across {len(source_counts)} sources for '{theme_dict.get('name')}'."
-    )
+    logger.info(f"Built candidate pool of {len(candidate_pool)} unique stories for '{theme_dict.get('name')}'.")
     return candidate_pool

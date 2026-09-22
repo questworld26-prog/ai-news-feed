@@ -4,9 +4,10 @@ Tests Layer 1 (Regex & Structure), Layer 2 (HHH Guardrails & 1-5 Rubric Matrix),
 """
 
 import json
-from pathlib import Path
-import pytest
 import sys
+from pathlib import Path
+
+import pytest
 
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root / "src"))
@@ -91,10 +92,12 @@ def test_run_full_evaluation_multi_run(monkeypatch):
     class MockResponse:
         def raise_for_status(self):
             pass
+
         def json(self):
             return {"response": json.dumps({"pass": True, "reasoning": "Factual and supported."})}
 
     import requests
+
     monkeypatch.setattr(requests, "post", lambda *args, **kwargs: MockResponse())
 
     dummy_config = {"llm": {"model": "phi4-mini:3.8b", "ollama_url": "http://localhost:11434"}}

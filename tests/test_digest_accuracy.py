@@ -3,9 +3,10 @@ Pytest test suite for testing AI News Digest output quality & factual adherence.
 """
 
 import json
-from pathlib import Path
-import pytest
 import sys
+from pathlib import Path
+
+import pytest
 
 # Ensure src and tests directory is on path
 project_root = Path(__file__).resolve().parent.parent
@@ -19,19 +20,19 @@ from validator import compute_keyword_overlap, detect_fabrications, validate_sto
 def golden_stories():
     fixtures_path = Path(__file__).parent / "fixtures" / "golden_stories.json"
     if fixtures_path.exists():
-        with open(fixtures_path, "r", encoding="utf-8") as f:
+        with open(fixtures_path, encoding="utf-8") as f:
             return json.load(f)
     return [
         {
             "title": "datasette-auth-github 1.0",
             "summary": "Simon Willison released version 1.0 of datasette-auth-github, fixing a session cookie expiration issue on Mobile Safari by configuring Max-Age.",
-            "link": "https://simonwillison.net/2026/Sep/19/datasette-auth-github/"
+            "link": "https://simonwillison.net/2026/Sep/19/datasette-auth-github/",
         },
         {
             "title": "Science Is Open Software",
             "summary": "Jepedersen published a post discussing the importance of open-source software in scientific research to accelerate collaboration.",
-            "link": "https://jepedersen.dk/blog/202505_research/"
-        }
+            "link": "https://jepedersen.dk/blog/202505_research/",
+        },
     ]
 
 
@@ -54,7 +55,7 @@ def test_golden_story_validation(golden_stories):
     dummy_config = {"llm": {"model": "phi4-mini:3.8b", "ollama_url": "http://localhost:11434"}}
     story = golden_stories[0]
     digest = "Simon Willison released version 1.0 of datasette-auth-github. It fixes session cookie expiration on Mobile Safari."
-    
+
     result = validate_story(story, digest, config=dummy_config, run_llm_check=False)
     assert result.passed
     assert result.keyword_overlap_score > 0.4
@@ -63,28 +64,32 @@ def test_golden_story_validation(golden_stories):
 
 def test_matches_hard_filters_filters_quote_and_low_context():
     from news_fetcher import matches_hard_filters
-    
+
     # Test quote prefix titles (Strategy 2)
     assert matches_hard_filters("Quoting voxium", "Some quote text here", [])
     assert matches_hard_filters("Quote: AI in 2026", "Some quote text", [])
     assert matches_hard_filters("Re: LLM scaling laws", "Discussion on scaling", [])
     assert matches_hard_filters("Sighting 401567", "California Sea Lion", [])
-    
+
     # Test low-context short summaries (Strategy 2)
     assert matches_hard_filters("Short Title", "Very short", [])
-    
+
     # Test legitimate technical post (should pass)
-    assert not matches_hard_filters("vLLM High Performance Serving", "In-depth guide on vLLM inference engine architecture and KV-cache optimization.", [])
+    assert not matches_hard_filters(
+        "vLLM High Performance Serving",
+        "In-depth guide on vLLM inference engine architecture and KV-cache optimization.",
+        [],
+    )
 
 
 def test_detect_fabrications_catches_hallucinated_tool():
     # Test prompt guardrail / fabrication detection on quote-like summary
     source = "Quoting voxium: It has been half a month since I started a new role. Everything is made by Claude Code."
     hallucinated_digest = "A new AI-powered tool for automating documentation tasks and writing specs."
-    
-    warnings = detect_fabrications(source, hallucinated_digest)
+
+    detect_fabrications(source, hallucinated_digest)
     overlap = compute_keyword_overlap(source, hallucinated_digest)
-    
+
     # Low overlap score indicates hallucination
     assert overlap < 0.35
 
@@ -95,10 +100,12 @@ def test_llm_fact_check_passes_mocked(monkeypatch):
     class MockResponse:
         def raise_for_status(self):
             pass
+
         def json(self):
             return {"response": json.dumps({"pass": True, "reasoning": "Factual and supported."})}
 
     import requests
+
     monkeypatch.setattr(requests, "post", lambda *args, **kwargs: MockResponse())
 
     dummy_config = {"llm": {"model": "phi4-mini:3.8b", "ollama_url": "http://localhost:11434"}}
@@ -113,15 +120,15 @@ def test_llm_fact_check_fails_mocked(monkeypatch):
     class MockResponse:
         def raise_for_status(self):
             pass
+
         def json(self):
             return {"response": json.dumps({"pass": False, "reasoning": "Summary contains unsupported claims."})}
 
     import requests
+
     monkeypatch.setattr(requests, "post", lambda *args, **kwargs: MockResponse())
 
     dummy_config = {"llm": {"model": "phi4-mini:3.8b", "ollama_url": "http://localhost:11434"}}
     passed, reasoning = llm_fact_check("Source text here", "Hallucinated summary", dummy_config)
     assert passed is False
     assert "unsupported claims" in reasoning
-
-
