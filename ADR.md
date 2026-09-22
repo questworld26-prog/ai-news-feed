@@ -1,6 +1,6 @@
 # Architectural Decision Record (ADR) — AI News Voice Feed
 
-**Date**: 2026-09-21  
+**Date**: 2026-09-22  
 **Status**: Accepted  
 **Context**: Building a production-grade, privacy-first, automated daily AI news voice briefing pipeline with enterprise quality controls.
 
@@ -33,8 +33,8 @@ Engineering teams and tech executives require daily briefings on AI developments
 - **Decision**: Implement a 3-stage LLM execution flow:
   1. **Stage 1 (Curation)**: Ollama (`phi4-mini:3.8b`) filters candidate stories against theme criteria.
   2. **Stage 2 (Digest & Script Generation)**: LLM generates Markdown digest with `## [Title](URL)` embedded links and spoken podcast monologue script (~750 words).
-  3. **Stage 3 (Validation)**: Always-on anti-hallucination validation before storage or Telegram dispatch.
-- **Rationale**: Separating curation from generation improves focus and factual quality. Running validation in-band guarantees hallucinated summaries never reach end users.
+  3. **Stage 3 (Validation & Correction)**: Always-on anti-hallucination validation with an active retry-with-feedback loop before storage or Telegram dispatch. Failed stories are corrected or replaced with a fallback notice — never silently included.
+- **Rationale**: Separating curation from generation improves focus and factual quality. Running validation with active correction in-band guarantees hallucinated summaries never reach end users.
 
 ---
 
@@ -59,6 +59,18 @@ Engineering teams and tech executives require daily briefings on AI developments
 
 ---
 
+### ADR-06: Retry-with-Feedback Loop for Fact-Check Failures
+- **Decision**: Replace the previous log-only `_run_validation()` with `_validate_and_correct_digest()` — a stateful, per-story correction loop in `generate_news_digest.py`:
+  1. **Attempt 1**: Validate the bulk-generated section using the three-layer check (keyword overlap, fabrication detection, LLM-as-a-Judge).
+  2. **Attempts 2–3**: If validation fails, call `generate_story_summary()` with the fact-checker's LLM reasoning injected as a `correction_hint` into the prompt. Re-validate the regenerated section.
+  3. **Persistent Failure Fallback**: After all `_VALIDATION_MAX_RETRIES = 3` attempts fail, replace the story summary with a standardised fallback notice:
+     > `⚠️ Failed to generate a reliable summary. Read the original article.`
+     
+     The story title (with its embedded link via `## [Title](URL)`) is preserved so readers can always access the source.
+- **Key Design Principle**: The correction prompt injects the fact-checker's natural-language reasoning verbatim (`Fact-checker feedback: {hint}`), not a generic retry instruction. This grounds the model's next attempt on the specific claim that failed.
+- **Module Boundary**: `generate_story_summary()` lives in `briefing_generator.py` (generation layer); `_validate_and_correct_digest()` lives in `generate_news_digest.py` (orchestration layer). The validator remains stateless and unaware of retries.
+- **Rationale**: A log-only validation pass gave no quality guarantee — failed stories were silently included in Telegram dispatches. The retry-with-feedback loop ensures factual quality is enforced at the point of content assembly, not merely observed.
+
 ## 3. Testing & QA Strategy Summary
 
 | Level | Component | Focus | Implementation |
@@ -75,9 +87,11 @@ Engineering teams and tech executives require daily briefings on AI developments
 
 ### Positive Consequences
 - **Zero Operating Cost**: Fully local LLM + TTS inference.
-- **Zero Hallucination Leakage**: Stage 3 validation and HHH guardrails catch factual drift before dispatch.
+- **Zero Hallucination Leakage**: Stage 3 validation with active retry-with-feedback correction prevents hallucinated summaries from reaching end users.
+- **Graceful Degradation**: Stories that cannot be reliably summarised still reach readers via their original source link with a clear fallback notice.
 - **High Technical Quality**: Hard filters eliminate funding hype and low-value social media quote posts.
 
 ### Recognized Trade-offs
 - **Hardware Requirement**: Local inference requires Apple Silicon (M-series) or local GPU with $\ge 8\text{GB}$ VRAM/unified memory.
 - **Multi-Run Latency**: Running $N=3$ or $N=5$ evaluation runs during full benchmark suites increases evaluation time, mitigated by mock fixtures during CI.
+- **Retry Latency**: Each failed story can trigger up to 2 additional LLM generation + validation cycles. For a 5-story briefing with all stories failing all 3 attempts, worst-case overhead is $5 \times 2 = 10$ extra LLM calls. In practice, most stories pass on attempt 1 or 2.
