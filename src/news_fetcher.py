@@ -5,15 +5,59 @@ Handles fetching, HTML cleaning, scoring, filtering, and deduplicating RSS feed 
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from difflib import SequenceMatcher
 import logging
 import re
+from datetime import UTC, datetime
+from difflib import SequenceMatcher
 from typing import Any
 
 import feedparser
+import requests
 
 logger = logging.getLogger("ai_briefing")
+
+# Minimum cleaned-summary length before we attempt a live article fetch.
+_SNIPPET_MIN_CHARS = 50
+# Max characters extracted from a fetched article body.
+_ARTICLE_EXCERPT_CHARS = 300
+
+
+def fetch_article_excerpt(url: str, max_chars: int = _ARTICLE_EXCERPT_CHARS) -> str:
+    """
+    Fetch the article at *url* and return a clean plain-text excerpt of up to
+    *max_chars* characters from the page body.
+
+    Called eagerly during feed ingestion to enrich stories whose RSS summary
+    is too short to provide meaningful curation context.
+
+    Designed to fail silently: any network or parsing error returns ""
+    so it never blocks the fetch pipeline.
+    """
+    if not url:
+        return ""
+    try:
+        resp = requests.get(
+            url,
+            timeout=6,
+            headers={"User-Agent": "Mozilla/5.0 (compatible; AIBriefingBot/1.0)"},
+            allow_redirects=True,
+        )
+        resp.raise_for_status()
+        html = resp.text
+
+        # Remove <script>, <style>, and <head> blocks wholesale.
+        html = re.sub(r"(?is)<(script|style|head)[^>]*>.*?</\1>", " ", html)
+        # Strip remaining HTML tags.
+        text = re.sub(r"<[^>]+>", " ", html)
+        # Decode common HTML entities.
+        text = re.sub(r"&[a-zA-Z0-9#]+;", " ", text)
+        # Collapse whitespace.
+        text = re.sub(r"\s+", " ", text).strip()
+
+        return text[:max_chars]
+    except Exception as exc:  # noqa: BLE001
+        logger.debug(f"fetch_article_excerpt failed for {url}: {exc}")
+        return ""
 
 
 def clean_html_text(raw_html: str) -> str:
@@ -44,7 +88,7 @@ def score_entry(entry: dict[str, Any]) -> float:
     Hacker News entries are boosted by popularity (points).
     All entries are boosted by recency (newer = higher score).
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     age_hours = max(0.0, (now - entry["pub_dt"]).total_seconds() / 3600)
     recency_score = max(0.0, 1.0 - (age_hours / 48.0))
 
@@ -70,7 +114,7 @@ def matches_hard_filters(title: str, summary: str, hard_filters: list[str]) -> b
     # Filter out quote posts, links, and non-technical observations
     if re.match(r"^(quoting\s|quote:\s|re:\s|sighting\s)", t_lower):
         return True
-    
+
     # Require at least 25 characters of summary text if title is vague (< 20 chars)
     if len(t_lower) < 20 and len(summary.strip()) < 25:
         return True
@@ -93,7 +137,7 @@ def fetch_stories_for_theme(theme_dict: dict[str, Any], config: dict[str, Any]) 
     candidate_pool_size = config.get("feeds", {}).get("candidate_pool_size", 15)
 
     all_entries = []
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     logger.info(f"Fetching from {len(sources)} sources for theme '{theme_dict.get('name')}'...")
     for src in sources:
@@ -105,8 +149,7 @@ def fetch_stories_for_theme(theme_dict: dict[str, Any], config: dict[str, Any]) 
         try:
             logger.info(f"Querying feed: {name}...")
             parsed = feedparser.parse(
-                url,
-                request_headers={"User-Agent": "Mozilla/5.0 (compatible; AIBriefingBot/1.0)"}
+                url, request_headers={"User-Agent": "Mozilla/5.0 (compatible; AIBriefingBot/1.0)"}
             )
 
             if parsed.bozo and not parsed.entries:
@@ -116,7 +159,7 @@ def fetch_stories_for_theme(theme_dict: dict[str, Any], config: dict[str, Any]) 
             for entry in parsed.entries:
                 pub_parsed = getattr(entry, "published_parsed", None) or getattr(entry, "updated_parsed", None)
                 if pub_parsed:
-                    pub_dt = datetime(*pub_parsed[:6], tzinfo=timezone.utc)
+                    pub_dt = datetime(*pub_parsed[:6], tzinfo=UTC)
                 else:
                     pub_dt = now
 
@@ -135,14 +178,24 @@ def fetch_stories_for_theme(theme_dict: dict[str, Any], config: dict[str, Any]) 
                     logger.debug(f"Filtered out by theme hard filter: {title}")
                     continue
 
-                all_entries.append({
-                    "source": name,
-                    "title": title,
-                    "link": link,
-                    "summary": summary[:400] if summary else "",
-                    "pub_dt": pub_dt,
-                    "points": points,
-                })
+                # Enrich thin summaries with a live article fetch so downstream
+                # consumers (curation LLM, digest) always have meaningful context.
+                if len(summary.strip()) < _SNIPPET_MIN_CHARS:
+                    fetched = fetch_article_excerpt(link)
+                    if fetched:
+                        summary = fetched
+                        logger.debug(f"Summary enriched via live fetch: '{title[:55]}'")
+
+                all_entries.append(
+                    {
+                        "source": name,
+                        "title": title,
+                        "link": link,
+                        "summary": summary[:400] if summary else "",
+                        "pub_dt": pub_dt,
+                        "points": points,
+                    }
+                )
         except Exception as e:
             logger.warning(f"Error fetching from {name}: {e}")
 
@@ -179,5 +232,7 @@ def fetch_stories_for_theme(theme_dict: dict[str, Any], config: dict[str, Any]) 
                 if len(candidate_pool) >= candidate_pool_size:
                     break
 
-    logger.info(f"Built candidate pool of {len(candidate_pool)} unique stories across {len(source_counts)} sources for '{theme_dict.get('name')}'.")
+    logger.info(
+        f"Built candidate pool of {len(candidate_pool)} unique stories across {len(source_counts)} sources for '{theme_dict.get('name')}'."
+    )
     return candidate_pool
