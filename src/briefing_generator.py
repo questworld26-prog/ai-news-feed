@@ -107,6 +107,67 @@ def llm_curate_stories(
         return candidates[:max_stories]
 
 
+# Fallback text used when a story's summary cannot pass fact-checking after all retries.
+STORY_FALLBACK_SUMMARY = "⚠️ Failed to generate a reliable summary. Read the original article."
+
+
+def generate_story_summary(
+    story: dict[str, Any],
+    theme_dict: dict[str, Any],
+    config: dict[str, Any],
+    correction_hint: str = "",
+) -> str:
+    """
+    Generate a concise 2-sentence markdown summary for a single story.
+
+    If *correction_hint* is provided (from a failed fact-check), it is injected
+    into the prompt so the model can correct the previous attempt.
+    Returns the raw summary text (no header), or "" on LLM failure.
+    """
+    llm_cfg = config.get("llm", {})
+    ollama_url = llm_cfg.get("ollama_url", "http://localhost:11434").rstrip("/")
+    model = llm_cfg.get("model", "phi4-mini:3.8b")
+
+    correction_block = (
+        f"\n\nPREVIOUS SUMMARY FAILED FACT-CHECK — you must correct it.\n"
+        f"Fact-checker feedback: {correction_hint}\n"
+        f"Write ONLY facts that are directly present in the title and summary above. "
+        f"Do NOT add interpretation, assumptions, or details not in the source."
+        if correction_hint.strip()
+        else ""
+    )
+
+    prompt = (
+        f"You are an expert AI tech writer. Briefing theme: '{theme_dict.get('name')}'.\n\n"
+        f"Story:\n"
+        f"  Title: {story.get('title', '')}\n"
+        f"  Source: {story.get('source', '')}\n"
+        f"  Summary: {story.get('summary', '')}\n\n"
+        f"Task: Write EXACTLY 2 short sentences summarising this story for a senior technical audience.\n"
+        f"FACTUAL GUARDRAIL: Use ONLY facts from the title and summary above. "
+        f"Do NOT invent metrics, capabilities, or claims not in the source.\n"
+        f"Output ONLY the 2-sentence summary — no headers, no bullets, no preamble."
+        f"{correction_block}"
+    )
+
+    try:
+        resp = requests.post(
+            f"{ollama_url}/api/generate",
+            json={
+                "model": model,
+                "prompt": prompt,
+                "stream": False,
+                "options": {"temperature": 0.2, "num_ctx": 2048},
+            },
+            timeout=60,
+        )
+        resp.raise_for_status()
+        return resp.json().get("response", "").strip()
+    except Exception as exc:
+        logger.warning(f"generate_story_summary failed for '{story.get('title', '')[:50]}': {exc}")
+        return ""
+
+
 def generate_briefing_llm(
     stories: list[dict[str, Any]],
     theme_dict: dict[str, Any],
