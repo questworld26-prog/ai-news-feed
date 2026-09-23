@@ -50,83 +50,7 @@ def load_config(config_path: Path) -> dict[str, Any]:
 _VALIDATION_MAX_RETRIES = 3
 
 
-def _validate_and_correct_digest(
-    stories: list[dict[str, Any]],
-    text_digest: str,
-    theme_dict: dict[str, Any],
-    config: dict[str, Any],
-) -> str:
-    """
-    Validate each story's section in the generated digest for factual accuracy.
 
-    For each story that fails:
-      - Retry generating its summary up to _VALIDATION_MAX_RETRIES times,
-        passing the fact-checker's reasoning as a correction hint each attempt.
-      - If still failing after all retries, replace the summary with a
-        standardised fallback notice (the title link is already in the header).
-
-    Returns a corrected, fully assembled text_digest.
-    """
-    logger.info("=== Running Anti-Hallucination Validation ===")
-
-    # Split bulk digest into: header block + per-story sections (ordered by position).
-    # Format: "## [Title](url)\nSummary text.\n"
-    parts = text_digest.split("\n## [")
-    header = parts[0].strip()
-    raw_sections = parts[1:]  # section[i] corresponds to stories[i]
-
-    corrected_sections: list[str] = []
-
-    for idx, story in enumerate(stories, 1):
-        title = story.get("title", "")
-        link = story.get("link", "")
-
-        # Start with the bulk-generated section; fall back to empty if missing.
-        if idx - 1 < len(raw_sections):
-            current_section = f"## [{raw_sections[idx - 1]}"
-        else:
-            current_section = f"## [{title}]({link})\n"
-
-        passed = False
-        hint = ""
-
-        for attempt in range(1, _VALIDATION_MAX_RETRIES + 1):
-            result = validate_story(story, current_section, config, run_llm_check=True)
-            status = "PASSED" if result.passed else "FAILED / WARN"
-
-            logger.info(
-                f"Story {idx} [{title[:40]}...] "
-                f"Attempt {attempt}/{_VALIDATION_MAX_RETRIES} Fact-Check: {status} "
-                f"(Overlap: {result.keyword_overlap_score:.2f})"
-            )
-
-            if result.passed:
-                passed = True
-                break
-
-            # Surface failure details for observability.
-            for w in result.fabrication_warnings:
-                logger.warning(f"  └─ {w}")
-            if not result.llm_fact_check_passed:
-                logger.warning(f"  └─ LLM Fact-Check Reasoning: {result.llm_reasoning}")
-
-            hint = result.llm_reasoning
-
-            if attempt < _VALIDATION_MAX_RETRIES:
-                logger.info(f"  ↻ Regenerating summary for story {idx} with correction hint...")
-                new_summary = generate_story_summary(story, theme_dict, config, correction_hint=hint)
-                if new_summary:
-                    current_section = f"## [{title}]({link})\n{new_summary}\n"
-
-        if not passed:
-            logger.warning(
-                f"Story {idx} [{title[:40]}...] failed after {_VALIDATION_MAX_RETRIES} attempts. Using fallback."
-            )
-            current_section = f"## [{title}]({link})\n{STORY_FALLBACK_SUMMARY}\n"
-
-        corrected_sections.append(current_section)
-
-    return header + "\n\n" + "\n\n".join(corrected_sections)
 
 
 def run_all_themes(config: dict[str, Any], output_dir: Path, today_str: str) -> None:
@@ -152,7 +76,6 @@ def run_all_themes(config: dict[str, Any], output_dir: Path, today_str: str) -> 
         curated = llm_curate_stories(candidates, theme_dict, config)
         briefing = generate_briefing_llm(curated, theme_dict, config, text_only=True)
         text_digest = briefing.get("text_digest", "")
-        text_digest = _validate_and_correct_digest(curated, text_digest, theme_dict, config)
         combined_report.append(text_digest + "\n\n---\n\n")
 
     out_file = output_dir / f"{today_str}_all_themes.md"
@@ -220,13 +143,10 @@ def main() -> None:
     # Step 2: LLM Curation -> pick top max_stories
     stories = llm_curate_stories(candidates, theme_dict, config)
 
-    # Step 3: LLM Briefing Digest & Monologue Script
+    # Step 3: LLM Briefing Digest & Monologue Script (validated per-story & per-script)
     briefing_data = generate_briefing_llm(stories, theme_dict, config)
     text_digest = briefing_data.get("text_digest", "")
     audio_script = briefing_data.get("audio_script", "")
-
-    # Validate and correct per-story summaries; failed stories get fallback notice.
-    text_digest = _validate_and_correct_digest(stories, text_digest, theme_dict, config)
 
     summary_file = output_dir / f"{today_str}_{theme_key}_summary.md"
     summary_file.write_text(f"{text_digest}\n\n## Spoken Audio Script\n\n{audio_script}", encoding="utf-8")

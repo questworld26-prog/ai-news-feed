@@ -29,12 +29,14 @@ Engineering teams and tech executives require daily briefings on AI developments
 
 ---
 
-### ADR-02: Three-Stage LLM Pipeline with Always-On Factual Validation
+### ADR-02: Three-Stage LLM Pipeline with Immediate Per-Item Factual Validation
 - **Decision**: Implement a 3-stage LLM execution flow:
   1. **Stage 1 (Curation)**: Ollama (`phi4-mini:3.8b`) filters candidate stories against theme criteria.
-  2. **Stage 2 (Digest & Script Generation)**: LLM generates Markdown digest with `## [Title](URL)` embedded links and spoken podcast monologue script (~750 words).
-  3. **Stage 3 (Validation & Correction)**: Always-on anti-hallucination validation with an active retry-with-feedback loop before storage or Telegram dispatch. Failed stories are corrected or replaced with a fallback notice — never silently included.
-- **Rationale**: Separating curation from generation improves focus and factual quality. Running validation with active correction in-band guarantees hallucinated summaries never reach end users.
+  2. **Stage 2 (Validated Summary & Audio Script Generation)**:
+     - **Story Summaries**: Summaries are generated per-story and immediately validated inline against source text before moving to the next item.
+     - **Audio Script**: Podcast monologue script (~750 words) is generated and validated against source stories before synthesis.
+  3. **Stage 3 (Validation & Correction Loop)**: Always-on anti-hallucination retry loop operating immediately after generation for both story summaries and audio scripts. Failed items are regenerated with fact-checker reasoning injected as correction feedback or fall back gracefully — never silently included.
+- **Rationale**: Validating immediately per-item eliminates bulk-digest parsing fragile boundaries, speeds up early failure detection, and extends factual guardrails to spoken audio scripts as well as text digests.
 
 ---
 
@@ -59,17 +61,20 @@ Engineering teams and tech executives require daily briefings on AI developments
 
 ---
 
-### ADR-06: Retry-with-Feedback Loop for Fact-Check Failures
-- **Decision**: Replace the previous log-only `_run_validation()` with `_validate_and_correct_digest()` — a stateful, per-story correction loop in `generate_news_digest.py`:
-  1. **Attempt 1**: Validate the bulk-generated section using the three-layer check (keyword overlap, fabrication detection, LLM-as-a-Judge).
-  2. **Attempts 2–3**: If validation fails, call `generate_story_summary()` with the fact-checker's LLM reasoning injected as a `correction_hint` into the prompt. Re-validate the regenerated section.
-  3. **Persistent Failure Fallback**: After all `_VALIDATION_MAX_RETRIES = 3` attempts fail, replace the story summary with a standardised fallback notice:
-     > `⚠️ Failed to generate a reliable summary. Read the original article.`
-     
-     The story title (with its embedded link via `## [Title](URL)`) is preserved so readers can always access the source.
-- **Key Design Principle**: The correction prompt injects the fact-checker's natural-language reasoning verbatim (`Fact-checker feedback: {hint}`), not a generic retry instruction. This grounds the model's next attempt on the specific claim that failed.
-- **Module Boundary**: `generate_story_summary()` lives in `briefing_generator.py` (generation layer); `_validate_and_correct_digest()` lives in `generate_news_digest.py` (orchestration layer). The validator remains stateless and unaware of retries.
-- **Rationale**: A log-only validation pass gave no quality guarantee — failed stories were silently included in Telegram dispatches. The retry-with-feedback loop ensures factual quality is enforced at the point of content assembly, not merely observed.
+### ADR-06: Inline Per-Item Summary & Audio Script Fact-Check Loop
+- **Decision**: Integrate anti-hallucination validation directly into the generation flow within `briefing_generator.py`:
+  1. **Immediate Per-Story Summary Validation (`generate_story_summary_validated`)**:
+     - Generates each 2-sentence story summary and validates it immediately against the story's source text using `validate_story()`.
+     - **Attempts 2–3**: If validation fails, injects the fact-checker's exact error reasoning into the prompt as a `correction_hint`, strictly instructing the LLM to strip external domain knowledge, ungrounded numbers, or markdown links.
+     - **Fallback**: If all 3 attempts fail, replaces the summary with `STORY_FALLBACK_SUMMARY` while retaining the story title and link.
+  2. **Audio Script Validation (`validate_and_correct_audio_script`)**:
+     - Audits the full spoken monologue script against all source stories using `llm_fact_check()`.
+     - Performs up to 3 retry attempts with correction feedback if ungrounded claims or hallucinations are detected in spoken script text.
+  3. **Fact-Checker Precision Tuning (`validator.py`)**:
+     - Explicitly permits high-level concept paraphrasing while strictly flagging ungrounded numbers, fabricated claims, or markdown link leaks.
+- **Key Design Principle**: Inline validation catches hallucinations at the exact point of individual text item creation rather than during post-assembly parsing, ensuring both the text digest and audio podcast monologue meet strict factual standards.
+- **Module Boundary**: `generate_story_summary_validated()` and `validate_and_correct_audio_script()` live in `briefing_generator.py` alongside LLM generation logic; `validator.py` remains stateless and decoupled.
+- **Rationale**: Running post-hoc regex-splitting over assembled bulk digests was fragile and left spoken audio scripts unvalidated. Inline per-item validation guarantees end-to-end factual accuracy across both text and voice channels.
 
 ## 3. Testing & QA Strategy Summary
 

@@ -170,6 +170,73 @@ def generate_story_summary(
         return ""
 
 
+# Maximum number of summary regeneration attempts per story before using the fallback.
+_VALIDATION_MAX_RETRIES = 3
+
+
+def generate_story_summary_validated(
+    story: dict[str, Any],
+    theme_dict: dict[str, Any],
+    config: dict[str, Any],
+) -> str:
+    """
+    Generate a 2-sentence markdown summary for a single story with an inline
+    anti-hallucination retry loop (runs immediately after summary generation).
+    """
+    from validator import validate_story
+
+    title = story.get("title", "")
+    link = story.get("link", "")
+    current_section = ""
+    hint = ""
+
+    for attempt in range(1, _VALIDATION_MAX_RETRIES + 1):
+        summary_text = generate_story_summary(story, theme_dict, config, correction_hint=hint)
+        if not summary_text:
+            summary_text = story.get("summary", "")[:200]
+
+        current_section = f"## [{title}]({link})\n{summary_text}\n"
+
+        result = validate_story(story, current_section, config, run_llm_check=True)
+        status = "PASSED" if result.passed else "FAILED / WARN"
+
+        logger.info(
+            f"Story [{title[:40]}...] "
+            f"Attempt {attempt}/{_VALIDATION_MAX_RETRIES} Fact-Check: {status} "
+            f"(Overlap: {result.keyword_overlap_score:.2f})"
+        )
+
+        if result.passed:
+            return summary_text
+
+        for w in result.fabrication_warnings:
+            logger.warning(f"  └─ {w}")
+        if not result.llm_fact_check_passed:
+            logger.warning(f"  └─ LLM Fact-Check Reasoning: {result.llm_reasoning}")
+
+        hint = result.llm_reasoning
+        if attempt < _VALIDATION_MAX_RETRIES:
+            logger.info(f"  ↻ Regenerating summary for story [{title[:30]}...] with correction hint...")
+
+    logger.warning(f"Story [{title[:40]}...] failed fact-check after {_VALIDATION_MAX_RETRIES} attempts. Using fallback.")
+    return STORY_FALLBACK_SUMMARY
+
+
+def validate_and_correct_audio_script(
+    stories: list[dict[str, Any]],
+    audio_script: str,
+    config: dict[str, Any],
+) -> tuple[bool, str]:
+    """Validate audio script against source stories using LLM fact-checker."""
+    from validator import llm_fact_check
+
+    source_text = "\n\n".join(
+        [f"Title: {s.get('title')}\nSummary: {s.get('summary')}" for s in stories]
+    )
+    passed, reasoning = llm_fact_check(source_text, audio_script, config)
+    return passed, reasoning
+
+
 def generate_briefing_llm(
     stories: list[dict[str, Any]],
     theme_dict: dict[str, Any],
@@ -178,113 +245,106 @@ def generate_briefing_llm(
 ) -> dict[str, str]:
     """
     Call local Ollama endpoint to produce:
-    1. text_digest: markdown summary with links for Telegram, prefixed with Theme header.
-    2. audio_script: ~750 words podcast host script adhering to the theme's tone.
+    1. text_digest: validated story summaries prefixed with Theme header.
+    2. audio_script: validated ~750 words podcast host script adhering to theme's tone.
     """
     llm_cfg = config.get("llm", {})
     ollama_url = llm_cfg.get("ollama_url", "http://localhost:11434").rstrip("/")
     model = llm_cfg.get("model", "phi4-mini:3.8b")
     word_target = llm_cfg.get("script_word_target", 750)
 
-    theme_badge = f"{theme_dict.get('emoji', '🎙️')} **{theme_dict.get('name', 'Daily Briefing')}**\n_{theme_dict.get('description', '')}_\n"
+    theme_badge = (
+        f"{theme_dict.get('emoji', '🎙️')} **{theme_dict.get('name', 'Daily Briefing')}**\n"
+        f"_{theme_dict.get('description', '')}_\n"
+    )
 
+    logger.info(f"Generating validated text digest for theme '{theme_dict.get('name')}' per story...")
+    digest_sections = []
     stories_context = []
+
     for idx, s in enumerate(stories, 1):
+        # 1. Generate & validate each story summary immediately
+        validated_summary = generate_story_summary_validated(s, theme_dict, config)
+        section = f"## [{s.get('title')}]({s.get('link')})\n{validated_summary}\n"
+        digest_sections.append(section)
+
         stories_context.append(
             f"Story {idx}:\n"
             f"- Title: {s['title']}\n"
             f"- Source: {s['source']}\n"
             f"- Link: {s['link']}\n"
-            f"- Summary: {s['summary']}\n"
+            f"- Summary: {validated_summary}\n"
         )
-    stories_block = "\n".join(stories_context)
 
-    logger.info(f"Generating text digest for theme '{theme_dict.get('name')}'...")
-    text_digest = ""
-    audio_script = ""
-
-    today_date = datetime.now().strftime("%B %d, %Y")
-    digest_prompt = (
-        f"You are an expert AI systems engineer and tech writer. Today's theme: '{theme_dict.get('name')}'.\n"
-        f"Theme Description: {theme_dict.get('description')}.\n"
-        f"Date: {today_date}\n\n"
-        f"Here are the top AI stories:\n{stories_block}\n\n"
-        f"Task:\n"
-        f"Write a rich, concise markdown briefing suitable for Telegram:\n"
-        f"- Start directly with a sharp headline and today's date ({today_date}). Never write '[Current Date]'.\n"
-        f"- For each of the {len(stories)} stories, write a section with a header using ONLY the markdown link format: `## [Story Title](URL)`. Do NOT repeat the title outside the brackets.\n"
-        f"- Follow the header with a 2-sentence technical breakdown explaining why it matters.\n"
-        f"- FACTUAL GUARDRAIL: Base your breakdown STRICTLY on the facts provided in the story title and summary. Do NOT invent capabilities, tools, features, metrics, or announcements not present in the text.\n"
-        f"- Do NOT add a separate 'Article URL', 'Link', or '[Read more]' line.\n"
-        f"- Output raw markdown only. Do NOT enclose in markdown code blocks (no ```). Do NOT add closing meta-commentary."
-    )
-
-    try:
-        resp = requests.post(
-            f"{ollama_url}/api/generate",
-            json={
-                "model": model,
-                "prompt": digest_prompt,
-                "stream": False,
-                "options": {"temperature": 0.4, "num_ctx": 4096},
-            },
-            timeout=180,
-        )
-        resp.raise_for_status()
-        raw_digest = resp.json().get("response", "").strip()
-        if raw_digest:
-            cleaned_digest = re.sub(r"```(?:markdown)?\s*", "", raw_digest, flags=re.IGNORECASE)
-            cleaned_digest = re.sub(
-                r"(?i)\n*(?:This (?:concise )?briefing encapsulates|This briefing provides).*$", "", cleaned_digest
-            )
-            text_digest = cleaned_digest.strip()
-    except Exception as e:
-        logger.error(f"Error generating text digest: {e}")
-
-    if not text_digest:
-        digest_lines = ["### Daily AI Tech Briefing\n"]
-        for s in stories:
-            digest_lines.append(f"## [{s['title']}]({s['link']})\n({s['source']})\n{s['summary']}\n")
-        digest_lines.append("Stay curious and keep shipping.")
-        text_digest = "\n".join(digest_lines)
-
+    text_digest = "\n\n".join(digest_sections)
     full_text_digest = f"{theme_badge}\n{text_digest.strip()}"
+
+    stories_block = "\n".join(stories_context)
+    audio_script = ""
 
     if not text_only:
         logger.info(f"Generating spoken audio script (~{word_target} words) for theme '{theme_dict.get('name')}'...")
-        script_prompt = (
-            f"You are a professional tech podcast host briefing an engineering peer. "
-            f"Today's thematic lens is: '{theme_dict.get('name')}'. Tone: {theme_dict.get('tone')}.\n\n"
-            f"Here are the stories to cover:\n{stories_block}\n\n"
-            f"Task:\n"
-            f"Write a complete, natural spoken podcast monologue script of approximately {word_target} words.\n"
-            f"STRICT RULES:\n"
-            f"- Open smoothly with today's theme (e.g., 'Welcome back. Today we're looking through our {theme_dict.get('name')} lens...').\n"
-            f"- Walk through all {len(stories)} stories with natural conversational transitions and genuine technical depth.\n"
-            f"- Write phonetically clean spoken English: absolutely NO markdown asterisks, hashes, bullets, brackets, or code symbols.\n"
-            f"- Absolutely NO URLs, domain names, links, or 'available at' phrases.\n"
-            f"- Conclude with a warm, professional wrap-up.\n"
-            f"Output ONLY the spoken script text."
-        )
-        try:
-            resp_audio = requests.post(
-                f"{ollama_url}/api/generate",
-                json={
-                    "model": model,
-                    "prompt": script_prompt,
-                    "stream": False,
-                    "options": {"temperature": 0.7, "num_ctx": 4096},
-                },
-                timeout=240,
-            )
-            resp_audio.raise_for_status()
-            raw_audio = resp_audio.json().get("response", "").strip()
-            audio_script = clean_script_for_audio(raw_audio)
-        except Exception as e:
-            logger.error(f"Error generating audio script: {e}")
 
-        if not audio_script or len(audio_script.split()) < 40:
-            logger.warning("Using fallback audio script from stories.")
+        audio_hint = ""
+        for attempt in range(1, _VALIDATION_MAX_RETRIES + 1):
+            correction_block = (
+                f"\n\nCRITICAL FIX NEEDED FOR PREVIOUS AUDIO SCRIPT:\n"
+                f"Fact-checker error feedback: {audio_hint}\n"
+                f"Fix all errors. Rely strictly on facts from the stories above."
+                if audio_hint.strip()
+                else ""
+            )
+
+            script_prompt = (
+                f"You are a professional tech podcast host briefing an engineering peer. "
+                f"Today's thematic lens is: '{theme_dict.get('name')}'. Tone: {theme_dict.get('tone')}.\n\n"
+                f"Here are the stories to cover:\n{stories_block}\n\n"
+                f"Task:\n"
+                f"Write a complete, natural spoken podcast monologue script of approximately {word_target} words.\n"
+                f"STRICT RULES:\n"
+                f"- Open smoothly with today's theme (e.g., 'Welcome back. Today we're looking through our {theme_dict.get('name')} lens...').\n"
+                f"- Walk through all {len(stories)} stories with natural conversational transitions and genuine technical depth.\n"
+                f"- Write phonetically clean spoken English: absolutely NO markdown asterisks, hashes, bullets, brackets, or code symbols.\n"
+                f"- Absolutely NO URLs, domain names, links, or 'available at' phrases.\n"
+                f"- Conclude with a warm, professional wrap-up.\n"
+                f"Output ONLY the spoken script text."
+                f"{correction_block}"
+            )
+
+            candidate_script = ""
+            try:
+                resp_audio = requests.post(
+                    f"{ollama_url}/api/generate",
+                    json={
+                        "model": model,
+                        "prompt": script_prompt,
+                        "stream": False,
+                        "options": {"temperature": 0.7, "num_ctx": 4096},
+                    },
+                    timeout=240,
+                )
+                resp_audio.raise_for_status()
+                raw_audio = resp_audio.json().get("response", "").strip()
+                candidate_script = clean_script_for_audio(raw_audio)
+            except Exception as e:
+                logger.error(f"Error generating audio script attempt {attempt}: {e}")
+
+            if candidate_script and len(candidate_script.split()) >= 40:
+                script_passed, reasoning = validate_and_correct_audio_script(stories, candidate_script, config)
+                status = "PASSED" if script_passed else "FAILED / WARN"
+                logger.info(f"Audio Script Attempt {attempt}/{_VALIDATION_MAX_RETRIES} Fact-Check: {status}")
+
+                if script_passed:
+                    audio_script = candidate_script
+                    break
+                else:
+                    logger.warning(f"  └─ Audio Script Fact-Check Reasoning: {reasoning}")
+                    audio_hint = reasoning
+                    if attempt < _VALIDATION_MAX_RETRIES:
+                        logger.info("  ↻ Regenerating audio script with correction hint...")
+
+        if not audio_script:
+            logger.warning("Using fallback audio script from stories after validation failures.")
             script_parts = [f"Welcome to today's {theme_dict.get('name')} briefing. "]
             for idx, s in enumerate(stories, 1):
                 clean_t = clean_script_for_audio(s["title"])

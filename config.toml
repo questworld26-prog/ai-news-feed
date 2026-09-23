@@ -73,6 +73,7 @@ script_word_target = 750
 [testing]
 # Model used specifically for anti-hallucination fact checking and verification tests
 test_model = "qwen2.5:3b"
+# test_model = "phi4-mini:3.8b"
 
 
 [tts]
