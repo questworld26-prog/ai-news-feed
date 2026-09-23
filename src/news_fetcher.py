@@ -203,6 +203,14 @@ def parse_feed_entry(
     )
 
 
+def sanitize_feed_xml(raw_bytes: bytes) -> bytes:
+    """Fix common RSS XML malformations such as unescaped ampersands."""
+    text = raw_bytes.decode("utf-8", errors="replace")
+    # Escape unescaped ampersands not part of valid XML entities
+    text = re.sub(r"&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);)", "&amp;", text)
+    return text.encode("utf-8")
+
+
 def fetch_entries_from_source(src: dict[str, Any], hard_filters: list[str], now: datetime) -> list[Story]:
     """Fetch and parse all valid entries from a single RSS feed source."""
     name = src.get("name", "Unknown")
@@ -211,18 +219,41 @@ def fetch_entries_from_source(src: dict[str, Any], hard_filters: list[str], now:
         return []
 
     entries: list[Story] = []
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        ),
+        "Accept": "application/rss+xml, application/xml, text/xml, */*",
+    }
+
     try:
         logger.info(f"Querying feed: {name}...")
-        parsed = feedparser.parse(url, request_headers={"User-Agent": "Mozilla/5.0 (compatible; AIBriefingBot/1.0)"})
+        resp = requests.get(url, headers=headers, timeout=12)
+        resp.raise_for_status()
 
-        if parsed.bozo and not parsed.entries:
-            logger.warning(f"Could not parse entries from {name}: {parsed.bozo_exception}")
+        # Sanitize and parse XML bytes
+        sanitized_content = sanitize_feed_xml(resp.content)
+        parsed = feedparser.parse(sanitized_content)
+
+        # Fallback to direct URL parse if byte parsing produced zero entries and had bozo error
+        if not parsed.entries and parsed.bozo:
+            logger.debug(f"Byte parsing failed for {name} ({parsed.bozo_exception}), trying direct feedparser...")
+            parsed = feedparser.parse(url, request_headers=headers)
+
+        if not parsed.entries:
+            if parsed.bozo:
+                logger.warning(f"Could not parse entries from {name}: {parsed.bozo_exception}")
+            else:
+                logger.debug(f"Feed {name} returned 0 entries.")
             return []
 
         for entry in parsed.entries:
             parsed_item = parse_feed_entry(entry, name, hard_filters, now)
             if parsed_item:
                 entries.append(parsed_item)
+
+        logger.info(f"  └─ Retrieved {len(entries)} valid stories from {name}")
 
     except Exception as e:
         logger.warning(f"Error fetching from {name}: {e}")

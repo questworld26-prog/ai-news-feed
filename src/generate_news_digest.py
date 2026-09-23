@@ -126,48 +126,80 @@ def main() -> None:
 
     theme_key = random.choice(list(themes.keys()))
     theme_dict = themes[theme_key]
-    logger.info(f"=== Selected Daily Theme: {theme_dict.get('emoji')} {theme_dict.get('name')} ===")
+    logger.info("=" * 60)
+    logger.info(f"🎙️  AI NEWS DAILY BRIEFING PIPELINE — {today_str}")
+    logger.info(f"🎯 Selected Theme: {theme_dict.get('emoji')} {theme_dict.get('name')}")
+    logger.info("=" * 60)
 
-    # Step 1: RSS Aggregation -> candidate pool
+    # -------------------------------------------------------------
+    # PHASE 1: RSS Ingestion & Pre-Filtering
+    # -------------------------------------------------------------
+    logger.info("\n" + "=" * 60)
+    logger.info("📡 PHASE 1: RSS Ingestion & Feed Aggregation")
+    logger.info("=" * 60)
     candidates = fetch_stories_for_theme(theme_dict, config)
     if not candidates:
         logger.error(f"No stories retrieved for theme {theme_key}. Exiting.")
         sys.exit(1)
 
-    # Step 2: LLM Curation -> pick top max_stories
+    # -------------------------------------------------------------
+    # PHASE 2: LLM Curation & Prioritization
+    # -------------------------------------------------------------
+    logger.info("\n" + "=" * 60)
+    logger.info("🧠 PHASE 2: LLM Story Curation & Theme Prioritization")
+    logger.info("=" * 60)
     stories = llm_curate_stories(candidates, theme_dict, config)
 
-    # Step 3: LLM Briefing Digest & Monologue Script (validated per-story & per-script)
+    # -------------------------------------------------------------
+    # PHASE 3 & 4: Validated Summaries & Spoken Script Generation
+    # -------------------------------------------------------------
+    logger.info("\n" + "=" * 60)
+    logger.info("📝 PHASE 3 & 4: Story Summaries Validation & Audio Scripting")
+    logger.info("=" * 60)
     briefing_data = generate_briefing_llm(stories, theme_dict, config)
     text_digest = briefing_data.text_digest
     audio_script = briefing_data.audio_script
 
     summary_file = output_dir / f"{today_str}_{theme_key}_summary.md"
     summary_file.write_text(briefing_data.to_markdown(), encoding="utf-8")
-    logger.info(f"Saved text digest & script to {summary_file}")
+    logger.info(f"💾 Saved markdown briefing digest to: {summary_file}")
 
     if args.dry_run:
-        logger.info("--- [DRY-RUN MODE] ---")
+        logger.info("\n" + "=" * 60)
+        logger.info("🏁 DRY-RUN MODE COMPLETE")
+        logger.info("=" * 60)
         print("\n=== TEXT DIGEST ===\n")
         print(text_digest)
         print("\n=== AUDIO SCRIPT (First 300 words) ===\n")
         print(" ".join(audio_script.split()[:300]) + "...\n")
-        logger.info("Dry-run complete. Exiting without TTS or Telegram.")
+        logger.info("Dry-run finished. Exiting without TTS or Telegram.")
         return
 
-    # Step 4: Local TTS Audio Synthesis
+    # -------------------------------------------------------------
+    # PHASE 5: Local TTS Audio Synthesis
+    # -------------------------------------------------------------
+    logger.info("\n" + "=" * 60)
+    logger.info("🔊 PHASE 5: Local Voice Audio Synthesis (kokoro-mlx)")
+    logger.info("=" * 60)
     audio_files: list[Path] = []
     if not args.skip_tts:
         audio_files = synthesize_audio(audio_script, output_dir, config, today_str)
     else:
-        logger.info("Skipping TTS synthesis per --skip-tts flag.")
+        logger.info("⏩ Skipping TTS synthesis per --skip-tts flag.")
 
-    # Step 5: Dispatch to Telegram
+    # -------------------------------------------------------------
+    # PHASE 6: Telegram Dispatch
+    # -------------------------------------------------------------
+    logger.info("\n" + "=" * 60)
+    logger.info("🚀 PHASE 6: Telegram Notification & Media Upload")
+    logger.info("=" * 60)
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
     chat_id = os.getenv("TELEGRAM_CHAT_ID", "").strip()
     send_to_telegram(text_digest, audio_files, bot_token, chat_id)
 
-    logger.info("=== AI News Daily Briefing Pipeline Finished Successfully ===")
+    logger.info("\n" + "=" * 60)
+    logger.info("✅ PIPELINE EXECUTION COMPLETED SUCCESSFULLY")
+    logger.info("=" * 60)
 
 
 if __name__ == "__main__":
