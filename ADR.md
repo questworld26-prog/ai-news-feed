@@ -92,6 +92,15 @@ Engineering teams and tech executives require daily briefings on AI developments
      - `audit_model`: `qwen2.5:3b` (deterministic fact-checker at temperature 0.0)
 - **Rationale**: Small models lack the broad reasoning capacity of frontier models. Hardening the pipeline with extractive anchoring, deterministic entity gating, and positive few-shot constraints eliminates hallucinations without requiring larger hardware.
 
+---
+
+### ADR-08: Structured Data Contracts (`Story`, `BriefingOutput`) and Schema-Constrained Decoding
+- **Decision**: Formalize pipeline state transitions and output artifacts through strongly typed dataclasses and Pydantic response models in `src/story.py` and `src/briefing_generator.py`:
+  1. **`Story` Dataclass**: Single source of truth for story lifecycle across fetching, score ranking, curation selection, validated summary storage, and prompt rendering (`to_prompt_context()`, `to_structured_prompt_dict()`).
+  2. **`BriefingOutput` Dataclass**: Standardized container for briefing artifacts guaranteeing uniform Markdown document hierarchy (`to_markdown()`) with backward-compatible dict access.
+  3. **JSON Schema-Constrained Decoding**: Ollama requests pass native JSON schemas (`format=Model.model_json_schema()`) for `CurationResponse`, `StorySummaryResponse`, and `FactCheckResponse`, eliminating JSON parsing errors and hallucinated keys.
+- **Rationale**: Loose dictionary dictionaries throughout pipeline stages caused subtle key mismatch bugs and inconsistent Markdown outputs. Structured types provide strict compile/test-time guarantees and consistent file formats across runs.
+
 ## 3. Testing & QA Strategy Summary
 
 | Level | Component | Focus | Implementation |
