@@ -13,10 +13,28 @@ from datetime import datetime
 from typing import Any
 
 import requests
+from pydantic import BaseModel, Field
 
 from story import Story
 
 logger = logging.getLogger("ai_briefing")
+
+
+class StorySelectionJustification(BaseModel):
+    index: int = Field(description="1-based integer index of the candidate story")
+    reasoning: str = Field(description="Brief technical justification for why this story was selected")
+
+
+class CurationResponse(BaseModel):
+    evaluation_criteria: str = Field(
+        description="Summary of theme evaluation criteria applied when curating candidate stories"
+    )
+    justifications: list[StorySelectionJustification] = Field(
+        description="Step-by-step justification for each selected story before outputting final indices"
+    )
+    selected: list[int] = Field(
+        description="List of 1-based integer candidate indices of selected stories in priority order"
+    )
 
 
 def clean_script_for_audio(raw_script: str) -> str:
@@ -41,8 +59,8 @@ def llm_curate_stories(
     config: dict[str, Any],
 ) -> list[Story]:
     """
-    Stage 2 story selection: ask Ollama to pick the most relevant stories
-    matching the current theme. Returns max_stories entries.
+    Stage 2 story selection: ask local SLM (Ollama) to pick the top max_stories
+    matching the current theme using Pydantic schema-constrained CoT curation.
     """
     typed_candidates = [c if isinstance(c, Story) else Story.from_dict(c) for c in candidates]
 
@@ -59,26 +77,29 @@ def llm_curate_stories(
         story_list += f"{s.to_prompt_context(idx=idx, max_summary_chars=200)}\n\n"
 
     prompt = (
-        f"You are an expert AI engineer curating a briefing on the theme '{theme_dict.get('name')}'.\n"
+        f"You are an expert AI technical editor curating a daily briefing for senior engineers.\n"
+        f"Theme Name: '{theme_dict.get('name')}'\n"
         f"Theme Description: {theme_dict.get('description')}\n"
-        f"Audience & Tone: {theme_dict.get('tone')}\n\n"
-        f"From the {len(typed_candidates)} candidate stories below, select the top {max_stories} stories "
-        f"that BEST fit this theme. Favor concrete technical implementations, tools, real architectural patterns, "
-        f"or creative breakthroughs. Exclude hype, trivial announcements, or funding deals.\n\n"
-        f"Return ONLY a JSON object with a single key 'selected' containing a list of {max_stories} "
-        f"integer indices (1-based) in priority order.\n"
-        f'Example: {{"selected": [3, 1, 7, 12, 5]}}\n\n'
-        f"Stories:\n{story_list}"
+        f"Target Audience & Tone: {theme_dict.get('tone')}\n\n"
+        f"Task:\n"
+        f"Select the top {max_stories} stories from the {len(typed_candidates)} candidate stories below.\n"
+        f"Favor concrete technical implementations, open-source tools, system architectures, or major breakthroughs.\n"
+        f"Exclude generic hype, corporate press releases, or non-technical funding announcements.\n\n"
+        f"Instructions:\n"
+        f"1. State your specific 'evaluation_criteria' for this theme.\n"
+        f"2. Provide step-by-step 'justifications' explaining why each candidate story was chosen.\n"
+        f"3. Output the final top {max_stories} 1-based integer indices in 'selected' in priority order.\n\n"
+        f"Candidate Stories:\n{story_list}"
     )
 
-    logger.info(f"LLM curation: asking {model} to pick {max_stories} stories for theme '{theme_dict.get('name')}'...")
+    logger.info(f"LLM curation: querying {model} with CoT schema for theme '{theme_dict.get('name')}'...")
     try:
         response = requests.post(
             f"{ollama_url}/api/generate",
             json={
                 "model": model,
                 "prompt": prompt,
-                "format": "json",
+                "format": CurationResponse.model_json_schema(),
                 "stream": False,
                 "options": {"temperature": 0.2, "num_ctx": 4096},
             },
@@ -86,29 +107,51 @@ def llm_curate_stories(
         )
         response.raise_for_status()
         raw = response.json().get("response", "").strip()
-        data = json.loads(raw)
-        indices = data.get("selected", [])
+        curation_data = json.loads(raw)
+        curation_res = CurationResponse.model_validate(curation_data)
 
-        valid_indices = [i for i in indices if isinstance(i, int) and 1 <= i <= len(typed_candidates)]
+        # Print / Log Chain-of-Thought Evaluation Criteria & Justifications
+        logger.info(f"\n=== LLM CURATION CRITERIA ({theme_dict.get('name')}) ===")
+        logger.info(f"Evaluation Criteria: {curation_res.evaluation_criteria}\n")
+
+        reason_map = {j.index: j.reasoning for j in curation_res.justifications}
+        for j in curation_res.justifications:
+            if 1 <= j.index <= len(typed_candidates):
+                cand_title = typed_candidates[j.index - 1].title
+                logger.info(f"  • Story #{j.index} [{cand_title[:50]}...]: {j.reasoning}")
+
+        # Defensive Post-Processing: Deduplicate, Bounds-check, and Pad
+        valid_indices: list[int] = []
+        seen: set[int] = set()
+        for idx in curation_res.selected:
+            if isinstance(idx, int) and 1 <= idx <= len(typed_candidates) and idx not in seen:
+                valid_indices.append(idx)
+                seen.add(idx)
+
+        # Fallback / Deterministic padding if LLM selected fewer than max_stories
         if len(valid_indices) < max_stories:
             logger.warning(
-                f"LLM returned {len(valid_indices)} valid indices, expected {max_stories}. Padding with top-scored."
+                f"LLM returned {len(valid_indices)} valid unique indices out of {max_stories}. Deterministically padding with top-scored candidate stories."
             )
-            seen = set(valid_indices)
-            for i in range(1, len(typed_candidates) + 1):
-                if i not in seen:
-                    valid_indices.append(i)
+            # Rank candidates by score to fill remaining slots
+            sorted_candidates_by_score = sorted(
+                enumerate(typed_candidates, 1), key=lambda pair: pair[1].score, reverse=True
+            )
+            for idx, _ in sorted_candidates_by_score:
+                if idx not in seen:
+                    valid_indices.append(idx)
+                    seen.add(idx)
                     if len(valid_indices) >= max_stories:
                         break
 
         curated = [typed_candidates[i - 1] for i in valid_indices[:max_stories]]
-        titles = [f"  {i}. {s.title[:55]}..." for i, s in zip(valid_indices, curated, strict=False)]
-        logger.info(f"LLM curated {max_stories} stories:\n" + "\n".join(titles))
+        logger.info(f"\nLLM curated top {len(curated)} stories successfully.")
         return curated
 
     except Exception as e:
-        logger.warning(f"LLM curation failed ({e}). Falling back to top-{max_stories} by popularity/recency score.")
-        return typed_candidates[:max_stories]
+        logger.warning(f"LLM curation schema parsing/generation failed ({e}). Falling back to top-{max_stories} by score.")
+        sorted_candidates = sorted(typed_candidates, key=lambda s: s.score, reverse=True)
+        return sorted_candidates[:max_stories]
 
 
 # Fallback text used when a story's summary cannot pass fact-checking after all retries.
