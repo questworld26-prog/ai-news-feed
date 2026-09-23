@@ -171,7 +171,9 @@ def parse_feed_entry(
     if pub_parsed:
         age_hours = (now - pub_dt).total_seconds() / 3600.0
         if age_hours > max_age_hours:
-            logger.debug(f"Filtering out stale story ({age_hours:.1f}h old > {max_age_hours}h): '{getattr(entry, 'title', '')[:40]}'")
+            logger.debug(
+                f"Filtering out stale story ({age_hours:.1f}h old > {max_age_hours}h): '{getattr(entry, 'title', '')[:40]}'"
+            )
             return None
 
     raw_summary = getattr(entry, "summary", "") or getattr(entry, "description", "")

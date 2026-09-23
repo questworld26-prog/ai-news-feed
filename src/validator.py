@@ -121,9 +121,24 @@ def extract_key_tokens(text: str) -> set[str]:
     }
 
     meaningful = set()
+    # Common short technical acronyms/models in AI
+    known_ai_tokens = {"ai", "ml", "ci", "dl", "cv", "rl", "llm", "rag", "slm", "nlp", "gpu", "tpu", "vllm"}
+
     for tok in tokens:
         lower = tok.lower()
-        if lower not in stopwords and (len(tok) > 2 or tok.isdigit()):
+        if lower in stopwords:
+            continue
+        # Preserve:
+        # 1. Standard words > 2 chars or pure numbers
+        # 2. Known AI acronyms (ai, ml, ci, etc.)
+        # 3. Uppercase 2-letter acronyms from original text (e.g. AI, ML, CI)
+        # 4. Alphanumeric model identifiers (e.g. o1, o3, r1, v2, v3, 4o)
+        is_model_or_acronym = (
+            lower in known_ai_tokens
+            or (len(tok) == 2 and tok.isupper())
+            or bool(re.match(r"^[a-zA-Z]\d+$|^\d+[a-zA-Z]+$", tok))
+        )
+        if len(tok) > 2 or tok.isdigit() or is_model_or_acronym:
             meaningful.add(lower)
     return meaningful
 
@@ -175,9 +190,10 @@ def llm_fact_check(source_text: str, digest_summary: str, config: dict[str, Any]
     ollama_url = llm_cfg.get("ollama_url", "http://localhost:11434").rstrip("/")
     model = testing_cfg.get("test_model") or llm_cfg.get("model", "qwen2.5:3b")
 
+    # Expanded to 4000 characters so multi-story scripts have complete source visibility
     prompt = (
         f"You are an auditing tool checking if an AI-generated summary is factually grounded in the source text.\n\n"
-        f"SOURCE TEXT:\n{source_text[:1500]}\n\n"
+        f"SOURCE TEXT:\n{source_text[:4000]}\n\n"
         f"GENERATED SUMMARY:\n{digest_summary}\n\n"
         f"Task:\n"
         f"1. Write detailed 'reasoning' evaluating if the GENERATED SUMMARY contains:\n"
@@ -206,7 +222,8 @@ def llm_fact_check(source_text: str, digest_summary: str, config: dict[str, Any]
         return res_obj.passed, res_obj.reasoning.strip()
     except Exception as e:
         logger.warning(f"LLM fact check call failed: {e}")
-        return True, f"Fact check skipped due to error: {e}"
+        # Fail closed: do not silently pass unverified summaries
+        return False, f"Fact check failed due to error: {e}"
 
 
 def validate_story(

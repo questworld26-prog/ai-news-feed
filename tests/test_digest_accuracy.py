@@ -132,3 +132,82 @@ def test_llm_fact_check_fails_mocked(monkeypatch):
     passed, reasoning = llm_fact_check("Source text here", "Hallucinated summary", dummy_config)
     assert passed is False
     assert "unsupported claims" in reasoning
+
+
+def test_llm_fact_check_fails_closed_on_exception(monkeypatch):
+    import requests
+
+    from validator import llm_fact_check
+
+    def mock_post_raise(*args, **kwargs):
+        raise requests.exceptions.Timeout("Connection timed out")
+
+    monkeypatch.setattr(requests, "post", mock_post_raise)
+
+    dummy_config = {"llm": {"model": "phi4-mini:3.8b", "ollama_url": "http://localhost:11434"}}
+    passed, reasoning = llm_fact_check("Source text here", "Digest summary", dummy_config)
+    # Must fail closed: return False rather than True
+    assert passed is False
+    assert "timed out" in reasoning
+
+
+def test_extract_key_tokens_preserves_acronyms_and_models():
+    from validator import extract_key_tokens
+
+    text = "OpenAI released o1 and o3 with advanced AI and ML capabilities for CI pipelines."
+    tokens = extract_key_tokens(text)
+    # 2-letter AI acronyms and model names should not be discarded
+    assert "ai" in tokens
+    assert "ml" in tokens
+    assert "ci" in tokens
+    assert "o1" in tokens
+    assert "o3" in tokens
+
+
+def test_parse_feed_entry_rejects_stale_stories():
+    from datetime import UTC, datetime, timedelta
+
+    from news_fetcher import parse_feed_entry
+
+    now = datetime.now(UTC)
+    stale_time = now - timedelta(hours=50)
+
+    class MockFeedEntry:
+        published_parsed = stale_time.timetuple()
+        title = "Ancient Discovery in Machine Learning"
+        link = "https://example.com/ancient"
+        summary = "A historical paper that was submitted long ago."
+
+    result = parse_feed_entry(MockFeedEntry(), "Hacker News", hard_filters=[], now=now, max_age_hours=48.0)
+    assert result is None  # Must be rejected due to 48-hour cutoff
+
+
+def test_fetch_article_excerpt_filters_cookie_banners(monkeypatch):
+    import requests
+
+    from news_fetcher import fetch_article_excerpt
+
+    class MockWebResponse:
+        def raise_for_status(self):
+            pass
+
+        text = """
+        <html>
+        <head><title>Test Page</title></head>
+        <body>
+            <header><nav>Home About Contact Login</nav></header>
+            <p>We use cookies and privacy policy to track consent and improve your experience.</p>
+            <main>
+                <article>
+                    <p>Engineers at Anthropic deployed a new distributed inference kernel reducing latency by 45%.</p>
+                </article>
+            </main>
+            <footer>Copyright 2026</footer>
+        </body>
+        </html>
+        """
+
+    monkeypatch.setattr(requests, "get", lambda *args, **kwargs: MockWebResponse())
+    excerpt = fetch_article_excerpt("https://example.com/test-article")
+    assert "cookies" not in excerpt.lower()
+    assert "distributed inference kernel" in excerpt
