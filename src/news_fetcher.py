@@ -212,7 +212,7 @@ def sanitize_feed_xml(raw_bytes: bytes) -> bytes:
 
 
 def fetch_entries_from_source(src: dict[str, Any], hard_filters: list[str], now: datetime) -> list[Story]:
-    """Fetch and parse all valid entries from a single RSS feed source."""
+    """Fetch and parse all valid entries from a single RSS feed source with retry on transient network/gateway errors."""
     name = src.get("name", "Unknown")
     url = src.get("url", "")
     if not url:
@@ -227,36 +227,57 @@ def fetch_entries_from_source(src: dict[str, Any], hard_filters: list[str], now:
         "Accept": "application/rss+xml, application/xml, text/xml, */*",
     }
 
-    try:
-        logger.info(f"Querying feed: {name}...")
-        resp = requests.get(url, headers=headers, timeout=12)
-        resp.raise_for_status()
+    logger.info(f"Querying feed: {name}...")
+    max_retries = 2
+    for attempt in range(1, max_retries + 1):
+        try:
+            resp = requests.get(url, headers=headers, timeout=15)
+            # Transient server error handling
+            if resp.status_code in (500, 502, 503, 504) and attempt < max_retries:
+                logger.warning(
+                    f"  ⚠️ {name} returned HTTP {resp.status_code} (attempt {attempt}/{max_retries}). Retrying in 2s..."
+                )
+                import time
 
-        # Sanitize and parse XML bytes
-        sanitized_content = sanitize_feed_xml(resp.content)
-        parsed = feedparser.parse(sanitized_content)
+                time.sleep(2)
+                continue
+            resp.raise_for_status()
 
-        # Fallback to direct URL parse if byte parsing produced zero entries and had bozo error
-        if not parsed.entries and parsed.bozo:
-            logger.debug(f"Byte parsing failed for {name} ({parsed.bozo_exception}), trying direct feedparser...")
-            parsed = feedparser.parse(url, request_headers=headers)
+            # Sanitize and parse XML bytes
+            sanitized_content = sanitize_feed_xml(resp.content)
+            parsed = feedparser.parse(sanitized_content)
 
-        if not parsed.entries:
-            if parsed.bozo:
-                logger.warning(f"Could not parse entries from {name}: {parsed.bozo_exception}")
+            # Fallback to direct URL parse if byte parsing produced zero entries and had bozo error
+            if not parsed.entries and parsed.bozo:
+                logger.debug(f"Byte parsing failed for {name} ({parsed.bozo_exception}), trying direct feedparser...")
+                parsed = feedparser.parse(url, request_headers=headers)
+
+            if not parsed.entries:
+                if parsed.bozo:
+                    logger.warning(f"Could not parse entries from {name}: {parsed.bozo_exception}")
+                else:
+                    logger.debug(f"Feed {name} returned 0 entries.")
+                return []
+
+            for entry in parsed.entries:
+                parsed_item = parse_feed_entry(entry, name, hard_filters, now)
+                if parsed_item:
+                    entries.append(parsed_item)
+
+            logger.info(f"  └─ Retrieved {len(entries)} valid stories from {name}")
+            return entries
+
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as net_err:
+            if attempt < max_retries:
+                logger.warning(f"  ⚠️ Timeout/Connection error on {name} (attempt {attempt}/{max_retries}): {net_err}. Retrying in 2s...")
+                import time
+
+                time.sleep(2)
             else:
-                logger.debug(f"Feed {name} returned 0 entries.")
-            return []
-
-        for entry in parsed.entries:
-            parsed_item = parse_feed_entry(entry, name, hard_filters, now)
-            if parsed_item:
-                entries.append(parsed_item)
-
-        logger.info(f"  └─ Retrieved {len(entries)} valid stories from {name}")
-
-    except Exception as e:
-        logger.warning(f"Error fetching from {name}: {e}")
+                logger.warning(f"Error fetching from {name} after {max_retries} attempts: {net_err}")
+        except Exception as e:
+            logger.warning(f"Error fetching from {name}: {e}")
+            break
 
     return entries
 

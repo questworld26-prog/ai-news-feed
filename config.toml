@@ -17,7 +17,7 @@ sources = [
     { name = "Hacker News (MLOps & Production Systems)", url = "https://hnrss.org/newest?q=MLOps+OR+Kubeflow+OR+vLLM+OR+Triton&points=25" },
     { name = "Simon Willison Weblog", url = "https://simonwillison.net/atom/everything/" },
     { name = "AWS ML Blog", url = "https://aws.amazon.com/blogs/machine-learning/feed/" },
-    { name = "Weights & Biases Blog", url = "https://wandb.ai/fully-connected/rss.xml" }
+    { name = "PyTorch Blog", url = "https://pytorch.org/blog/feed.xml" }
 ]
 
 [themes.executive_lens]
@@ -43,9 +43,9 @@ tone = "hands-on, energetic, and practical, highlighting developer workflows and
 hard_filters = ["funding round", "valuation", "speculation", "opinion piece without code", "AGI"]
 sources = [
     { name = "Hugging Face Blog", url = "https://huggingface.co/blog/feed.xml" },
-    { name = "Hacker News (Claude, Cursor & AI Dev Tools)", url = "https://hnrss.org/newest?q=Claude+OR+Antigravity+OR+Cursor+OR+Copilot&points=25" },
+    { name = "Hacker News (Claude, Cursor & AI Dev Tools)", url = "https://hnrss.org/newest?q=Claude+OR+Cursor+OR+Copilot&points=20" },
     { name = "Simon Willison Weblog", url = "https://simonwillison.net/atom/everything/" },
-    { name = "Hacker News (Open Source & Local)", url = "https://hnrss.org/newest?q=AI+open+source+OR+local+LLM+OR+MLX&points=30" },
+    { name = "Hacker News (Open Source & Local)", url = "https://hnrss.org/newest?q=open+source+AI+OR+local+LLM&points=20" },
     { name = "ArXiv cs.AI", url = "https://export.arxiv.org/rss/cs.AI" },
     { name = "Anthropic Engineering (Community)", url = "https://conoro.github.io/anthropic-engineering-rss-feed/anthropic_engineering_rss.xml" }
 ]
