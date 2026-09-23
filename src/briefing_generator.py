@@ -263,11 +263,11 @@ def generate_story_summary_validated(
         current_section = f"## [{title}]({link})\n{summary_text}\n"
 
         result = validate_story(s_obj, current_section, config, run_llm_check=True)
-        status = "PASSED" if result.passed else "FAILED / WARN"
+        status_str = "✅ PASSED" if result.passed else "FAILED / WARN"
 
         logger.info(
             f"Story [{title[:40]}...] "
-            f"Attempt {attempt}/{_VALIDATION_MAX_RETRIES} Fact-Check: {status} "
+            f"Attempt {attempt}/{_VALIDATION_MAX_RETRIES} Fact-Check: {status_str} "
             f"(Overlap: {result.keyword_overlap_score:.2f})"
         )
 
@@ -284,7 +284,7 @@ def generate_story_summary_validated(
         if attempt < _VALIDATION_MAX_RETRIES:
             logger.info(f"  ↻ Regenerating summary for story [{title[:30]}...] with correction hint...")
 
-    logger.warning(f"Story [{title[:40]}...] failed fact-check after {_VALIDATION_MAX_RETRIES} attempts. Using fallback.")
+    logger.warning(f"❌ Story [{title[:40]}...] failed fact-check after {_VALIDATION_MAX_RETRIES} attempts. Using fallback.")
     s_obj.validated_summary = STORY_FALLBACK_SUMMARY
     return STORY_FALLBACK_SUMMARY
 
@@ -402,8 +402,8 @@ def generate_briefing_llm(
 
             if candidate_script and len(candidate_script.split()) >= 40:
                 script_passed, reasoning = validate_and_correct_audio_script(typed_stories, candidate_script, config)
-                status = "PASSED" if script_passed else "FAILED / WARN"
-                logger.info(f"Audio Script Attempt {attempt}/{_VALIDATION_MAX_RETRIES} Fact-Check: {status}")
+                status_str = "✅ PASSED" if script_passed else "FAILED / WARN"
+                logger.info(f"Audio Script Attempt {attempt}/{_VALIDATION_MAX_RETRIES} Fact-Check: {status_str}")
 
                 if script_passed:
                     audio_script = candidate_script
@@ -415,7 +415,7 @@ def generate_briefing_llm(
                         logger.info("  ↻ Regenerating audio script with correction hint...")
 
         if not audio_script:
-            logger.warning("Using fallback audio script from stories after validation failures.")
+            logger.warning("❌ Using fallback audio script from stories after validation failures.")
             script_parts = [f"Welcome to today's {theme_dict.get('name')} briefing. "]
             for idx, s in enumerate(typed_stories, 1):
                 clean_t = clean_script_for_audio(s.title)
