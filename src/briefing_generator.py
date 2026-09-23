@@ -14,6 +14,8 @@ from typing import Any
 
 import requests
 
+from story import Story
+
 logger = logging.getLogger("ai_briefing")
 
 
@@ -34,31 +36,33 @@ def clean_script_for_audio(raw_script: str) -> str:
 
 
 def llm_curate_stories(
-    candidates: list[dict[str, Any]],
+    candidates: list[Story | dict[str, Any]],
     theme_dict: dict[str, Any],
     config: dict[str, Any],
-) -> list[dict[str, Any]]:
+) -> list[Story]:
     """
     Stage 2 story selection: ask Ollama to pick the most relevant stories
     matching the current theme. Returns max_stories entries.
     """
+    typed_candidates = [c if isinstance(c, Story) else Story.from_dict(c) for c in candidates]
+
     llm_cfg = config.get("llm", {})
     ollama_url = llm_cfg.get("ollama_url", "http://localhost:11434").rstrip("/")
     model = llm_cfg.get("model", "phi4-mini:3.8b")
     max_stories = config.get("feeds", {}).get("max_stories", 5)
 
-    if len(candidates) <= max_stories:
-        return candidates
+    if len(typed_candidates) <= max_stories:
+        return typed_candidates
 
     story_list = ""
-    for idx, s in enumerate(candidates, 1):
-        story_list += f"{idx}. [{s['source']}] {s['title']}\n   {s['summary'][:200]}\n\n"
+    for idx, s in enumerate(typed_candidates, 1):
+        story_list += f"{s.to_prompt_context(idx=idx, max_summary_chars=200)}\n\n"
 
     prompt = (
         f"You are an expert AI engineer curating a briefing on the theme '{theme_dict.get('name')}'.\n"
         f"Theme Description: {theme_dict.get('description')}\n"
         f"Audience & Tone: {theme_dict.get('tone')}\n\n"
-        f"From the {len(candidates)} candidate stories below, select the top {max_stories} stories "
+        f"From the {len(typed_candidates)} candidate stories below, select the top {max_stories} stories "
         f"that BEST fit this theme. Favor concrete technical implementations, tools, real architectural patterns, "
         f"or creative breakthroughs. Exclude hype, trivial announcements, or funding deals.\n\n"
         f"Return ONLY a JSON object with a single key 'selected' containing a list of {max_stories} "
@@ -85,26 +89,26 @@ def llm_curate_stories(
         data = json.loads(raw)
         indices = data.get("selected", [])
 
-        valid_indices = [i for i in indices if isinstance(i, int) and 1 <= i <= len(candidates)]
+        valid_indices = [i for i in indices if isinstance(i, int) and 1 <= i <= len(typed_candidates)]
         if len(valid_indices) < max_stories:
             logger.warning(
                 f"LLM returned {len(valid_indices)} valid indices, expected {max_stories}. Padding with top-scored."
             )
             seen = set(valid_indices)
-            for i in range(1, len(candidates) + 1):
+            for i in range(1, len(typed_candidates) + 1):
                 if i not in seen:
                     valid_indices.append(i)
                     if len(valid_indices) >= max_stories:
                         break
 
-        curated = [candidates[i - 1] for i in valid_indices[:max_stories]]
-        titles = [f"  {i}. {s['title'][:55]}..." for i, s in zip(valid_indices, curated, strict=False)]
+        curated = [typed_candidates[i - 1] for i in valid_indices[:max_stories]]
+        titles = [f"  {i}. {s.title[:55]}..." for i, s in zip(valid_indices, curated, strict=False)]
         logger.info(f"LLM curated {max_stories} stories:\n" + "\n".join(titles))
         return curated
 
     except Exception as e:
         logger.warning(f"LLM curation failed ({e}). Falling back to top-{max_stories} by popularity/recency score.")
-        return candidates[:max_stories]
+        return typed_candidates[:max_stories]
 
 
 # Fallback text used when a story's summary cannot pass fact-checking after all retries.
@@ -112,7 +116,7 @@ STORY_FALLBACK_SUMMARY = "⚠️ Failed to generate a reliable summary. Read the
 
 
 def generate_story_summary(
-    story: dict[str, Any],
+    story: Story | dict[str, Any],
     theme_dict: dict[str, Any],
     config: dict[str, Any],
     correction_hint: str = "",
@@ -124,6 +128,8 @@ def generate_story_summary(
     into the prompt so the model can correct the previous attempt.
     Returns the raw summary text (no header), or "" on LLM failure.
     """
+    s_obj = story if isinstance(story, Story) else Story.from_dict(story)
+
     llm_cfg = config.get("llm", {})
     ollama_url = llm_cfg.get("ollama_url", "http://localhost:11434").rstrip("/")
     model = llm_cfg.get("model", "phi4-mini:3.8b")
@@ -140,9 +146,9 @@ def generate_story_summary(
     prompt = (
         f"You are an expert AI tech writer. Briefing theme: '{theme_dict.get('name')}'.\n\n"
         f"Story Source:\n"
-        f"  Title: {story.get('title', '')}\n"
-        f"  Source: {story.get('source', '')}\n"
-        f"  Summary: {story.get('summary', '')}\n\n"
+        f"  Title: {s_obj.title}\n"
+        f"  Source: {s_obj.source}\n"
+        f"  Summary: {s_obj.summary}\n\n"
         f"Task: Write EXACTLY 2 short sentences summarizing this story for a senior technical audience.\n"
         f"STRICT RULES:\n"
         f"1. Use ONLY facts, figures, and concepts explicitly stated in the Story Source above.\n"
@@ -166,7 +172,7 @@ def generate_story_summary(
         resp.raise_for_status()
         return resp.json().get("response", "").strip()
     except Exception as exc:
-        logger.warning(f"generate_story_summary failed for '{story.get('title', '')[:50]}': {exc}")
+        logger.warning(f"generate_story_summary failed for '{s_obj.title[:50]}': {exc}")
         return ""
 
 
@@ -175,7 +181,7 @@ _VALIDATION_MAX_RETRIES = 3
 
 
 def generate_story_summary_validated(
-    story: dict[str, Any],
+    story: Story | dict[str, Any],
     theme_dict: dict[str, Any],
     config: dict[str, Any],
 ) -> str:
@@ -185,19 +191,21 @@ def generate_story_summary_validated(
     """
     from validator import validate_story
 
-    title = story.get("title", "")
-    link = story.get("link", "")
+    s_obj = story if isinstance(story, Story) else Story.from_dict(story)
+
+    title = s_obj.title
+    link = s_obj.link
     current_section = ""
     hint = ""
 
     for attempt in range(1, _VALIDATION_MAX_RETRIES + 1):
-        summary_text = generate_story_summary(story, theme_dict, config, correction_hint=hint)
+        summary_text = generate_story_summary(s_obj, theme_dict, config, correction_hint=hint)
         if not summary_text:
-            summary_text = story.get("summary", "")[:200]
+            summary_text = s_obj.summary[:200]
 
         current_section = f"## [{title}]({link})\n{summary_text}\n"
 
-        result = validate_story(story, current_section, config, run_llm_check=True)
+        result = validate_story(s_obj, current_section, config, run_llm_check=True)
         status = "PASSED" if result.passed else "FAILED / WARN"
 
         logger.info(
@@ -207,6 +215,7 @@ def generate_story_summary_validated(
         )
 
         if result.passed:
+            s_obj.validated_summary = summary_text
             return summary_text
 
         for w in result.fabrication_warnings:
@@ -219,26 +228,29 @@ def generate_story_summary_validated(
             logger.info(f"  ↻ Regenerating summary for story [{title[:30]}...] with correction hint...")
 
     logger.warning(f"Story [{title[:40]}...] failed fact-check after {_VALIDATION_MAX_RETRIES} attempts. Using fallback.")
+    s_obj.validated_summary = STORY_FALLBACK_SUMMARY
     return STORY_FALLBACK_SUMMARY
 
 
 def validate_and_correct_audio_script(
-    stories: list[dict[str, Any]],
+    stories: list[Story | dict[str, Any]],
     audio_script: str,
     config: dict[str, Any],
 ) -> tuple[bool, str]:
     """Validate audio script against source stories using LLM fact-checker."""
     from validator import llm_fact_check
 
+    typed_stories = [s if isinstance(s, Story) else Story.from_dict(s) for s in stories]
+
     source_text = "\n\n".join(
-        [f"Title: {s.get('title')}\nSummary: {s.get('summary')}" for s in stories]
+        [f"Title: {s.title}\nSummary: {s.summary}" for s in typed_stories]
     )
     passed, reasoning = llm_fact_check(source_text, audio_script, config)
     return passed, reasoning
 
 
 def generate_briefing_llm(
-    stories: list[dict[str, Any]],
+    stories: list[Story | dict[str, Any]],
     theme_dict: dict[str, Any],
     config: dict[str, Any],
     text_only: bool = False,
@@ -248,6 +260,8 @@ def generate_briefing_llm(
     1. text_digest: validated story summaries prefixed with Theme header.
     2. audio_script: validated ~750 words podcast host script adhering to theme's tone.
     """
+    typed_stories = [s if isinstance(s, Story) else Story.from_dict(s) for s in stories]
+
     llm_cfg = config.get("llm", {})
     ollama_url = llm_cfg.get("ollama_url", "http://localhost:11434").rstrip("/")
     model = llm_cfg.get("model", "phi4-mini:3.8b")
@@ -262,17 +276,17 @@ def generate_briefing_llm(
     digest_sections = []
     stories_context = []
 
-    for idx, s in enumerate(stories, 1):
+    for idx, s in enumerate(typed_stories, 1):
         # 1. Generate & validate each story summary immediately
         validated_summary = generate_story_summary_validated(s, theme_dict, config)
-        section = f"## [{s.get('title')}]({s.get('link')})\n{validated_summary}\n"
+        section = f"## [{s.title}]({s.link})\n{validated_summary}\n"
         digest_sections.append(section)
 
         stories_context.append(
             f"Story {idx}:\n"
-            f"- Title: {s['title']}\n"
-            f"- Source: {s['source']}\n"
-            f"- Link: {s['link']}\n"
+            f"- Title: {s.title}\n"
+            f"- Source: {s.source}\n"
+            f"- Link: {s.link}\n"
             f"- Summary: {validated_summary}\n"
         )
 
@@ -303,7 +317,7 @@ def generate_briefing_llm(
                 f"Write a complete, natural spoken podcast monologue script of approximately {word_target} words.\n"
                 f"STRICT RULES:\n"
                 f"- Open smoothly with today's theme (e.g., 'Welcome back. Today we're looking through our {theme_dict.get('name')} lens...').\n"
-                f"- Walk through all {len(stories)} stories with natural conversational transitions and genuine technical depth.\n"
+                f"- Walk through all {len(typed_stories)} stories with natural conversational transitions and genuine technical depth.\n"
                 f"- Write phonetically clean spoken English: absolutely NO markdown asterisks, hashes, bullets, brackets, or code symbols.\n"
                 f"- Absolutely NO URLs, domain names, links, or 'available at' phrases.\n"
                 f"- Conclude with a warm, professional wrap-up.\n"
@@ -330,7 +344,7 @@ def generate_briefing_llm(
                 logger.error(f"Error generating audio script attempt {attempt}: {e}")
 
             if candidate_script and len(candidate_script.split()) >= 40:
-                script_passed, reasoning = validate_and_correct_audio_script(stories, candidate_script, config)
+                script_passed, reasoning = validate_and_correct_audio_script(typed_stories, candidate_script, config)
                 status = "PASSED" if script_passed else "FAILED / WARN"
                 logger.info(f"Audio Script Attempt {attempt}/{_VALIDATION_MAX_RETRIES} Fact-Check: {status}")
 
@@ -346,10 +360,10 @@ def generate_briefing_llm(
         if not audio_script:
             logger.warning("Using fallback audio script from stories after validation failures.")
             script_parts = [f"Welcome to today's {theme_dict.get('name')} briefing. "]
-            for idx, s in enumerate(stories, 1):
-                clean_t = clean_script_for_audio(s["title"])
-                clean_s = clean_script_for_audio(s["summary"])
-                script_parts.append(f"Story number {idx}. From {s['source']}. {clean_t}. {clean_s}. ")
+            for idx, s in enumerate(typed_stories, 1):
+                clean_t = clean_script_for_audio(s.title)
+                clean_s = clean_script_for_audio(s.summary)
+                script_parts.append(f"Story number {idx}. From {s.source}. {clean_t}. {clean_s}. ")
             script_parts.append("That concludes today's theme update.")
             audio_script = clean_script_for_audio(" ".join(script_parts))
 

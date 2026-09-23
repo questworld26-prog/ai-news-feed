@@ -14,6 +14,8 @@ from typing import Any
 import feedparser
 import requests
 
+from story import Story
+
 logger = logging.getLogger("ai_briefing")
 
 # Minimum cleaned-summary length before we attempt a live article fetch.
@@ -82,21 +84,31 @@ def is_similar_title(title1: str, title2: str, threshold: float = 0.65) -> bool:
     return SequenceMatcher(None, t1, t2).ratio() >= threshold
 
 
-def score_entry(entry: dict[str, Any]) -> float:
+def score_entry(entry: Story | dict[str, Any]) -> float:
     """
     Compute a relevance score for a feed entry.
     Hacker News entries are boosted by popularity (points).
     All entries are boosted by recency (newer = higher score).
     """
+    if isinstance(entry, Story):
+        pub_dt = entry.pub_dt or datetime.now(UTC)
+        source = entry.source
+        points = entry.points
+        summary = entry.summary
+    else:
+        pub_dt = entry.get("pub_dt") or datetime.now(UTC)
+        source = entry.get("source", "")
+        points = entry.get("points", 0)
+        summary = entry.get("summary", "")
+
     now = datetime.now(UTC)
-    age_hours = max(0.0, (now - entry["pub_dt"]).total_seconds() / 3600)
+    age_hours = max(0.0, (now - pub_dt).total_seconds() / 3600)
     recency_score = max(0.0, 1.0 - (age_hours / 48.0))
 
     popularity_score = 0.0
-    if "Hacker News" in entry.get("source", ""):
-        points = entry.get("points", 0)
+    if "Hacker News" in source:
         if not points:
-            points_match = re.search(r"Points:\s*(\d+)", entry.get("summary", ""))
+            points_match = re.search(r"Points:\s*(\d+)", summary)
             if points_match:
                 points = int(points_match.group(1))
         if points:
@@ -126,7 +138,7 @@ def matches_hard_filters(title: str, summary: str, hard_filters: list[str]) -> b
     return False
 
 
-def parse_feed_entry(entry: Any, name: str, hard_filters: list[str], now: datetime) -> dict[str, Any] | None:
+def parse_feed_entry(entry: Any, name: str, hard_filters: list[str], now: datetime) -> Story | None:
     """Parse, clean, filter, and enrich a single feed entry."""
     pub_parsed = getattr(entry, "published_parsed", None) or getattr(entry, "updated_parsed", None)
     pub_dt = datetime(*pub_parsed[:6], tzinfo=UTC) if pub_parsed else now
@@ -148,24 +160,24 @@ def parse_feed_entry(entry: Any, name: str, hard_filters: list[str], now: dateti
             summary = fetched
             logger.debug(f"Summary enriched via live fetch: '{title[:55]}'")
 
-    return {
-        "source": name,
-        "title": title,
-        "link": link,
-        "summary": summary[:400] if summary else "",
-        "pub_dt": pub_dt,
-        "points": points,
-    }
+    return Story(
+        source=name,
+        title=title,
+        link=link,
+        summary=summary[:400] if summary else "",
+        pub_dt=pub_dt,
+        points=points,
+    )
 
 
-def fetch_entries_from_source(src: dict[str, Any], hard_filters: list[str], now: datetime) -> list[dict[str, Any]]:
+def fetch_entries_from_source(src: dict[str, Any], hard_filters: list[str], now: datetime) -> list[Story]:
     """Fetch and parse all valid entries from a single RSS feed source."""
     name = src.get("name", "Unknown")
     url = src.get("url", "")
     if not url:
         return []
 
-    entries = []
+    entries: list[Story] = []
     try:
         logger.info(f"Querying feed: {name}...")
         parsed = feedparser.parse(url, request_headers={"User-Agent": "Mozilla/5.0 (compatible; AIBriefingBot/1.0)"})
@@ -186,24 +198,24 @@ def fetch_entries_from_source(src: dict[str, Any], hard_filters: list[str], now:
 
 
 def build_candidate_pool(
-    all_entries: list[dict[str, Any]], candidate_pool_size: int, max_per_source: int = 2
-) -> list[dict[str, Any]]:
+    all_entries: list[Story], candidate_pool_size: int, max_per_source: int = 2
+) -> list[Story]:
     """Filter duplicates, apply per-source limits, and select top candidate stories."""
     for entry in all_entries:
-        entry["score"] = score_entry(entry)
-    all_entries.sort(key=lambda x: x["score"], reverse=True)
+        entry.score = score_entry(entry)
+    all_entries.sort(key=lambda x: x.score, reverse=True)
 
-    candidate_pool = []
+    candidate_pool: list[Story] = []
     source_counts: dict[str, int] = {}
 
     # Primary pass: enforce per-source limit and title deduplication
     for item in all_entries:
-        src = item["source"]
+        src = item.source
         if source_counts.get(src, 0) >= max_per_source:
             continue
 
-        if any(is_similar_title(item["title"], existing["title"]) for existing in candidate_pool):
-            logger.debug(f"Skipping duplicate: '{item['title'][:60]}...' (source: {item['source']})")
+        if any(is_similar_title(item.title, existing.title) for existing in candidate_pool):
+            logger.debug(f"Skipping duplicate: '{item.title[:60]}...' (source: {item.source})")
             continue
 
         candidate_pool.append(item)
@@ -216,7 +228,7 @@ def build_candidate_pool(
         for item in all_entries:
             if item in candidate_pool:
                 continue
-            if not any(is_similar_title(item["title"], existing["title"]) for existing in candidate_pool):
+            if not any(is_similar_title(item.title, existing.title) for existing in candidate_pool):
                 candidate_pool.append(item)
                 if len(candidate_pool) >= candidate_pool_size:
                     break
@@ -224,7 +236,7 @@ def build_candidate_pool(
     return candidate_pool
 
 
-def fetch_stories_for_theme(theme_dict: dict[str, Any], config: dict[str, Any]) -> list[dict[str, Any]]:
+def fetch_stories_for_theme(theme_dict: dict[str, Any], config: dict[str, Any]) -> list[Story]:
     """
     Fetch AI stories from RSS feeds specific to a chosen theme.
     Filters out noise using hard_filters, scores remaining stories,
@@ -234,7 +246,7 @@ def fetch_stories_for_theme(theme_dict: dict[str, Any], config: dict[str, Any]) 
     hard_filters = theme_dict.get("hard_filters", [])
     candidate_pool_size = config.get("feeds", {}).get("candidate_pool_size", 15)
 
-    all_entries = []
+    all_entries: list[Story] = []
     now = datetime.now(UTC)
 
     logger.info(f"Fetching from {len(sources)} sources for theme '{theme_dict.get('name')}'...")

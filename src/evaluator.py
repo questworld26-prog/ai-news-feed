@@ -16,6 +16,8 @@ from typing import Any, NamedTuple
 
 from validator import compute_keyword_overlap, detect_fabrications, validate_story
 
+from story import Story
+
 logger = logging.getLogger("ai_briefing")
 
 
@@ -60,15 +62,16 @@ class EvaluationReport(NamedTuple):
 
 
 def evaluate_regex_rules(
-    digest_text: str, story: dict[str, Any], custom_regex: list[str] | None = None
+    digest_text: str, story: Story | dict[str, Any], custom_regex: list[str] | None = None
 ) -> tuple[bool, list[str]]:
     """
     Layer 1: Structural & Regex Checks.
     Validates markdown link format `## [Title](URL)`, date header, and link hygiene.
     """
+    s_obj = story if isinstance(story, Story) else Story.from_dict(story)
     errors = []
-    title = story.get("title", "")
-    link = story.get("link", "")
+    title = s_obj.title
+    link = s_obj.link
 
     # Check header link format: ## [Title](URL)
     expected_header_pattern = rf"##\s*\[{re.escape(title)}\]\({re.escape(link)}\)"
@@ -92,11 +95,12 @@ def evaluate_regex_rules(
     return len(errors) == 0, errors
 
 
-def evaluate_hhh_guardrails(digest_text: str, story: dict[str, Any]) -> HHHVerdict:
+def evaluate_hhh_guardrails(digest_text: str, story: Story | dict[str, Any]) -> HHHVerdict:
     """
     Layer 2: HHH Guardrails Evaluation (Helpful, Honest, Harmless).
     """
-    source_text = f"{story.get('title', '')}\n{story.get('summary', '')}\n{story.get('link', '')}"
+    s_obj = story if isinstance(story, Story) else Story.from_dict(story)
+    source_text = f"{s_obj.title}\n{s_obj.summary}\n{s_obj.link}"
 
     # 1. Honest (Factual accuracy & zero unsupported fabrications)
     honest_reasons = []
@@ -143,12 +147,13 @@ def evaluate_hhh_guardrails(digest_text: str, story: dict[str, Any]) -> HHHVerdi
     )
 
 
-def evaluate_rubrics(digest_text: str, story: dict[str, Any], config: dict[str, Any] | None = None) -> RubricScore:
+def evaluate_rubrics(digest_text: str, story: Story | dict[str, Any], config: dict[str, Any] | None = None) -> RubricScore:
     """
     Calculates 1-5 Rubric Scores for Honest, Helpful, and Harmless axes.
     Score 5 = Excellent, Score 3 = Acceptable, Score 1 = Unacceptable.
     """
-    source_text = f"{story.get('title', '')}\n{story.get('summary', '')}\n{story.get('link', '')}"
+    s_obj = story if isinstance(story, Story) else Story.from_dict(story)
+    source_text = f"{s_obj.title}\n{s_obj.summary}\n{s_obj.link}"
     reasons = []
 
     # Honest Rubric (1-5)

@@ -199,18 +199,23 @@ def llm_fact_check(source_text: str, digest_summary: str, config: dict[str, Any]
         return True, f"Fact check skipped due to error: {e}"
 
 
+from story import Story
+
+
 def validate_story(
-    story: dict[str, Any],
+    story: Story | dict[str, Any],
     digest_summary: str,
     config: dict[str, Any],
     run_llm_check: bool = True,
     min_keyword_threshold: float = 0.35,
 ) -> ValidationResult:
     """Validate a single story summary against its source information."""
-    source_text = f"{story.get('title', '')}\n{story.get('summary', '')}\n{story.get('link', '')}"
+    s_obj = story if isinstance(story, Story) else Story.from_dict(story)
+
+    source_text = f"{s_obj.title}\n{s_obj.summary}\n{s_obj.link}"
 
     # Isolate section for this specific story from full digest if possible
-    story_title = story.get("title", "")
+    story_title = s_obj.title
     target_digest = digest_summary
     if story_title and story_title in digest_summary:
         parts = digest_summary.split(story_title)
@@ -228,7 +233,7 @@ def validate_story(
     passed = (overlap_score >= min_keyword_threshold) and (len(fabrication_warnings) == 0) and llm_passed
 
     return ValidationResult(
-        story_title=story.get("title", "Untitled"),
+        story_title=s_obj.title,
         keyword_overlap_score=overlap_score,
         fabrication_warnings=fabrication_warnings,
         llm_fact_check_passed=llm_passed,
