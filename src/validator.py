@@ -173,6 +173,76 @@ def detect_fabrications(source_text: str, digest_text: str) -> list[str]:
     return warnings
 
 
+def detect_unanchored_entities(source_text: str, digest_text: str) -> list[str]:
+    """
+    Deterministic gate: flag any capitalized proper nouns, company names,
+    or model identifiers appearing in digest text that are missing from source text.
+    """
+    warnings = []
+    # Pattern to match:
+    # 1. Multi-word or single capitalized proper entities/organizations (e.g. "Stanford R&DE", "OpenAI", "Anthropic")
+    # 2. Alphanumeric model identifiers (e.g. "o1-preview", "Claude 3.5", "vLLM", "GPT-4")
+    raw_entities = re.findall(
+        r"\b[A-Z][a-zA-Z0-9]*(?:[&/'-][A-Z0-9][a-zA-Z0-9]*)*(?:\s+[A-Z0-9][a-zA-Z0-9]*(?:[&/'-][A-Z0-9][a-zA-Z0-9]*)*)*\b|\b[a-zA-Z]+\d+(?:-\w+)?\b",
+        digest_text,
+    )
+    source_lower = source_text.lower()
+    # Common English words/days/pronouns that appear capitalized at sentence starts
+    benign_words = {
+        "the",
+        "this",
+        "that",
+        "these",
+        "those",
+        "today",
+        "yesterday",
+        "tomorrow",
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday",
+        "it",
+        "its",
+        "in",
+        "on",
+        "at",
+        "by",
+        "for",
+        "with",
+        "from",
+        "as",
+        "an",
+        "a",
+        "and",
+        "but",
+        "or",
+        "if",
+        "new",
+        "after",
+        "before",
+        "while",
+        "when",
+    }
+
+    seen = set()
+    for ent in raw_entities:
+        ent_clean = ent.strip()
+        ent_lower = ent_clean.lower()
+        if ent_lower in benign_words or ent_lower in seen:
+            continue
+        # Filter single 1 or 2 letter words unless known or uppercase model
+        if len(ent_clean) < 3:
+            continue
+        seen.add(ent_lower)
+        if ent_lower not in source_lower:
+            warnings.append(f"Unanchored entity or model '{ent_clean}' in summary was not found in source text.")
+
+    return warnings
+
+
 class FactCheckResponse(BaseModel):
     reasoning: str = Field(
         description="Detailed step-by-step reasoning evaluating factual adherence and checking for fabrications or URLs"
@@ -188,7 +258,7 @@ def llm_fact_check(source_text: str, digest_summary: str, config: dict[str, Any]
     llm_cfg = config.get("llm", {})
     testing_cfg = config.get("testing", {})
     ollama_url = llm_cfg.get("ollama_url", "http://localhost:11434").rstrip("/")
-    model = testing_cfg.get("test_model") or llm_cfg.get("model", "qwen2.5:3b")
+    model = testing_cfg.get("audit_model") or testing_cfg.get("test_model") or llm_cfg.get("model", "qwen2.5:3b")
 
     # Expanded to 4000 characters so multi-story scripts have complete source visibility
     prompt = (
@@ -248,18 +318,24 @@ def validate_story(
 
     overlap_score = compute_keyword_overlap(source_text, target_digest)
     fabrication_warnings = detect_fabrications(source_text, target_digest)
+    unanchored_entities = detect_unanchored_entities(source_text, target_digest)
+    all_warnings = fabrication_warnings + unanchored_entities
 
     llm_passed = True
     llm_reasoning = "Skipped LLM self-check."
-    if run_llm_check:
+    # Fast path: if deterministic gates fail (unanchored entities or numbers), fail immediately
+    if len(all_warnings) > 0:
+        llm_passed = False
+        llm_reasoning = f"Deterministic gate failure: {'; '.join(all_warnings)}"
+    elif run_llm_check:
         llm_passed, llm_reasoning = llm_fact_check(source_text, target_digest, config)
 
-    passed = (overlap_score >= min_keyword_threshold) and (len(fabrication_warnings) == 0) and llm_passed
+    passed = (overlap_score >= min_keyword_threshold) and (len(all_warnings) == 0) and llm_passed
 
     return ValidationResult(
         story_title=s_obj.title,
         keyword_overlap_score=overlap_score,
-        fabrication_warnings=fabrication_warnings,
+        fabrication_warnings=all_warnings,
         llm_fact_check_passed=llm_passed,
         llm_reasoning=llm_reasoning,
         passed=passed,

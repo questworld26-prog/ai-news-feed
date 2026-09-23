@@ -211,3 +211,31 @@ def test_fetch_article_excerpt_filters_cookie_banners(monkeypatch):
     excerpt = fetch_article_excerpt("https://example.com/test-article")
     assert "cookies" not in excerpt.lower()
     assert "distributed inference kernel" in excerpt
+
+
+def test_detect_unanchored_entities_catches_hallucinated_orgs():
+    from validator import detect_unanchored_entities
+
+    source = "Simon Willison released version 1.0 of datasette-auth-github."
+    # Digest hallucinates Stanford R&DE and OpenAI
+    digest = "Simon Willison and Stanford R&DE collaborated with OpenAI on datasette."
+    warnings = detect_unanchored_entities(source, digest)
+
+    assert len(warnings) >= 2
+    assert any("Stanford R&DE" in w for w in warnings)
+    assert any("OpenAI" in w for w in warnings)
+
+
+def test_story_summary_response_extractive_anchoring():
+    from briefing_generator import StorySummaryResponse
+
+    data = {
+        "direct_quotes": [
+            "Simon Willison released version 1.0 of datasette-auth-github",
+            "fixing a session cookie expiration issue on Mobile Safari",
+        ],
+        "summary": "Simon Willison released datasette-auth-github 1.0. It resolves a Mobile Safari cookie expiration bug.",
+    }
+    model = StorySummaryResponse.model_validate(data)
+    assert len(model.direct_quotes) == 2
+    assert "datasette-auth-github 1.0" in model.summary

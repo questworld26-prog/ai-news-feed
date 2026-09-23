@@ -65,15 +65,22 @@ sources = [
 ]
 
 [llm]
-#model = "qwen2.5:3b"
-model = "phi4-mini:3.8b"
 ollama_url = "http://localhost:11434"
+# Default fallback model
+model = "phi4-mini:3.8b"
+# Specialized models per pipeline role:
+# - Curation: phi4-mini excels at structured multi-story reasoning & prioritization
+curation_model = "phi4-mini:3.8b"
+# - Summarization: qwen2.5 excels at multilingual factual extraction with low hallucination
+summary_model = "qwen2.5:3b"
+# - Monologue Scriptwriting: phi4-mini excels at collegiate conversational podcast host flow
+script_model = "phi4-mini:3.8b"
 script_word_target = 750
 
 [testing]
 # Model used specifically for anti-hallucination fact checking and verification tests
 test_model = "qwen2.5:3b"
-# test_model = "phi4-mini:3.8b"
+audit_model = "qwen2.5:3b"
 
 
 [tts]

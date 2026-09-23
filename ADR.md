@@ -76,6 +76,22 @@ Engineering teams and tech executives require daily briefings on AI developments
 - **Module Boundary**: `generate_story_summary_validated()` and `validate_and_correct_audio_script()` live in `briefing_generator.py` alongside LLM generation logic; `validator.py` remains stateless and decoupled.
 - **Rationale**: Running post-hoc regex-splitting over assembled bulk digests was fragile and left spoken audio scripts unvalidated. Inline per-item validation guarantees end-to-end factual accuracy across both text and voice channels.
 
+---
+
+### ADR-07: Small-Model Factual Hardening (Extractive Anchoring, Positive Constraints, Few-Shot Grounding & Truth Hierarchy)
+- **Decision**: To achieve $\ge 99\%$ factual accuracy when operating with small language models (SLMs, $\le 4\text{B}$ parameters like `phi4-mini:3.8b` and `qwen2.5:3b`), implement six architectural guardrails:
+  1. **Extractive Anchoring (`StorySummaryResponse`)**: Force the model to quote verbatim phrases from the source into `direct_quotes` before generating `summary`, preventing parametric hallucinations.
+  2. **Deterministic Entity & Model Gate (`detect_unanchored_entities`)**: Deterministically audit capitalized proper nouns and model identifiers in Python before calling LLM auditors; reject unanchored entities in $< 1\text{ms}$.
+  3. **Positive Constraint Framing**: Rephrase prompts into positive active constraints rather than confusing negative "DO NOT" instructions that trigger attention misdirection.
+  4. **Few-Shot In-Context Grounding**: Embed explicit positive and negative few-shot reference pairs directly in prompts to anchor structural conciseness.
+  5. **Hierarchy of Truth**: The spoken podcast monologue is generated and fact-checked strictly against the *validated 2-sentence summaries* rather than uncleaned RSS text, eliminating multi-stage fact degradation.
+  6. **Model Specialization**: Separate pipeline roles to best-in-class small models:
+     - `curation_model`: `phi4-mini:3.8b` (structured logic & ranking)
+     - `summary_model`: `qwen2.5:3b` (factual extraction & precision)
+     - `script_model`: `phi4-mini:3.8b` (natural spoken monologue voice)
+     - `audit_model`: `qwen2.5:3b` (deterministic fact-checker at temperature 0.0)
+- **Rationale**: Small models lack the broad reasoning capacity of frontier models. Hardening the pipeline with extractive anchoring, deterministic entity gating, and positive few-shot constraints eliminates hallucinations without requiring larger hardware.
+
 ## 3. Testing & QA Strategy Summary
 
 | Level | Component | Focus | Implementation |

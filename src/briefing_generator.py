@@ -155,11 +155,11 @@ def llm_curate_stories(
 
 
 class StorySummaryResponse(BaseModel):
-    analysis: str = Field(
-        description="Brief step-by-step analysis of facts, figures, and concepts explicitly stated in the source text"
+    direct_quotes: list[str] = Field(
+        description="2 to 3 verbatim sentences or phrases extracted word-for-word directly from the source text"
     )
     summary: str = Field(
-        description="EXACTLY 2 short sentences summarizing the story for a senior technical audience, using ONLY facts from the source text"
+        description="EXACTLY 2 concise sentences synthesizing ONLY the facts and concepts present in direct_quotes"
     )
 
 
@@ -174,40 +174,41 @@ def generate_story_summary(
     correction_hint: str = "",
 ) -> str:
     """
-    Generate a concise 2-sentence markdown summary for a single story.
-
-    If *correction_hint* is provided (from a failed fact-check), it is injected
-    into the prompt so the model can correct the previous attempt.
-    Returns the raw summary text (no header), or "" on LLM failure.
+    Generate an accurate, grounded 2-sentence summary for a single story.
+    Enforces extractive anchoring (verbatim quotes first) and positive constraint framing.
     """
     s_obj = story if isinstance(story, Story) else Story.from_dict(story)
 
     llm_cfg = config.get("llm", {})
     ollama_url = llm_cfg.get("ollama_url", "http://localhost:11434").rstrip("/")
-    model = llm_cfg.get("model", "phi4-mini:3.8b")
+    # Use specialized summary_model if configured, falling back to general model
+    model = llm_cfg.get("summary_model") or llm_cfg.get("model", "qwen2.5:3b")
 
     correction_block = (
-        f"\n\nCRITICAL FIX NEEDED FOR PREVIOUS FAILING ATTEMPT:\n"
-        f"Fact-checker error reasoning: {correction_hint}\n"
-        f"You MUST fix this. Strictly rely ONLY on text present in the Title and Summary above. "
-        f"Remove all figures, technical terms, background domain knowledge, or links not explicitly mentioned in the source."
+        f"\n\nCORRECTION REQUIRED FOR PREVIOUS ATTEMPT:\n"
+        f"Fact-checker finding: {correction_hint}\n"
+        f"Action: Remove any unanchored terms or figures. Confine your quotes and summary strictly to the text provided below."
         if correction_hint.strip()
         else ""
     )
 
     prompt = (
-        f"You are an expert AI tech writer. Briefing theme: '{theme_dict.get('name')}'.\n\n"
-        f"Story Source:\n"
-        f"  Title: {s_obj.title}\n"
-        f"  Source: {s_obj.source}\n"
-        f"  Summary: {s_obj.summary}\n\n"
-        f"Task:\n"
-        f"First, write a brief step-by-step 'analysis' of key facts stated in the source.\n"
-        f"Then, write 'summary': EXACTLY 2 short sentences summarizing this story for a senior technical audience.\n\n"
-        f"STRICT RULES:\n"
-        f"1. Use ONLY facts, figures, and concepts explicitly stated in the Story Source above.\n"
-        f"2. DO NOT use your outside knowledge or add extra medical/scientific background terms.\n"
-        f"3. DO NOT include markdown links, URLs, or any numbers/figures that do not appear verbatim in the source."
+        f"You are a factual AI technical journalist preparing an executive digest for theme '{theme_dict.get('name')}'.\n\n"
+        f"SOURCE ARTICLE:\n"
+        f"Title: {s_obj.title}\n"
+        f"Source: {s_obj.source}\n"
+        f"Text:\n{s_obj.summary}\n\n"
+        f"TASK & EXECUTION ORDER:\n"
+        f"1. Extract 2 to 3 verbatim sentences or key phrases directly from the Text above into 'direct_quotes'.\n"
+        f"2. Write 'summary': exactly 2 short sentences expressing only the facts stated in your 'direct_quotes'.\n\n"
+        f"POSITIVE CONSTRAINTS:\n"
+        f"- Confine your vocabulary strictly to the entities, benchmarks, and claims present in the Source Article.\n"
+        f"- Express all metrics and quantities using the exact numbers from the Source Article.\n"
+        f"- Write in clean, objective engineering prose.\n\n"
+        f"EXAMPLE OF ACCEPTABLE GROUNDED SUMMARY:\n"
+        f"Input Text: 'Datasette auth github 1.0 released by Simon Willison fixing session cookie expiration on Safari by setting Max-Age.'\n"
+        f"direct_quotes: ['Datasette auth github 1.0 released by Simon Willison', 'fixing session cookie expiration on Safari by setting Max-Age']\n"
+        f"summary: 'Simon Willison released version 1.0 of datasette-auth-github. The release configures Max-Age to resolve session cookie expiration on Safari.'\n"
         f"{correction_block}"
     )
 
@@ -219,7 +220,7 @@ def generate_story_summary(
                 "prompt": prompt,
                 "format": StorySummaryResponse.model_json_schema(),
                 "stream": False,
-                "options": {"temperature": 0.2, "num_ctx": 2048},
+                "options": {"temperature": 0.1, "num_ctx": 2048},
             },
             timeout=60,
         )
@@ -296,12 +297,18 @@ def validate_and_correct_audio_script(
     audio_script: str,
     config: dict[str, Any],
 ) -> tuple[bool, str]:
-    """Validate audio script against source stories using LLM fact-checker."""
+    """
+    Validate audio script against verified stories using the Hierarchy of Truth:
+    Source text is built from verified summaries and titles rather than raw noisy RSS text.
+    """
     from validator import llm_fact_check
 
     typed_stories = [s if isinstance(s, Story) else Story.from_dict(s) for s in stories]
 
-    source_text = "\n\n".join([f"Title: {s.title}\nSummary: {s.summary}" for s in typed_stories])
+    # Ground truth for audio script is the already-validated story summaries
+    source_text = "\n\n".join(
+        [f"Title: {s.title}\nValidated Summary: {s.validated_summary or s.summary}" for s in typed_stories]
+    )
     passed, reasoning = llm_fact_check(source_text, audio_script, config)
     return passed, reasoning
 
@@ -322,7 +329,7 @@ def generate_briefing_llm(
 
     llm_cfg = config.get("llm", {})
     ollama_url = llm_cfg.get("ollama_url", "http://localhost:11434").rstrip("/")
-    model = llm_cfg.get("model", "phi4-mini:3.8b")
+    model = llm_cfg.get("script_model") or llm_cfg.get("model", "phi4-mini:3.8b")
     word_target = llm_cfg.get("script_word_target", 750)
 
     theme_badge = (
