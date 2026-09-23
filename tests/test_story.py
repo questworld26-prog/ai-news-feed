@@ -3,7 +3,6 @@ Unit tests for Story dataclass.
 """
 
 from datetime import UTC, datetime
-import pytest
 
 from story import Story
 
@@ -87,3 +86,32 @@ def test_story_to_structured_prompt_dict():
         "summary": "Open weights model launched today.",
         "points": 10,
     }
+
+
+def test_briefing_output_markdown_rendering():
+    from story import BriefingOutput
+
+    s = Story(
+        source="ArXiv",
+        title="Scaling Laws in LLMs",
+        link="https://arxiv.org/abs/1234",
+        summary="Study on compute scaling.",
+        validated_summary="New study explores compute scaling in LLMs.",
+    )
+    briefing = BriefingOutput(
+        theme_name="Innovation Scout",
+        theme_emoji="🔭",
+        theme_description="New AI breakthroughs",
+        stories=[s],
+        text_digest="🔭 **Innovation Scout**\n_New AI breakthroughs_\n\n## [Scaling Laws in LLMs](https://arxiv.org/abs/1234)\nNew study explores compute scaling in LLMs.",
+        audio_script="Welcome back to our tech podcast...",
+    )
+    md_content = briefing.to_markdown()
+    assert "🔭 **Innovation Scout**" in md_content
+    assert "## [Scaling Laws in LLMs](https://arxiv.org/abs/1234)" in md_content
+    assert "## Spoken Audio Script" in md_content
+    assert "Welcome back to our tech podcast..." in md_content
+
+    # Check dict backwards compatibility
+    assert briefing.get("text_digest") == briefing.text_digest
+    assert briefing["audio_script"] == briefing.audio_script

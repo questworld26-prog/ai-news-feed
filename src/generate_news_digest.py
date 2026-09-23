@@ -20,14 +20,11 @@ from typing import Any
 from dotenv import load_dotenv
 
 from briefing_generator import (
-    STORY_FALLBACK_SUMMARY,
     generate_briefing_llm,
-    generate_story_summary,
     llm_curate_stories,
 )
 from news_fetcher import fetch_stories_for_theme
 from notifier import send_to_telegram, synthesize_audio
-from validator import validate_story
 
 logging.basicConfig(
     level=logging.INFO,
@@ -48,9 +45,6 @@ def load_config(config_path: Path) -> dict[str, Any]:
 
 # Maximum number of summary regeneration attempts per story before using the fallback.
 _VALIDATION_MAX_RETRIES = 3
-
-
-
 
 
 def run_all_themes(config: dict[str, Any], output_dir: Path, today_str: str) -> None:
@@ -145,11 +139,11 @@ def main() -> None:
 
     # Step 3: LLM Briefing Digest & Monologue Script (validated per-story & per-script)
     briefing_data = generate_briefing_llm(stories, theme_dict, config)
-    text_digest = briefing_data.get("text_digest", "")
-    audio_script = briefing_data.get("audio_script", "")
+    text_digest = briefing_data.text_digest
+    audio_script = briefing_data.audio_script
 
     summary_file = output_dir / f"{today_str}_{theme_key}_summary.md"
-    summary_file.write_text(f"{text_digest}\n\n## Spoken Audio Script\n\n{audio_script}", encoding="utf-8")
+    summary_file.write_text(briefing_data.to_markdown(), encoding="utf-8")
     logger.info(f"Saved text digest & script to {summary_file}")
 
     if args.dry_run:

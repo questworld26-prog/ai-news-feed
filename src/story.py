@@ -75,3 +75,44 @@ class Story:
             "summary": self.summary,
             "points": self.points,
         }
+
+
+@dataclass
+class BriefingOutput:
+    """
+    Structured output representing a complete daily briefing digest.
+    Guarantees strict, standardized markdown layout structure across all generated .md files.
+    """
+
+    theme_name: str
+    theme_emoji: str
+    theme_description: str
+    stories: list[Story]
+    text_digest: str
+    audio_script: str = ""
+
+    def to_markdown(self) -> str:
+        """
+        Render the strict, standardized markdown content for .md storage.
+        Ensures consistent headers, structured story blocks, and optional spoken script section.
+        """
+        content = [self.text_digest.strip()]
+        if self.audio_script.strip():
+            content.append("\n\n## Spoken Audio Script\n\n" + self.audio_script.strip())
+        return "\n".join(content)
+
+    def get(self, key: str, default: Any = None) -> Any:
+        """Dictionary-like get method for backwards compatibility."""
+        if key == "text_digest":
+            return self.text_digest
+        if key == "audio_script":
+            return self.audio_script
+        return getattr(self, key, default)
+
+    def __getitem__(self, key: str) -> Any:
+        """Dictionary-like indexing for backwards compatibility."""
+        if key == "text_digest":
+            return self.text_digest
+        if key == "audio_script":
+            return self.audio_script
+        raise KeyError(key)

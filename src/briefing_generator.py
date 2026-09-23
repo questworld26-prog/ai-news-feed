@@ -9,13 +9,12 @@ from __future__ import annotations
 import json
 import logging
 import re
-from datetime import datetime
 from typing import Any
 
 import requests
 from pydantic import BaseModel, Field
 
-from story import Story
+from story import BriefingOutput, Story
 
 logger = logging.getLogger("ai_briefing")
 
@@ -114,7 +113,6 @@ def llm_curate_stories(
         logger.info(f"\n=== LLM CURATION CRITERIA ({theme_dict.get('name')}) ===")
         logger.info(f"Evaluation Criteria: {curation_res.evaluation_criteria}\n")
 
-        reason_map = {j.index: j.reasoning for j in curation_res.justifications}
         for j in curation_res.justifications:
             if 1 <= j.index <= len(typed_candidates):
                 cand_title = typed_candidates[j.index - 1].title
@@ -149,7 +147,9 @@ def llm_curate_stories(
         return curated
 
     except Exception as e:
-        logger.warning(f"LLM curation schema parsing/generation failed ({e}). Falling back to top-{max_stories} by score.")
+        logger.warning(
+            f"LLM curation schema parsing/generation failed ({e}). Falling back to top-{max_stories} by score."
+        )
         sorted_candidates = sorted(typed_candidates, key=lambda s: s.score, reverse=True)
         return sorted_candidates[:max_stories]
 
@@ -284,7 +284,9 @@ def generate_story_summary_validated(
         if attempt < _VALIDATION_MAX_RETRIES:
             logger.info(f"  ↻ Regenerating summary for story [{title[:30]}...] with correction hint...")
 
-    logger.warning(f"❌ Story [{title[:40]}...] failed fact-check after {_VALIDATION_MAX_RETRIES} attempts. Using fallback.")
+    logger.warning(
+        f"❌ Story [{title[:40]}...] failed fact-check after {_VALIDATION_MAX_RETRIES} attempts. Using fallback."
+    )
     s_obj.validated_summary = STORY_FALLBACK_SUMMARY
     return STORY_FALLBACK_SUMMARY
 
@@ -299,9 +301,7 @@ def validate_and_correct_audio_script(
 
     typed_stories = [s if isinstance(s, Story) else Story.from_dict(s) for s in stories]
 
-    source_text = "\n\n".join(
-        [f"Title: {s.title}\nSummary: {s.summary}" for s in typed_stories]
-    )
+    source_text = "\n\n".join([f"Title: {s.title}\nSummary: {s.summary}" for s in typed_stories])
     passed, reasoning = llm_fact_check(source_text, audio_script, config)
     return passed, reasoning
 
@@ -311,11 +311,12 @@ def generate_briefing_llm(
     theme_dict: dict[str, Any],
     config: dict[str, Any],
     text_only: bool = False,
-) -> dict[str, str]:
+) -> BriefingOutput:
     """
     Call local Ollama endpoint to produce:
     1. text_digest: validated story summaries prefixed with Theme header.
     2. audio_script: validated ~750 words podcast host script adhering to theme's tone.
+    Returns a structured BriefingOutput class guaranteeing consistent markdown layout.
     """
     typed_stories = [s if isinstance(s, Story) else Story.from_dict(s) for s in stories]
 
@@ -425,4 +426,11 @@ def generate_briefing_llm(
             audio_script = clean_script_for_audio(" ".join(script_parts))
 
     logger.info(f"Generated text digest and audio script (~{len(audio_script.split())} words).")
-    return {"text_digest": full_text_digest, "audio_script": audio_script}
+    return BriefingOutput(
+        theme_name=str(theme_dict.get("name", "Daily Briefing")),
+        theme_emoji=str(theme_dict.get("emoji", "🎙️")),
+        theme_description=str(theme_dict.get("description", "")),
+        stories=typed_stories,
+        text_digest=full_text_digest,
+        audio_script=audio_script,
+    )
