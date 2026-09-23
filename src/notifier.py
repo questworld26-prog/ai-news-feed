@@ -43,6 +43,49 @@ def chunk_text(text: str, max_words: int = 150) -> list[str]:
     return [c.strip() for c in chunks if c.strip()]
 
 
+def unload_ollama_models(ollama_url: str = "http://localhost:11434") -> None:
+    """
+    Explicitly offload any active LLM models from Ollama VRAM/unified memory
+    to ensure full memory headroom for kokoro-mlx audio synthesis.
+    """
+    cleaned_url = ollama_url.rstrip("/")
+    try:
+        ps_resp = requests.get(f"{cleaned_url}/api/ps", timeout=5)
+        if ps_resp.ok:
+            models = ps_resp.json().get("models", [])
+            if not models:
+                logger.debug("No active Ollama models loaded in memory.")
+                return
+
+            for m in models:
+                m_name = m.get("name")
+                if m_name:
+                    logger.info(f"🧹 Offloading LLM '{m_name}' from unified memory for TTS headroom...")
+                    requests.post(
+                        f"{cleaned_url}/api/generate",
+                        json={"model": m_name, "keep_alive": 0},
+                        timeout=5,
+                    )
+    except Exception as e:
+        logger.warning(f"Could not offload Ollama models: {e}")
+
+
+def clear_mlx_memory() -> None:
+    """Free MLX intermediate tensor buffers and run Python garbage collection."""
+    import gc
+
+    gc.collect()
+    try:
+        import mlx.core as mx
+
+        if hasattr(mx, "clear_cache"):
+            mx.clear_cache()
+        elif hasattr(mx, "metal") and hasattr(mx.metal, "clear_cache"):
+            mx.metal.clear_cache()
+    except Exception as e:
+        logger.debug(f"MLX cache clear skipped: {e}")
+
+
 def synthesize_audio(
     script: str,
     output_dir: Path,
@@ -51,8 +94,16 @@ def synthesize_audio(
 ) -> list[Path]:
     """
     Synthesize speech using kokoro-mlx on Apple Silicon Metal.
+    Offloads LLM models prior to synthesis and frees Metal tensor cache between chunks.
     Returns list of generated audio file paths (split if > max_file_size_mb).
     """
+    llm_cfg = config.get("llm", {})
+    ollama_url = llm_cfg.get("ollama_url", "http://localhost:11434")
+
+    # Step 1: Offload LLM weights from unified memory before allocating TTS models
+    unload_ollama_models(ollama_url)
+    clear_mlx_memory()
+
     tts_cfg = config.get("tts", {})
     voice = tts_cfg.get("voice", "bm_george")
     speed = float(tts_cfg.get("speed", 1.0))
@@ -76,6 +127,12 @@ def synthesize_audio(
             audio_segments.append(np.array(res.audio, dtype=np.float32))
         except Exception as e:
             logger.warning(f"Failed to synthesize chunk {i}: {e}")
+        finally:
+            clear_mlx_memory()
+
+    # Release TTS instance from memory after completion
+    del tts
+    clear_mlx_memory()
 
     if not audio_segments:
         logger.error("No audio segments synthesized.")
