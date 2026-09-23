@@ -163,15 +163,19 @@ def llm_fact_check(source_text: str, digest_summary: str, config: dict[str, Any]
     model = testing_cfg.get("test_model") or llm_cfg.get("model", "qwen2.5:3b")
 
     prompt = (
-        f"You are a strict fact-checker auditing an AI-generated summary for factual accuracy against its source text.\n\n"
+        f"You are an auditing tool checking if an AI-generated summary is factually grounded in the source text.\n\n"
         f"SOURCE TEXT:\n{source_text[:1500]}\n\n"
         f"GENERATED SUMMARY:\n{digest_summary}\n\n"
         f"Task:\n"
-        f"Determine if the GENERATED SUMMARY contains any hallucinated claims, unsupported figures, or fake facts not present in the SOURCE TEXT.\n"
+        f"Check if the GENERATED SUMMARY contains:\n"
+        f"1. Completely fabricated figures or statistics not present in SOURCE TEXT.\n"
+        f"2. Explicit claims, hyper-specific domain terms, or external facts contradicting or missing from SOURCE TEXT.\n"
+        f"3. Embedded markdown links/URLs.\n\n"
+        f"Note: Reasonable paraphrasing or summarizing high-level concepts from the source IS ALLOWED and should PASS.\n"
         f"Respond ONLY in valid JSON format with two keys:\n"
-        f'1. "pass": boolean (true if completely accurate and supported, false if hallucinated or misleading)\n'
+        f'1. "pass": boolean (true if grounded in source text, false if hallucinated or containing ungrounded claims/figures)\n'
         f'2. "reasoning": string (brief explanation of your verdict)\n\n'
-        f'Example: {{"pass": true, "reasoning": "Summary accurately reflects the source without added facts."}}'
+        f'Example: {{"pass": true, "reasoning": "Summary accurately reflects the source without introducing fabricated facts."}}'
     )
 
     try:
