@@ -155,6 +155,19 @@ def detect_fabrications(source_text: str, digest_text: str) -> list[str]:
     return warnings
 
 
+from pydantic import AliasChoices, BaseModel, Field
+
+
+class FactCheckResponse(BaseModel):
+    reasoning: str = Field(
+        description="Detailed step-by-step reasoning evaluating factual adherence and checking for fabrications or URLs"
+    )
+    passed: bool = Field(
+        validation_alias=AliasChoices("passed", "pass"),
+        description="True if the summary is factually grounded in the source text without hallucinated facts/figures/links, False otherwise",
+    )
+
+
 def llm_fact_check(source_text: str, digest_summary: str, config: dict[str, Any]) -> tuple[bool, str]:
     """Use local Ollama model to perform a factual adherence audit."""
     llm_cfg = config.get("llm", {})
@@ -167,15 +180,11 @@ def llm_fact_check(source_text: str, digest_summary: str, config: dict[str, Any]
         f"SOURCE TEXT:\n{source_text[:1500]}\n\n"
         f"GENERATED SUMMARY:\n{digest_summary}\n\n"
         f"Task:\n"
-        f"Check if the GENERATED SUMMARY contains:\n"
-        f"1. Completely fabricated figures or statistics not present in SOURCE TEXT.\n"
-        f"2. Explicit claims, hyper-specific domain terms, or external facts contradicting or missing from SOURCE TEXT.\n"
-        f"3. Embedded markdown links/URLs.\n\n"
-        f"Note: Reasonable paraphrasing or summarizing high-level concepts from the source IS ALLOWED and should PASS.\n"
-        f"Respond ONLY in valid JSON format with two keys:\n"
-        f'1. "pass": boolean (true if grounded in source text, false if hallucinated or containing ungrounded claims/figures)\n'
-        f'2. "reasoning": string (brief explanation of your verdict)\n\n'
-        f'Example: {{"pass": true, "reasoning": "Summary accurately reflects the source without introducing fabricated facts."}}'
+        f"1. Write detailed 'reasoning' evaluating if the GENERATED SUMMARY contains:\n"
+        f"   - Completely fabricated figures or statistics not present in SOURCE TEXT.\n"
+        f"   - Explicit claims, hyper-specific domain terms, or external facts contradicting or missing from SOURCE TEXT.\n"
+        f"   - Embedded markdown links/URLs.\n"
+        f"2. Set 'passed': true if grounded in source text (reasonable paraphrasing is allowed), false otherwise."
     )
 
     try:
@@ -184,7 +193,7 @@ def llm_fact_check(source_text: str, digest_summary: str, config: dict[str, Any]
             json={
                 "model": model,
                 "prompt": prompt,
-                "format": "json",
+                "format": FactCheckResponse.model_json_schema(),
                 "stream": False,
                 "options": {"temperature": 0.0, "num_ctx": 4096},
             },
@@ -193,7 +202,8 @@ def llm_fact_check(source_text: str, digest_summary: str, config: dict[str, Any]
         resp.raise_for_status()
         raw = resp.json().get("response", "").strip()
         data = json.loads(raw)
-        return bool(data.get("pass", True)), str(data.get("reasoning", "No explanation provided."))
+        res_obj = FactCheckResponse.model_validate(data)
+        return res_obj.passed, res_obj.reasoning.strip()
     except Exception as e:
         logger.warning(f"LLM fact check call failed: {e}")
         return True, f"Fact check skipped due to error: {e}"

@@ -154,6 +154,15 @@ def llm_curate_stories(
         return sorted_candidates[:max_stories]
 
 
+class StorySummaryResponse(BaseModel):
+    analysis: str = Field(
+        description="Brief step-by-step analysis of facts, figures, and concepts explicitly stated in the source text"
+    )
+    summary: str = Field(
+        description="EXACTLY 2 short sentences summarizing the story for a senior technical audience, using ONLY facts from the source text"
+    )
+
+
 # Fallback text used when a story's summary cannot pass fact-checking after all retries.
 STORY_FALLBACK_SUMMARY = "⚠️ Failed to generate a reliable summary. Read the original article."
 
@@ -192,12 +201,13 @@ def generate_story_summary(
         f"  Title: {s_obj.title}\n"
         f"  Source: {s_obj.source}\n"
         f"  Summary: {s_obj.summary}\n\n"
-        f"Task: Write EXACTLY 2 short sentences summarizing this story for a senior technical audience.\n"
+        f"Task:\n"
+        f"First, write a brief step-by-step 'analysis' of key facts stated in the source.\n"
+        f"Then, write 'summary': EXACTLY 2 short sentences summarizing this story for a senior technical audience.\n\n"
         f"STRICT RULES:\n"
         f"1. Use ONLY facts, figures, and concepts explicitly stated in the Story Source above.\n"
         f"2. DO NOT use your outside knowledge or add extra medical/scientific background terms.\n"
-        f"3. DO NOT include markdown links, URLs, or any numbers/figures that do not appear verbatim in the source.\n"
-        f"4. Output ONLY the 2-sentence summary — no headers, no bullet points, no preamble."
+        f"3. DO NOT include markdown links, URLs, or any numbers/figures that do not appear verbatim in the source."
         f"{correction_block}"
     )
 
@@ -207,13 +217,17 @@ def generate_story_summary(
             json={
                 "model": model,
                 "prompt": prompt,
+                "format": StorySummaryResponse.model_json_schema(),
                 "stream": False,
                 "options": {"temperature": 0.2, "num_ctx": 2048},
             },
             timeout=60,
         )
         resp.raise_for_status()
-        return resp.json().get("response", "").strip()
+        raw = resp.json().get("response", "").strip()
+        data = json.loads(raw)
+        res_obj = StorySummaryResponse.model_validate(data)
+        return res_obj.summary.strip()
     except Exception as exc:
         logger.warning(f"generate_story_summary failed for '{s_obj.title[:50]}': {exc}")
         return ""
