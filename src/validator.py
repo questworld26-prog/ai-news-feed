@@ -12,6 +12,9 @@ import re
 from typing import Any, NamedTuple
 
 import requests
+from pydantic import AliasChoices, BaseModel, Field
+
+from story import Story
 
 logger = logging.getLogger("ai_briefing")
 
@@ -155,9 +158,6 @@ def detect_fabrications(source_text: str, digest_text: str) -> list[str]:
     return warnings
 
 
-from pydantic import AliasChoices, BaseModel, Field
-
-
 class FactCheckResponse(BaseModel):
     reasoning: str = Field(
         description="Detailed step-by-step reasoning evaluating factual adherence and checking for fabrications or URLs"
@@ -207,9 +207,6 @@ def llm_fact_check(source_text: str, digest_summary: str, config: dict[str, Any]
     except Exception as e:
         logger.warning(f"LLM fact check call failed: {e}")
         return True, f"Fact check skipped due to error: {e}"
-
-
-from story import Story
 
 
 def validate_story(

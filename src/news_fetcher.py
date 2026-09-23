@@ -32,6 +32,9 @@ def fetch_article_excerpt(url: str, max_chars: int = _ARTICLE_EXCERPT_CHARS) -> 
     Called eagerly during feed ingestion to enrich stories whose RSS summary
     is too short to provide meaningful curation context.
 
+    Targets content containers (<article>, <main>, or paragraphs) and filters
+    common cookie consent notices and navigation headers.
+
     Designed to fail silently: any network or parsing error returns ""
     so it never blocks the fetch pipeline.
     """
@@ -47,14 +50,33 @@ def fetch_article_excerpt(url: str, max_chars: int = _ARTICLE_EXCERPT_CHARS) -> 
         resp.raise_for_status()
         html = resp.text
 
-        # Remove <script>, <style>, and <head> blocks wholesale.
-        html = re.sub(r"(?is)<(script|style|head)[^>]*>.*?</\1>", " ", html)
-        # Strip remaining HTML tags.
-        text = re.sub(r"<[^>]+>", " ", html)
-        # Decode common HTML entities.
-        text = re.sub(r"&[a-zA-Z0-9#]+;", " ", text)
-        # Collapse whitespace.
-        text = re.sub(r"\s+", " ", text).strip()
+        # Remove <script>, <style>, <nav>, <footer>, and <head> blocks wholesale.
+        html = re.sub(r"(?is)<(script|style|head|nav|footer|header|aside)[^>]*>.*?</\1>", " ", html)
+
+        # Look for content-rich semantic tags first (<article>, <main>)
+        content_match = re.search(r"(?is)<(article|main)[^>]*>(.*?)</\1>", html)
+        candidate_html = content_match.group(2) if content_match else html
+
+        # Extract text from paragraphs if available
+        paragraphs = re.findall(r"(?is)<p[^>]*>(.*?)</p>", candidate_html)
+        filtered_paras = []
+        cookie_pattern = re.compile(r"(?i)(cookie|privacy policy|terms of service|consent|subscribe to our newsletter)")
+        for p in paragraphs:
+            # Strip tags from paragraph
+            clean_p = re.sub(r"<[^>]+>", " ", p)
+            clean_p = re.sub(r"&[a-zA-Z0-9#]+;", " ", clean_p)
+            clean_p = re.sub(r"\s+", " ", clean_p).strip()
+            # Discard boilerplate cookie or subscription text
+            if len(clean_p) >= 25 and not cookie_pattern.search(clean_p):
+                filtered_paras.append(clean_p)
+
+        if filtered_paras:
+            text = " ".join(filtered_paras)
+        else:
+            # Fallback: strip remaining HTML tags from candidate HTML
+            text = re.sub(r"<[^>]+>", " ", candidate_html)
+            text = re.sub(r"&[a-zA-Z0-9#]+;", " ", text)
+            text = re.sub(r"\s+", " ", text).strip()
 
         return text[:max_chars]
     except Exception as exc:  # noqa: BLE001
@@ -138,10 +160,19 @@ def matches_hard_filters(title: str, summary: str, hard_filters: list[str]) -> b
     return False
 
 
-def parse_feed_entry(entry: Any, name: str, hard_filters: list[str], now: datetime) -> Story | None:
+def parse_feed_entry(
+    entry: Any, name: str, hard_filters: list[str], now: datetime, max_age_hours: float = 48.0
+) -> Story | None:
     """Parse, clean, filter, and enrich a single feed entry."""
     pub_parsed = getattr(entry, "published_parsed", None) or getattr(entry, "updated_parsed", None)
     pub_dt = datetime(*pub_parsed[:6], tzinfo=UTC) if pub_parsed else now
+
+    # Enforce strict staleness cutoff: reject items older than max_age_hours
+    if pub_parsed:
+        age_hours = (now - pub_dt).total_seconds() / 3600.0
+        if age_hours > max_age_hours:
+            logger.debug(f"Filtering out stale story ({age_hours:.1f}h old > {max_age_hours}h): '{getattr(entry, 'title', '')[:40]}'")
+            return None
 
     raw_summary = getattr(entry, "summary", "") or getattr(entry, "description", "")
     points_match = re.search(r"Points:\s*(\d+)", raw_summary)
@@ -197,9 +228,7 @@ def fetch_entries_from_source(src: dict[str, Any], hard_filters: list[str], now:
     return entries
 
 
-def build_candidate_pool(
-    all_entries: list[Story], candidate_pool_size: int, max_per_source: int = 2
-) -> list[Story]:
+def build_candidate_pool(all_entries: list[Story], candidate_pool_size: int, max_per_source: int = 2) -> list[Story]:
     """Filter duplicates, apply per-source limits, and select top candidate stories."""
     for entry in all_entries:
         entry.score = score_entry(entry)

@@ -14,9 +14,8 @@ import re
 from pathlib import Path
 from typing import Any, NamedTuple
 
-from validator import compute_keyword_overlap, detect_fabrications, validate_story
-
 from story import Story
+from validator import compute_keyword_overlap, detect_fabrications, validate_story
 
 logger = logging.getLogger("ai_briefing")
 
@@ -147,7 +146,9 @@ def evaluate_hhh_guardrails(digest_text: str, story: Story | dict[str, Any]) -> 
     )
 
 
-def evaluate_rubrics(digest_text: str, story: Story | dict[str, Any], config: dict[str, Any] | None = None) -> RubricScore:
+def evaluate_rubrics(
+    digest_text: str, story: Story | dict[str, Any], config: dict[str, Any] | None = None
+) -> RubricScore:
     """
     Calculates 1-5 Rubric Scores for Honest, Helpful, and Harmless axes.
     Score 5 = Excellent, Score 3 = Acceptable, Score 1 = Unacceptable.

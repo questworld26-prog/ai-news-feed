@@ -4,13 +4,13 @@ Unit tests for LLM Curation schema validation, CoT reasoning, and defensive post
 
 import sys
 from pathlib import Path
-from typing import Any
+
 import pytest
 
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root / "src"))
 
-from briefing_generator import CurationResponse, StorySelectionJustification, llm_curate_stories
+from briefing_generator import CurationResponse, llm_curate_stories
 from story import Story
 
 
@@ -43,7 +43,10 @@ def test_curation_response_schema_validation():
 
 def test_llm_curate_stories_success_path(mock_candidates, monkeypatch):
     dummy_theme = {"name": "Test Theme", "description": "Test Desc", "tone": "Technical"}
-    dummy_config = {"llm": {"model": "phi4-mini:3.8b", "ollama_url": "http://localhost:11434"}, "feeds": {"max_stories": 3}}
+    dummy_config = {
+        "llm": {"model": "phi4-mini:3.8b", "ollama_url": "http://localhost:11434"},
+        "feeds": {"max_stories": 3},
+    }
 
     class MockResponse:
         def raise_for_status(self):
@@ -68,7 +71,10 @@ def test_llm_curate_stories_success_path(mock_candidates, monkeypatch):
 
 def test_llm_curate_stories_defensive_padding_and_dedup(mock_candidates, monkeypatch):
     dummy_theme = {"name": "Test Theme", "description": "Test Desc", "tone": "Technical"}
-    dummy_config = {"llm": {"model": "phi4-mini:3.8b", "ollama_url": "http://localhost:11434"}, "feeds": {"max_stories": 3}}
+    dummy_config = {
+        "llm": {"model": "phi4-mini:3.8b", "ollama_url": "http://localhost:11434"},
+        "feeds": {"max_stories": 3},
+    }
 
     class MockResponse:
         def raise_for_status(self):
