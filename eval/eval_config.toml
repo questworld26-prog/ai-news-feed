@@ -1,0 +1,60 @@
+# ============================================================
+# Model Comparator — Evaluation Configuration
+# ============================================================
+
+[judge]
+# Gemini model used as LLM-as-judge (stays loaded across all model evaluations).
+# Reads GOOGLE_API_KEY from environment (via .env or shell export).
+model = "gemini-2.5-flash"
+
+[ollama]
+url = "http://localhost:11434"
+# Temperature for all candidate summary generation calls
+temperature = 0.1
+# Context window for generation
+num_ctx = 2048
+# Timeout in seconds for each generation request
+timeout_seconds = 90
+# Enable streaming mode to measure Time-to-First-Token (TTFT) and tokens/second
+stream = true
+
+[summarization]
+# Prompt template for generating summaries.
+# Use {source_text} as the placeholder for the input article text.
+prompt_template = """You are a factual AI technical journalist. Summarize the following article in exactly 2 concise sentences.
+
+RULES:
+- Use only facts and entities present in the article below.
+- Express all numbers and metrics exactly as they appear in the source.
+- Write in clean, objective engineering prose.
+- Output ONLY the 2-sentence summary, no preamble or explanation.
+
+ARTICLE:
+{source_text}
+
+SUMMARY:"""
+
+[evaluation]
+# Path to the golden dataset file (relative to this config file's directory)
+golden_dataset_path = "golden_dataset.json"
+
+# Number of repeated runs per model per case (for Pass@K statistics)
+eval_runs = 1
+
+# Target thresholds per evaluation checklist:
+# Minimum keyword overlap score (0.0–1.0)
+min_keyword_overlap = 0.35
+
+# Minimum ROUGE-L F1 score (0.0–1.0) target threshold
+min_rouge_l = 0.45
+
+# Target Latency thresholds (seconds)
+target_max_ttft_seconds = 0.60
+target_max_total_latency_seconds = 3.0
+
+# Memory threshold (GB)
+target_max_ram_gb = 5.0
+
+[output]
+# Directory to write the markdown report (relative to project root)
+report_dir = "eval/reports"

@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Summarization Benchmark Dashboard</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            500: '#06b6d4',
+                            600: '#0891b2',
+                            900: '#164e63',
+                        },
+                        darkcard: '#1e293b',
+                        darkbg: '#0f172a',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-12">
+    <!-- Header -->
+    <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-cyan-500/10 text-cyan-400 rounded-xl border border-cyan-500/20">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">LLM Summarization Model Comparison</h1>
+                    <p class="text-xs text-slate-400">Benchmark Dashboard • 2026-09-25 12:01:55</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3 text-xs text-slate-400 bg-slate-800/60 px-4 py-2 rounded-xl border border-slate-700/50">
+                <span>Judge: <strong class="text-slate-200">gemini-2.5-flash</strong></span>
+                <span class="text-slate-600">•</span>
+                <span>Cases: <strong class="text-slate-200">6</strong></span>
+                <span class="text-slate-600">•</span>
+                <span>Runs/case: <strong class="text-slate-200">1</strong></span>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-6 mt-8 space-y-8">
+        <!-- Top Executive KPI Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="glass-card p-5 rounded-2xl">
+                <div class="text-xs font-medium text-slate-400 uppercase tracking-wider">Models Evaluated</div>
+                <div class="text-3xl font-extrabold text-white mt-1">3</div>
+                <div class="text-xs text-cyan-400 mt-2 truncate">llama3.2:3b, phi4-mini:3.8b, qwen2.5:3b</div>
+            </div>
+            <div class="glass-card p-5 rounded-2xl">
+                <div class="text-xs font-medium text-slate-400 uppercase tracking-wider">Top Pass Rate Model</div>
+                <div id="top-pass-model" class="text-2xl font-extrabold text-emerald-400 mt-1">-</div>
+                <div id="top-pass-score" class="text-xs text-slate-400 mt-2">-</div>
+            </div>
+            <div class="glass-card p-5 rounded-2xl">
+                <div class="text-xs font-medium text-slate-400 uppercase tracking-wider">Fastest TTFT Model</div>
+                <div id="fastest-ttft-model" class="text-2xl font-extrabold text-amber-400 mt-1">-</div>
+                <div id="fastest-ttft-score" class="text-xs text-slate-400 mt-2">-</div>
+            </div>
+            <div class="glass-card p-5 rounded-2xl">
+                <div class="text-xs font-medium text-slate-400 uppercase tracking-wider">Lowest Ollama RAM</div>
+                <div id="lowest-ram-model" class="text-2xl font-extrabold text-purple-400 mt-1">-</div>
+                <div id="lowest-ram-score" class="text-xs text-slate-400 mt-2">-</div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Radar Chart: Multi-axis Quality Comparison -->
+            <div class="glass-card p-6 rounded-2xl flex flex-col">
+                <h2 class="text-base font-bold text-slate-200 mb-1">Quality & Accuracy Profile (Radar)</h2>
+                <p class="text-xs text-slate-400 mb-4">Normalized score comparison across Pass Rate, ROUGE-L, Overlap, Judge, and Positional Recall.</p>
+                <div class="relative flex-1 min-h-[300px]">
+                    <canvas id="qualityRadarChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Bar Chart: Latency & Speed -->
+            <div class="glass-card p-6 rounded-2xl flex flex-col">
+                <h2 class="text-base font-bold text-slate-200 mb-1">Latency (TTFT vs Total) & Speed</h2>
+                <p class="text-xs text-slate-400 mb-4">Time-to-First-Token (s), Total Latency (s), and Generation Speed (tok/s).</p>
+                <div class="relative flex-1 min-h-[300px]">
+                    <canvas id="latencyBarChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Comprehensive Aggregate Metrics Table -->
+        <div class="glass-card rounded-2xl overflow-hidden">
+            <div class="p-6 border-b border-slate-800">
+                <h2 class="text-lg font-bold text-white">Full Production Checklist Metric Comparison</h2>
+                <p class="text-xs text-slate-400 mt-1">Side-by-side performance evaluation against target thresholds.</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-slate-300">
+                    <thead class="bg-slate-900/80 text-xs uppercase text-slate-400 border-b border-slate-800">
+                        <tr>
+                            <th class="px-6 py-4 font-semibold">Metric / Category</th>
+                            <th class="px-6 py-4 font-semibold text-center">Target Threshold</th>
+                            <th class="px-6 py-4 font-semibold text-center text-cyan-400">llama3.2:3b</th><th class="px-6 py-4 font-semibold text-center text-cyan-400">phi4-mini:3.8b</th><th class="px-6 py-4 font-semibold text-center text-cyan-400">qwen2.5:3b</th>
+                        </tr>
+                    </thead>
+                    <tbody id="metrics-table-body" class="divide-y divide-slate-800/60 font-mono text-xs">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Case-by-Case Deep Dive Breakdown -->
+        <div class="glass-card p-6 rounded-2xl space-y-4">
+            <h2 class="text-lg font-bold text-white">Per-Case Generation & Judge Breakdown</h2>
+            <p class="text-xs text-slate-400">Inspect candidate summaries, detected hallucinations, and Gemini judge reasoning per test article.</p>
+            <div id="cases-container" class="space-y-4 mt-4"></div>
+        </div>
+    </main>
+
+    <script>
+        const evalData = [
+  {
+    "model": "llama3.2:3b",
+    "cases": [
+      {
+        "case_id": "eval_vllm_01",
+        "run_idx": 1,
+        "summary": "The vLLM team released version 0.7.0, which enables chunked prefill by default, reducing Time-to-First-Token (TTFT) by up to 3x on Llama 3 70B workloads. The update also introduces support for FP8 quantization on H100 GPUs, achieving a 40% improvement in throughput compared to BF16 baselines.",
+        "latency_seconds": 6.274,
+        "ttft_seconds": 3.23,
+        "tokens_per_second": 26.59,
+        "input_tokens": 207,
+        "output_tokens": 81,
+        "process_ram_gb": 0.1,
+        "ollama_ram_gb": 0.02,
+        "system_used_ram_gb": 3.52,
+        "rouge_l": 0.6667,
+        "keyword_overlap": 0.7,
+        "lexical_hallucinations": [],
+        "conceptual_hallucinations": [],
+        "all_hallucinations": [],
+        "word_count": 45,
+        "sentence_count": 4,
+        "judge_score": 4,
+        "judge_verdict": "PASS",
+        "judge_reasoning": "[API Quota Depleted] High factual overlap (70%) & 0 lexical hallucinations.",
+        "positional_recall_passed": true,
+        "passed": true
+      },
+      {
+        "case_id": "eval_alphagenome_01",
+        "run_idx": 1,
+        "summary": "Google DeepMind has introduced AlphaGenome Atlas, an AI system that can predict molecular effects across 9 billion DNA variant locations. The model was trained on data from 838 individuals across 54 tissue types, achieving a Pearson correlation of 0.91 on held-out validation sets.",
+        "latency_seconds": 2.573,
+        "ttft_seconds": 0.405,
+        "tokens_per_second": 26.78,
+        "input_tokens": 189,
+        "output_tokens": 58,
+        "process_ram_gb": 0.06,
+        "ollama_ram_gb": 0.02,
+        "system_used_ram_gb": 5.31,
+        "rouge_l": 0.7321,
+        "keyword_overlap": 0.8889,
+        "lexical_hallucinations": [],
+        "conceptual_hallucinations": [],
+        "all_hallucinations": [],
+        "word_count": 43,
+        "sentence_count": 3,
+        "judge_score": 4,
+        "judge_verdict": "PASS",
+        "judge_reasoning": "[API Quota Depleted] High factual overlap (89%) & 0 lexical hallucinations.",
+        "positional_recall_passed": true,
+        "passed": true
+      },
+      {
+        "case_id": "eval_datasette_01",
+        "run_idx": 1,
+        "summary": "Simon Willison released version 1.0 of datasette-auth-github, a plugin that adds GitHub OAuth authentication to Datasette instances. The plugin now supports organization-level access controls and team-based permission groups, with a key fix resolving session cookie expiration on Mobile Safari.",
+        "latency_seconds": 2.444,
+        "ttft_seconds": 0.404,
+        "tokens_per_second": 26.98,
+        "input_tokens": 176,
+        "output_tokens": 55,
+        "process_ram_gb": 0.06,
+        "ollama_ram_gb": 0.02,
+        "system_used_ram_gb": 5.21,
+        "rouge_l": 0.6346,
+        "keyword_overlap": 0.7778,
+        "lexical_hallucinations": [],
+        "conceptual_hallucinations": [],
+        "all_hallucinations": [],
+        "word_count": 39,
+        "sentence_count": 3,
+        "judge_score": 4,
+        "judge_verdict": "PASS",
+        "judge_reasoning": "[API Quota Depleted] High factual overlap (78%) & 0 lexical hallucinations.",
+        "positional_recall_passed": true,
+        "passed": true
+      },
+      {
+        "case_id": "eval_tactile_sensor_01",
+        "run_idx": 1,
+        "summary": "Researchers at MIT CSAIL have published an open hardware design for TacLink, a high-resolution optical tactile sensor capable of resolving contact forces at sub-millimeter spatial resolution. The sensor, which uses a gel-filled elastomer dome and 16 RGB LEDs, has a production cost of under $50 per unit and demonstrated a 94% success rate in field tests with a Boston Dynamics Spot robot.",
+        "latency_seconds": 3.386,
+        "ttft_seconds": 0.41,
+        "tokens_per_second": 26.89,
+        "input_tokens": 190,
+        "output_tokens": 80,
+        "process_ram_gb": 0.05,
+        "ollama_ram_gb": 0.03,
+        "system_used_ram_gb": 5.14,
+        "rouge_l": 0.7852,
+        "keyword_overlap": 0.8,
+        "lexical_hallucinations": [],
+        "conceptual_hallucinations": [],
+        "all_hallucinations": [],
+        "word_count": 62,
+        "sentence_count": 2,
+        "judge_score": 4,
+        "judge_verdict": "PASS",
+        "judge_reasoning": "[API Quota Depleted] High factual overlap (80%) & 0 lexical hallucinations.",
+        "positional_recall_passed": true,
+        "passed": true
+      },
+      {
+        "case_id": "eval_openai_reasoning_01",
+        "run_idx": 1,
+        "summary": "OpenAI released o3-mini, a reasoning-focused language model optimized for STEM tasks, which scored 90.0% on the AIME 2024 math benchmark, surpassing the previous best of 83.3% from o1. The model supports structured JSON output, function calling, and has a 128k token context window, with API pricing starting at $1.10 per million input tokens and $4.40 per million output tokens.",
+        "latency_seconds": 3.968,
+        "ttft_seconds": 0.52,
+        "tokens_per_second": 26.99,
+        "input_tokens": 203,
+        "output_tokens": 93,
+        "process_ram_gb": 0.05,
+        "ollama_ram_gb": 0.02,
+        "system_used_ram_gb": 5.16,
+        "rouge_l": 0.8955,
+        "keyword_overlap": 1.0,
+        "lexical_hallucinations": [],
+        "conceptual_hallucinations": [],
+        "all_hallucinations": [],
+        "word_count": 59,
+        "sentence_count": 6,
+        "judge_score": 4,
+        "judge_verdict": "PASS",
+        "judge_reasoning": "[API Quota Depleted] High factual overlap (100%) & 0 lexical hallucinations.",
+        "positional_recall_passed": true,
+        "passed": true
+      },
+      {
+        "case_id": "eval_positional_recall_01",
+        "run_idx": 1,
+        "summary": "Large language model deployment has seen rapid advancement in enterprise infrastructure throughout 2026, with microservices architectures now dominating the landscape for serving low-latency inference workloads. The engineering team deployed a key architectural breakthrough called 'HyperCache-V4', which reduced KV-cache memory consumption by 72.5% on middle-tier clusters without precision loss.",
+        "latency_seconds": 3.243,
+        "ttft_seconds": 0.644,
+        "tokens_per_second": 26.56,
+        "input_tokens": 248,
+        "output_tokens": 69,
+        "process_ram_gb": 0.05,
+        "ollama_ram_gb": 0.02,
+        "system_used_ram_gb": 5.17,
+        "rouge_l": 0.6541,
+        "keyword_overlap": 1.0,
+        "lexical_hallucinations": [],
+        "conceptual_hallucinations": [],
+        "all_hallucinations": [],
+        "word_count": 48,
+        "sentence_count": 3,
+        "judge_score": 4,
+        "judge_verdict": "PASS",
+        "judge_reasoning": "[API Quota Depleted] High factual overlap (100%) & 0 lexical hallucinations.",
+        "positional_recall_passed": true,
+        "passed": true
+      }
+    ],
+    "aggregate": {
+      "total_cases": 6,
+      "passed_cases": 6,
+      "pass_rate": 1.0,
+      "mean_rouge_l": 0.728,
+      "mean_keyword_overlap": 0.8611,
+      "mean_judge_score": 4.0,
+      "total_hallucinations": 0,
+      "mean_latency_seconds": 3.65,
+      "mean_ttft_seconds": 0.94,
+      "mean_tokens_per_second": 26.8,
+      "mean_input_tokens": 202.2,
+      "mean_output_tokens": 72.7,
+      "peak_ollama_ram_gb": 0.03,
+      "peak_system_ram_gb": 5.31,
+      "thermal_drift_pct": -6.1,
+      "positional_recall_rate": 1.0,
+      "mean_word_count": 49.3
+    }
+  },
+  {
+    "model": "phi4-mini:3.8b",
+    "cases": [
+      {
+        "case_id": "eval_vllm_01",
+        "run_idx": 1,
+        "summary": "LLM team released v0.7.0 with default chunked prefill reducing TTFT by up to 3x on Llama 3 70B workloads; it also supports FP8 quantization on H100 GPUs, boosting throughput by 40% over BF16 baselines.",
+        "latency_seconds": 6.548,
+        "ttft_seconds": 3.783,
+        "tokens_per_second": 21.69,
+        "input_tokens": 184,
+        "output_tokens": 60,
+        "process_ram_gb": 0.05,
+        "ollama_ram_gb": 0.02,
+        "system_used_ram_gb": 5.08,
+        "rouge_l": 0.5437,
+        "keyword_overlap": 0.7,
+        "lexical_hallucinations": [],
+        "conceptual_hallucinations": [],
+        "all_hallucinations": [],
+        "word_count": 34,
+        "sentence_count": 3,
+        "judge_score": 4,
+        "judge_verdict": "PASS",
+        "judge_reasoning": "[API Quota Depleted] High factual overlap (70%) & 0 lexical hallucinations.",
+        "positional_recall_passed": true,
+        "passed": true
+      },
+      {
+        "case_id": "eval_alphagenome_01",
+        "run_idx": 1,
+        "summary": "Google DeepMind's AlphaGenome Atlas predicts molecular effects across 9 billion DNA variants, trained on data from 838 individuals across 54 tissue types with a Pearson correlation of 0.91. Available via Google Cloud Health API from November 2026.",
+        "latency_seconds": 2.89,
+        "ttft_seconds": 0.477,
+        "tokens_per_second": 21.57,
+        "input_tokens": 164,
+        "output_tokens": 52,
+        "process_ram_gb": 0.04,
+        "ollama_ram_gb": 0.02,
+        "system_used_ram_gb": 5.36,
+        "rouge_l": 0.6981,
+        "keyword_overlap": 1.0,
+        "lexical_hallucinations": [],
+        "conceptual_hallucinations": [],
+        "all_hallucinations": [],
+        "word_count": 37,
+        "sentence_count": 3,
+        "judge_score": 4,
+        "judge_verdict": "PASS",
+        "judge_reasoning": "[API Quota Depleted] High factual overlap (100%) & 0 lexical hallucinations.",
+        "positional_recall_passed": true,
+        "passed": true
+      },
+      {
+        "case_id": "eval_datasette_01",
+        "run_idx": 1,
+        "summary": "Datasette-auth-github v1.0 by Simon Willison introduces GitHub OAuth authentication with fixes for session cookie expiration on Mobile Safari and new features for organization-level access controls and team-based permission groups.",
+        "latency_seconds": 2.402,
+        "ttft_seconds": 0.465,
+        "tokens_per_second": 21.72,
+        "input_tokens": 155,
+        "output_tokens": 42,
+        "process_ram_gb": 0.04,
+        "ollama_ram_gb": 0.02,
+        "system_used_ram_gb": 5.45,
+        "rouge_l": 0.4681,
+        "keyword_overlap": 0.7778,
+        "lexical_hallucinations": [],
+        "conceptual_hallucinations": [],
+        "all_hallucinations": [],
+        "word_count": 29,
+        "sentence_count": 2,
+        "judge_score": 4,
+        "judge_verdict": "PASS",
+        "judge_reasoning": "[API Quota Depleted] High factual overlap (78%) & 0 lexical hallucinations.",
+        "positional_recall_passed": true,
+        "passed": true
+      },
+      {
+        "case_id": "eval_tactile_sensor_01",
+        "run_idx": 1,
+        "summary": "MIT CSAIL's TacLink sensor, with a production cost under $50, achieves 94% success in pick-and-place tasks with deformable objects using a gel-filled elastomer dome and 16 RGB LEDs.",
+        "latency_seconds": 2.507,
+        "ttft_seconds": 0.479,
+        "tokens_per_second": 21.73,
+        "input_tokens": 167,
+        "output_tokens": 44,
+        "process_ram_gb": 0.04,
+        "ollama_ram_gb": 0.02,
+        "system_used_ram_gb": 5.47,
+        "rouge_l": 0.3725,
+        "keyword_overlap": 0.7,
+        "lexical_hallucinations": [],
+        "conceptual_hallucinations": [],
+        "all_hallucinations": [],
+        "word_count": 28,
+        "sentence_count": 1,
+        "judge_score": 4,
+        "judge_verdict": "PASS",
+        "judge_reasoning": "[API Quota Depleted] High factual overlap (70%) & 0 lexical hallucinations.",
+        "positional_recall_passed": true,
+        "passed": false
+      },
+      {
+        "case_id": "eval_openai_reasoning_01",
+        "run_idx": 1,
+        "summary": "OpenAI's o3-mini achieved a 90.0% score on the AIME 2024 math benchmark, outperforming the previous record of 83.3%. The model features a 128k token context window, structured JSON output, function calling, and pricing starts at $1.10 per million input tokens and $4.40 per million output tokens.",
+        "latency_seconds": 4.129,
+        "ttft_seconds": 0.605,
+        "tokens_per_second": 21.61,
+        "input_tokens": 180,
+        "output_tokens": 76,
+        "process_ram_gb": 0.04,
+        "ollama_ram_gb": 0.02,
+        "system_used_ram_gb": 5.44,
+        "rouge_l": 0.6446,
+        "keyword_overlap": 0.9091,
+        "lexical_hallucinations": [],
+        "conceptual_hallucinations": [],
+        "all_hallucinations": [],
+        "word_count": 46,
+        "sentence_count": 6,
+        "judge_score": 4,
+        "judge_verdict": "PASS",
+        "judge_reasoning": "[API Quota Depleted] High factual overlap (91%) & 0 lexical hallucinations.",
+        "positional_recall_passed": true,
+        "passed": true
+      },
+      {
+        "case_id": "eval_positional_recall_01",
+        "run_idx": 1,
+        "summary": "In 2026, large language models have advanced with microservices architectures for low-latency workloads, and HyperCache-V4 reduced KV-cache memory consumption by 72.5% on middle-tier clusters. Edge devices face memory footprint challenges, with optimization strategies like AWQ quantization and continuous batching being employed.",
+        "latency_seconds": 3.773,
+        "ttft_seconds": 0.758,
+        "tokens_per_second": 21.26,
+        "input_tokens": 224,
+        "output_tokens": 64,
+        "process_ram_gb": 0.04,
+        "ollama_ram_gb": 0.02,
+        "system_used_ram_gb": 5.51,
+        "rouge_l": 0.3289,
+        "keyword_overlap": 1.0,
+        "lexical_hallucinations": [],
+        "conceptual_hallucinations": [],
+        "all_hallucinations": [],
+        "word_count": 41,
+        "sentence_count": 3,
+        "judge_score": 4,
+        "judge_verdict": "PASS",
+        "judge_reasoning": "[API Quota Depleted] High factual overlap (100%) & 0 lexical hallucinations.",
+        "positional_recall_passed": true,
+        "passed": false
+      }
+    ],
+    "aggregate": {
+      "total_cases": 6,
+      "passed_cases": 4,
+      "pass_rate": 0.6667,
+      "mean_rouge_l": 0.5093,
+      "mean_keyword_overlap": 0.8478,
+      "mean_judge_score": 4.0,
+      "total_hallucinations": 0,
+      "mean_latency_seconds": 3.71,
+      "mean_ttft_seconds": 1.09,
+      "mean_tokens_per_second": 21.6,
+      "mean_input_tokens": 179.0,
+      "mean_output_tokens": 56.3,
+      "peak_ollama_ram_gb": 0.02,
+      "peak_system_ram_gb": 5.51,
+      "thermal_drift_pct": -12.1,
+      "positional_recall_rate": 1.0,
+      "mean_word_count": 35.8
+    }
+  },
+  {
+    "model": "qwen2.5:3b",
+    "cases": [
+      {
+        "case_id": "eval_vllm_01",
+        "run_idx": 1,
+        "summary": "The LLM team released version 0.7.0 with chunked prefill enabled by default, reducing Time-to-First-Token (TTFT) by up to 3x on Llama 3 70B workloads. The release also includes support for FP8 quantization on H100 GPUs, improving throughput by 40% compared to BF16, and introduces a speculative decoding engine for up to 2.5x speedup on code generation tasks.",
+        "latency_seconds": 6.663,
+        "ttft_seconds": 3.006,
+        "tokens_per_second": 27.65,
+        "input_tokens": 216,
+        "output_tokens": 101,
+        "process_ram_gb": 0.04,
+        "ollama_ram_gb": 0.02,
+        "system_used_ram_gb": 5.34,
+        "rouge_l": 0.8462,
+        "keyword_overlap": 0.9,
+        "lexical_hallucinations": [
+          "The LLM"
+        ],
+        "conceptual_hallucinations": [],
+        "all_hallucinations": [
+          "The LLM"
+        ],
+        "word_count": 57,
+        "sentence_count": 5,
+        "judge_score": 2,
+        "judge_verdict": "FAIL",
+        "judge_reasoning": "[API Quota Depleted] Found ungrounded tokens: The LLM",
+        "positional_recall_passed": true,
+        "passed": false
+      },
+      {
+        "case_id": "eval_alphagenome_01",
+        "run_idx": 1,
+        "summary": "Google DeepMind introduced AlphaGenome Atlas, an AI system capable of predicting molecular effects across 9 billion DNA variant locations, achieving a Pearson correlation of 0.91 on held-out validation sets. The model was trained on data from 838 individuals across 54 tissue types and is available via the Google Cloud Health API starting from November 2026.",
+        "latency_seconds": 3.373,
+        "ttft_seconds": 0.521,
+        "tokens_per_second": 27.37,
+        "input_tokens": 199,
+        "output_tokens": 78,
+        "process_ram_gb": 0.04,
+        "ollama_ram_gb": 0.03,
+        "system_used_ram_gb": 5.08,
+        "rouge_l": 0.6935,
+        "keyword_overlap": 1.0,
+        "lexical_hallucinations": [],
+        "conceptual_hallucinations": [],
+        "all_hallucinations": [],
+        "word_count": 55,
+        "sentence_count": 3,
+        "judge_score": 4,
+        "judge_verdict": "PASS",
+        "judge_reasoning": "[API Quota Depleted] High factual overlap (100%) & 0 lexical hallucinations.",
+        "positional_recall_passed": true,
+        "passed": true
+      },
+      {
+        "case_id": "eval_datasette_01",
+        "run_idx": 1,
+        "summary": "Simon Willison released version 1.0 of datasette-auth-github, a plugin enhancing GitHub OAuth authentication for Datasette instances. The key fix in this release resolves session cookie expiration on Mobile Safari by explicitly setting the Max-Age attribute, and the plugin now supports organization-level access controls and team-based permission groups.",
+        "latency_seconds": 2.732,
+        "ttft_seconds": 0.401,
+        "tokens_per_second": 27.9,
+        "input_tokens": 180,
+        "output_tokens": 65,
+        "process_ram_gb": 0.04,
+        "ollama_ram_gb": 0.03,
+        "system_used_ram_gb": 5.13,
+        "rouge_l": 0.885,
+        "keyword_overlap": 0.8889,
+        "lexical_hallucinations": [],
+        "conceptual_hallucinations": [],
+        "all_hallucinations": [],
+        "word_count": 47,
+        "sentence_count": 3,
+        "judge_score": 4,
+        "judge_verdict": "PASS",
+        "judge_reasoning": "[API Quota Depleted] High factual overlap (89%) & 0 lexical hallucinations.",
+        "positional_recall_passed": true,
+        "passed": true
+      },
+      {
+        "case_id": "eval_tactile_sensor_01",
+        "run_idx": 1,
+        "summary": "MIT CSAIL researchers published an open hardware design for TacLink, a high-resolution optical tactile sensor capable of resolving contact forces at sub-millimeter resolution. Field tests with a Boston Dynamics Spot robot showed a 94% success rate on pick-and-place tasks with deformable objects, with a production cost of under $50 per unit.",
+        "latency_seconds": 2.916,
+        "ttft_seconds": 0.398,
+        "tokens_per_second": 27.81,
+        "input_tokens": 197,
+        "output_tokens": 70,
+        "process_ram_gb": 0.04,
+        "ollama_ram_gb": 0.03,
+        "system_used_ram_gb": 5.17,
+        "rouge_l": 0.672,
+        "keyword_overlap": 0.9,
+        "lexical_hallucinations": [],
+        "conceptual_hallucinations": [],
+        "all_hallucinations": [],
+        "word_count": 51,
+        "sentence_count": 2,
+        "judge_score": 4,
+        "judge_verdict": "PASS",
+        "judge_reasoning": "[API Quota Depleted] High factual overlap (90%) & 0 lexical hallucinations.",
+        "positional_recall_passed": true,
+        "passed": true
+      },
+      {
+        "case_id": "eval_openai_reasoning_01",
+        "run_idx": 1,
+        "summary": "OpenAI's o3-mini, a reasoning-focused language model for STEM tasks, scored 90.0% on the AIME 2024 math benchmark using high compute settings, surpassing the previous best of 83.3% by o1. It supports structured JSON output, function calling, and has a 128k token context window. API pricing is $1.10 per million input tokens and $4.40 per million output tokens.",
+        "latency_seconds": 4.149,
+        "ttft_seconds": 0.519,
+        "tokens_per_second": 27.56,
+        "input_tokens": 215,
+        "output_tokens": 100,
+        "process_ram_gb": 0.04,
+        "ollama_ram_gb": 0.03,
+        "system_used_ram_gb": 5.13,
+        "rouge_l": 0.8571,
+        "keyword_overlap": 1.0,
+        "lexical_hallucinations": [],
+        "conceptual_hallucinations": [],
+        "all_hallucinations": [],
+        "word_count": 57,
+        "sentence_count": 7,
+        "judge_score": 4,
+        "judge_verdict": "PASS",
+        "judge_reasoning": "[API Quota Depleted] High factual overlap (100%) & 0 lexical hallucinations.",
+        "positional_recall_passed": true,
+        "passed": true
+      },
+      {
+        "case_id": "eval_positional_recall_01",
+        "run_idx": 1,
+        "summary": "Microservices architectures have become the dominant model for serving low-latency inference workloads in enterprise infrastructure throughout 2026. CRITICAL INVENTED BENEFIT: The engineering team deployed 'HyperCache-V4' in 2026, reducing KV-cache memory consumption by 72.5% on middle-tier clusters without precision loss. Future research will evaluate hybrid retrieval-augmented pipelines alongside parameter-efficient fine-tuning techniques for domain adaptation.",
+        "latency_seconds": 4.053,
+        "ttft_seconds": 0.64,
+        "tokens_per_second": 27.56,
+        "input_tokens": 255,
+        "output_tokens": 94,
+        "process_ram_gb": 0.04,
+        "ollama_ram_gb": 0.03,
+        "system_used_ram_gb": 5.17,
+        "rouge_l": 0.5868,
+        "keyword_overlap": 1.0,
+        "lexical_hallucinations": [],
+        "conceptual_hallucinations": [],
+        "all_hallucinations": [],
+        "word_count": 53,
+        "sentence_count": 4,
+        "judge_score": 4,
+        "judge_verdict": "PASS",
+        "judge_reasoning": "[API Quota Depleted] High factual overlap (100%) & 0 lexical hallucinations.",
+        "positional_recall_passed": true,
+        "passed": true
+      }
+    ],
+    "aggregate": {
+      "total_cases": 6,
+      "passed_cases": 5,
+      "pass_rate": 0.8333,
+      "mean_rouge_l": 0.7568,
+      "mean_keyword_overlap": 0.9482,
+      "mean_judge_score": 3.67,
+      "total_hallucinations": 1,
+      "mean_latency_seconds": 3.98,
+      "mean_ttft_seconds": 0.91,
+      "mean_tokens_per_second": 27.6,
+      "mean_input_tokens": 210.3,
+      "mean_output_tokens": 84.7,
+      "peak_ollama_ram_gb": 0.03,
+      "peak_system_ram_gb": 5.34,
+      "thermal_drift_pct": -12.9,
+      "positional_recall_rate": 1.0,
+      "mean_word_count": 53.3
+    }
+  }
+];
+
+        function initKPIs() {
+            if (!evalData.length) return;
+            
+            const bestPass = [...evalData].sort((a, b) => b.aggregate.pass_rate - a.aggregate.pass_rate)[0];
+            document.getElementById('top-pass-model').innerText = bestPass.model;
+            document.getElementById('top-pass-score').innerText = `${(bestPass.aggregate.pass_rate * 100).toFixed(1)}% pass rate`;
+
+            const fastestTTFT = [...evalData].sort((a, b) => a.aggregate.mean_ttft_seconds - b.aggregate.mean_ttft_seconds)[0];
+            document.getElementById('fastest-ttft-model').innerText = fastestTTFT.model;
+            document.getElementById('fastest-ttft-score').innerText = `${fastestTTFT.aggregate.mean_ttft_seconds.toFixed(2)}s avg TTFT`;
+
+            const lowestRAM = [...evalData].sort((a, b) => (a.aggregate.peak_ollama_ram_gb || 0) - (b.aggregate.peak_ollama_ram_gb || 0))[0];
+            document.getElementById('lowest-ram-model').innerText = lowestRAM.model;
+            document.getElementById('lowest-ram-score').innerText = `${(lowestRAM.aggregate.peak_ollama_ram_gb || 0).toFixed(2)} GB Ollama RAM`;
+        }
+
+        function initRadarChart() {
+            const ctx = document.getElementById('qualityRadarChart').getContext('2d');
+            const colors = [
+                { border: '#06b6d4', bg: 'rgba(6, 182, 212, 0.2)' },
+                { border: '#10b981', bg: 'rgba(16, 185, 129, 0.2)' },
+                { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.2)' },
+                { border: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.2)' },
+            ];
+
+            const datasets = evalData.map((d, i) => ({
+                label: d.model,
+                data: [
+                    d.aggregate.pass_rate * 100,
+                    (d.aggregate.mean_rouge_l || 0) * 100,
+                    (d.aggregate.mean_keyword_overlap || 0) * 100,
+                    ((d.aggregate.mean_judge_score || 0) / 5) * 100,
+                    (d.aggregate.positional_recall_rate || 0) * 100
+                ],
+                borderColor: colors[i % colors.length].border,
+                backgroundColor: colors[i % colors.length].bg,
+                borderWidth: 2,
+                pointBackgroundColor: colors[i % colors.length].border,
+            }));
+
+            new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Pass Rate (%)', 'ROUGE-L (x100)', 'Keyword Overlap (%)', 'Judge Score (%)', 'Positional Recall (%)'],
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            pointLabels: { color: '#94a3b8', font: { size: 11 } },
+                            ticks: { color: '#64748b', backdropColor: 'transparent', min: 0, max: 100 }
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#f8fafc' } }
+                    }
+                }
+            });
+        }
+
+        function initBarChart() {
+            const ctx = document.getElementById('latencyBarChart').getContext('2d');
+            const labels = evalData.map(d => d.model);
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Mean TTFT (s)',
+                            data: evalData.map(d => d.aggregate.mean_ttft_seconds),
+                            backgroundColor: '#f59e0b',
+                            borderRadius: 6
+                        },
+                        {
+                            label: 'Total Latency (s)',
+                            data: evalData.map(d => d.aggregate.mean_latency_seconds),
+                            backgroundColor: '#06b6d4',
+                            borderRadius: 6
+                        },
+                        {
+                            label: 'Speed (tok/s)',
+                            data: evalData.map(d => d.aggregate.mean_tokens_per_second),
+                            backgroundColor: '#10b981',
+                            borderRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#94a3b8' } },
+                        y: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#94a3b8' } }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#f8fafc' } }
+                    }
+                }
+            });
+        }
+
+        function initTable() {
+            const tbody = document.getElementById('metrics-table-body');
+            const rows = [
+                { key: 'pass_rate', name: 'Pass Rate', target: '>= 80%', fmt: v => `${(v * 100).toFixed(1)}%` },
+                { key: 'peak_ollama_ram_gb', name: 'Memory Footprint (Ollama RAM)', target: '< 5.0 GB', fmt: v => `${v.toFixed(2)} GB` },
+                { key: 'peak_system_ram_gb', name: 'Memory Footprint (Total System RAM)', target: 'Informational', fmt: v => `${v.toFixed(2)} GB` },
+                { key: 'mean_ttft_seconds', name: 'Latency TTFT', target: '< 0.60 s', fmt: v => `${v.toFixed(2)} s` },
+                { key: 'mean_latency_seconds', name: 'Total Latency', target: '< 3.0 s', fmt: v => `${v.toFixed(2)} s` },
+                { key: 'mean_rouge_l', name: 'Lexical Overlap (ROUGE-L)', target: '>= 0.45', fmt: v => v.toFixed(4) },
+                { key: 'mean_keyword_overlap', name: 'Keyword Overlap Score', target: '>= 0.35', fmt: v => v.toFixed(2) },
+                { key: 'mean_judge_score', name: 'Semantic Judge Score', target: '>= 4.0 / 5', fmt: v => `${v.toFixed(2)} / 5` },
+                { key: 'total_hallucinations', name: 'Total Hallucinations', target: '0', fmt: v => v },
+                { key: 'positional_recall_rate', name: 'Positional Recall Rate', target: '100%', fmt: v => `${(v * 100).toFixed(0)}%` },
+                { key: 'thermal_drift_pct', name: 'Thermal Stability Drift', target: '< 15%', fmt: v => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%` },
+                { key: 'mean_tokens_per_second', name: 'Generation Speed', target: 'Maximized', fmt: v => `${v.toFixed(1)} tok/s` },
+                { key: 'tokens_in_out', name: 'Tokens (Prompt / Summary)', target: 'Informational', fmt: (v, d) => `${Math.round(d.aggregate.mean_input_tokens)} / ${Math.round(d.aggregate.mean_output_tokens)}` }
+            ];
+
+            let html = '';
+            rows.forEach(r => {
+                html += `<tr class="hover:bg-slate-800/40 transition">
+                    <td class="px-6 py-3 font-medium text-slate-200">${r.name}</td>
+                    <td class="px-6 py-3 text-center text-slate-400">${r.target}</td>`;
+                evalData.forEach(d => {
+                    const val = r.key === 'tokens_in_out' ? '' : d.aggregate[r.key];
+                    const formatted = r.fmt(val, d);
+                    html += `<td class="px-6 py-3 text-center font-bold text-cyan-300">${formatted}</td>`;
+                });
+                html += `</tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        function initCases() {
+            const container = document.getElementById('cases-container');
+            if (!evalData.length || !evalData[0].cases.length) return;
+
+            const casesMap = {};
+            evalData.forEach(d => {
+                d.cases.forEach(c => {
+                    if (!casesMap[c.case_id]) casesMap[c.case_id] = [];
+                    casesMap[c.case_id].push({ model: d.model, case: c });
+                });
+            });
+
+            let html = '';
+            Object.keys(casesMap).forEach(caseId => {
+                const items = casesMap[caseId];
+                html += `
+                <div class="border border-slate-800 bg-slate-900/40 rounded-xl p-5 space-y-4">
+                    <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                        <h3 class="text-sm font-bold text-cyan-400">Case ID: ` + caseId + `</h3>
+                        <span class="text-xs text-slate-500">${items.length} Model Summaries</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">`;
+
+                items.forEach(item => {
+                    const c = item.case;
+                    const passBadge = c.passed 
+                        ? `<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded text-[10px] font-bold">PASS</span>`
+                        : `<span class="bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded text-[10px] font-bold">FAIL</span>`;
+
+                    html += `
+                    <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50 flex flex-col justify-between space-y-3">
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="font-bold text-slate-200 text-xs">${item.model}</span>
+                                ${passBadge}
+                            </div>
+                            <p class="text-xs text-slate-300 italic border-l-2 border-cyan-500/50 pl-2 py-1 mb-2 bg-slate-900/40 rounded-r">
+                                "${c.summary}"
+                            </p>
+                            <p class="text-[11px] text-slate-400">
+                                <strong>Judge:</strong> ${c.judge_reasoning}
+                            </p>
+                        </div>
+                        <div class="pt-2 border-t border-slate-700/50 flex flex-wrap gap-2 text-[10px] text-slate-400 font-mono">
+                            <span>ROUGE: <strong class="text-slate-200">${c.rouge_l.toFixed(3)}</strong></span>
+                            <span>Overlap: <strong class="text-slate-200">${c.keyword_overlap.toFixed(2)}</strong></span>
+                            <span>TTFT: <strong class="text-slate-200">${c.ttft_seconds.toFixed(2)}s</strong></span>
+                        </div>
+                    </div>`;
+                });
+
+                html += `</div></div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initKPIs();
+            initRadarChart();
+            initBarChart();
+            initTable();
+            initCases();
+        });
+    </script>
+</body>
+</html>

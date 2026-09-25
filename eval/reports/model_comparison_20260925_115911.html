@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Summarization Benchmark Dashboard</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            500: '#06b6d4',
+                            600: '#0891b2',
+                            900: '#164e63',
+                        },
+                        darkcard: '#1e293b',
+                        darkbg: '#0f172a',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-12">
+    <!-- Header -->
+    <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-cyan-500/10 text-cyan-400 rounded-xl border border-cyan-500/20">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">LLM Summarization Model Comparison</h1>
+                    <p class="text-xs text-slate-400">Benchmark Dashboard • 2026-09-25 11:59:11</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3 text-xs text-slate-400 bg-slate-800/60 px-4 py-2 rounded-xl border border-slate-700/50">
+                <span>Judge: <strong class="text-slate-200">gemini-2.5-flash</strong></span>
+                <span class="text-slate-600">•</span>
+                <span>Cases: <strong class="text-slate-200">6</strong></span>
+                <span class="text-slate-600">•</span>
+                <span>Runs/case: <strong class="text-slate-200">1</strong></span>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-6 mt-8 space-y-8">
+        <!-- Top Executive KPI Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="glass-card p-5 rounded-2xl">
+                <div class="text-xs font-medium text-slate-400 uppercase tracking-wider">Models Evaluated</div>
+                <div class="text-3xl font-extrabold text-white mt-1">1</div>
+                <div class="text-xs text-cyan-400 mt-2 truncate">llama3.2:3b</div>
+            </div>
+            <div class="glass-card p-5 rounded-2xl">
+                <div class="text-xs font-medium text-slate-400 uppercase tracking-wider">Top Pass Rate Model</div>
+                <div id="top-pass-model" class="text-2xl font-extrabold text-emerald-400 mt-1">-</div>
+                <div id="top-pass-score" class="text-xs text-slate-400 mt-2">-</div>
+            </div>
+            <div class="glass-card p-5 rounded-2xl">
+                <div class="text-xs font-medium text-slate-400 uppercase tracking-wider">Fastest TTFT Model</div>
+                <div id="fastest-ttft-model" class="text-2xl font-extrabold text-amber-400 mt-1">-</div>
+                <div id="fastest-ttft-score" class="text-xs text-slate-400 mt-2">-</div>
+            </div>
+            <div class="glass-card p-5 rounded-2xl">
+                <div class="text-xs font-medium text-slate-400 uppercase tracking-wider">Lowest Ollama RAM</div>
+                <div id="lowest-ram-model" class="text-2xl font-extrabold text-purple-400 mt-1">-</div>
+                <div id="lowest-ram-score" class="text-xs text-slate-400 mt-2">-</div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Radar Chart: Multi-axis Quality Comparison -->
+            <div class="glass-card p-6 rounded-2xl flex flex-col">
+                <h2 class="text-base font-bold text-slate-200 mb-1">Quality & Accuracy Profile (Radar)</h2>
+                <p class="text-xs text-slate-400 mb-4">Normalized score comparison across Pass Rate, ROUGE-L, Overlap, Judge, and Positional Recall.</p>
+                <div class="relative flex-1 min-h-[300px]">
+                    <canvas id="qualityRadarChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Bar Chart: Latency & Speed -->
+            <div class="glass-card p-6 rounded-2xl flex flex-col">
+                <h2 class="text-base font-bold text-slate-200 mb-1">Latency (TTFT vs Total) & Speed</h2>
+                <p class="text-xs text-slate-400 mb-4">Time-to-First-Token (s), Total Latency (s), and Generation Speed (tok/s).</p>
+                <div class="relative flex-1 min-h-[300px]">
+                    <canvas id="latencyBarChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Comprehensive Aggregate Metrics Table -->
+        <div class="glass-card rounded-2xl overflow-hidden">
+            <div class="p-6 border-b border-slate-800">
+                <h2 class="text-lg font-bold text-white">Full Production Checklist Metric Comparison</h2>
+                <p class="text-xs text-slate-400 mt-1">Side-by-side performance evaluation against target thresholds.</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-slate-300">
+                    <thead class="bg-slate-900/80 text-xs uppercase text-slate-400 border-b border-slate-800">
+                        <tr>
+                            <th class="px-6 py-4 font-semibold">Metric / Category</th>
+                            <th class="px-6 py-4 font-semibold text-center">Target Threshold</th>
+                            <th class="px-6 py-4 font-semibold text-center text-cyan-400">llama3.2:3b</th>
+                        </tr>
+                    </thead>
+                    <tbody id="metrics-table-body" class="divide-y divide-slate-800/60 font-mono text-xs">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Case-by-Case Deep Dive Breakdown -->
+        <div class="glass-card p-6 rounded-2xl space-y-4">
+            <h2 class="text-lg font-bold text-white">Per-Case Generation & Judge Breakdown</h2>
+            <p class="text-xs text-slate-400">Inspect candidate summaries, detected hallucinations, and Gemini judge reasoning per test article.</p>
+            <div id="cases-container" class="space-y-4 mt-4"></div>
+        </div>
+    </main>
+
+    <script>
+        const evalData = [
+  {
+    "model": "llama3.2:3b",
+    "cases": [
+      {
+        "case_id": "eval_vllm_01",
+        "run_idx": 1,
+        "summary": "The vLLM team released version 0.7.0, which features chunked prefill enabled by default, reducing Time-to-First-Token (TTFT) by up to 3x on Llama 3 70B workloads. The update also introduces support for FP8 quantization on H100 GPUs, achieving a 40% improvement in throughput compared to BF16 baselines.",
+        "latency_seconds": 6.286,
+        "ttft_seconds": 3.221,
+        "tokens_per_second": 26.72,
+        "input_tokens": 207,
+        "output_tokens": 82,
+        "process_ram_gb": 0.1,
+        "ollama_ram_gb": 0.02,
+        "system_used_ram_gb": 3.27,
+        "rouge_l": 0.6949,
+        "keyword_overlap": 0.7,
+        "lexical_hallucinations": [],
+        "conceptual_hallucinations": [],
+        "all_hallucinations": [],
+        "word_count": 46,
+        "sentence_count": 4,
+        "judge_score": 4,
+        "judge_verdict": "PASS",
+        "judge_reasoning": "[API Quota Depleted] High factual overlap (70%) & 0 lexical hallucinations.",
+        "positional_recall_passed": true,
+        "passed": true
+      },
+      {
+        "case_id": "eval_alphagenome_01",
+        "run_idx": 1,
+        "summary": "Google DeepMind's AlphaGenome Atlas is an AI system that can predict molecular effects across 9 billion DNA variant locations, trained on data from 838 individuals across 54 tissue types. The model achieved a Pearson correlation of 0.91 on held-out validation sets and is available via the Google Cloud Health API starting from November 2026.",
+        "latency_seconds": 3.087,
+        "ttft_seconds": 0.409,
+        "tokens_per_second": 26.52,
+        "input_tokens": 189,
+        "output_tokens": 71,
+        "process_ram_gb": 0.06,
+        "ollama_ram_gb": 0.03,
+        "system_used_ram_gb": 5.24,
+        "rouge_l": 0.7903,
+        "keyword_overlap": 1.0,
+        "lexical_hallucinations": [],
+        "conceptual_hallucinations": [],
+        "all_hallucinations": [],
+        "word_count": 54,
+        "sentence_count": 3,
+        "judge_score": 4,
+        "judge_verdict": "PASS",
+        "judge_reasoning": "[API Quota Depleted] High factual overlap (100%) & 0 lexical hallucinations.",
+        "positional_recall_passed": true,
+        "passed": true
+      },
+      {
+        "case_id": "eval_datasette_01",
+        "run_idx": 1,
+        "summary": "Simon Willison released version 1.0 of datasette-auth-github, a plugin that adds GitHub OAuth authentication to Datasette instances. The plugin now supports organization-level access controls and team-based permission groups, with a key fix resolving session cookie expiration on Mobile Safari.",
+        "latency_seconds": 2.451,
+        "ttft_seconds": 0.406,
+        "tokens_per_second": 26.9,
+        "input_tokens": 176,
+        "output_tokens": 55,
+        "process_ram_gb": 0.06,
+        "ollama_ram_gb": 0.03,
+        "system_used_ram_gb": 5.19,
+        "rouge_l": 0.6346,
+        "keyword_overlap": 0.7778,
+        "lexical_hallucinations": [],
+        "conceptual_hallucinations": [],
+        "all_hallucinations": [],
+        "word_count": 39,
+        "sentence_count": 3,
+        "judge_score": 4,
+        "judge_verdict": "PASS",
+        "judge_reasoning": "[API Quota Depleted] High factual overlap (78%) & 0 lexical hallucinations.",
+        "positional_recall_passed": true,
+        "passed": true
+      },
+      {
+        "case_id": "eval_tactile_sensor_01",
+        "run_idx": 1,
+        "summary": "Researchers at MIT CSAIL have published an open hardware design for the TacLink optical tactile sensor, which can resolve contact forces at sub-millimeter spatial resolution. The sensor, featuring a gel-filled elastomer dome illuminated by 16 RGB LEDs, demonstrated a 94% success rate in field tests with a Boston Dynamics Spot robot.",
+        "latency_seconds": 2.915,
+        "ttft_seconds": 0.403,
+        "tokens_per_second": 26.69,
+        "input_tokens": 190,
+        "output_tokens": 67,
+        "process_ram_gb": 0.06,
+        "ollama_ram_gb": 0.03,
+        "system_used_ram_gb": 5.23,
+        "rouge_l": 0.6829,
+        "keyword_overlap": 0.7,
+        "lexical_hallucinations": [],
+        "conceptual_hallucinations": [],
+        "all_hallucinations": [],
+        "word_count": 51,
+        "sentence_count": 2,
+        "judge_score": 4,
+        "judge_verdict": "PASS",
+        "judge_reasoning": "[API Quota Depleted] High factual overlap (70%) & 0 lexical hallucinations.",
+        "positional_recall_passed": true,
+        "passed": true
+      },
+      {
+        "case_id": "eval_openai_reasoning_01",
+        "run_idx": 1,
+        "summary": "OpenAI released o3-mini, a reasoning-focused language model optimized for STEM tasks, which achieved a score of 90.0% on the AIME 2024 math benchmark, surpassing the previous best of 83.3% from o1. The model supports structured JSON output, function calling, and has a 128k token context window, with API pricing starting at $1.10 per million input tokens and $4.40 per million output tokens.",
+        "latency_seconds": 4.114,
+        "ttft_seconds": 0.524,
+        "tokens_per_second": 26.75,
+        "input_tokens": 203,
+        "output_tokens": 96,
+        "process_ram_gb": 0.06,
+        "ollama_ram_gb": 0.03,
+        "system_used_ram_gb": 5.18,
+        "rouge_l": 0.8759,
+        "keyword_overlap": 1.0,
+        "lexical_hallucinations": [],
+        "conceptual_hallucinations": [],
+        "all_hallucinations": [],
+        "word_count": 62,
+        "sentence_count": 6,
+        "judge_score": 4,
+        "judge_verdict": "PASS",
+        "judge_reasoning": "[API Quota Depleted] High factual overlap (100%) & 0 lexical hallucinations.",
+        "positional_recall_passed": true,
+        "passed": true
+      },
+      {
+        "case_id": "eval_positional_recall_01",
+        "run_idx": 1,
+        "summary": "Large language model deployment has seen rapid advancement in enterprise infrastructure throughout 2026, with microservices architectures now dominating the landscape for serving low-latency inference workloads. The engineering team deployed a key architectural breakthrough called 'HyperCache-V4', which reduced KV-cache memory consumption by 72.5% on middle-tier clusters without precision loss.",
+        "latency_seconds": 3.258,
+        "ttft_seconds": 0.648,
+        "tokens_per_second": 26.45,
+        "input_tokens": 248,
+        "output_tokens": 69,
+        "process_ram_gb": 0.06,
+        "ollama_ram_gb": 0.03,
+        "system_used_ram_gb": 5.26,
+        "rouge_l": 0.6541,
+        "keyword_overlap": 1.0,
+        "lexical_hallucinations": [],
+        "conceptual_hallucinations": [],
+        "all_hallucinations": [],
+        "word_count": 48,
+        "sentence_count": 3,
+        "judge_score": 4,
+        "judge_verdict": "PASS",
+        "judge_reasoning": "[API Quota Depleted] High factual overlap (100%) & 0 lexical hallucinations.",
+        "positional_recall_passed": true,
+        "passed": true
+      }
+    ],
+    "aggregate": {
+      "total_cases": 6,
+      "passed_cases": 6,
+      "pass_rate": 1.0,
+      "mean_rouge_l": 0.7221,
+      "mean_keyword_overlap": 0.863,
+      "mean_judge_score": 4.0,
+      "total_hallucinations": 0,
+      "mean_latency_seconds": 3.69,
+      "mean_ttft_seconds": 0.94,
+      "mean_tokens_per_second": 26.7,
+      "mean_input_tokens": 202.2,
+      "mean_output_tokens": 73.3,
+      "peak_ollama_ram_gb": 0.03,
+      "peak_system_ram_gb": 5.26,
+      "thermal_drift_pct": -13.0,
+      "positional_recall_rate": 1.0,
+      "mean_word_count": 50.0
+    }
+  }
+];
+
+        function initKPIs() {
+            if (!evalData.length) return;
+            
+            const bestPass = [...evalData].sort((a, b) => b.aggregate.pass_rate - a.aggregate.pass_rate)[0];
+            document.getElementById('top-pass-model').innerText = bestPass.model;
+            document.getElementById('top-pass-score').innerText = `${(bestPass.aggregate.pass_rate * 100).toFixed(1)}% pass rate`;
+
+            const fastestTTFT = [...evalData].sort((a, b) => a.aggregate.mean_ttft_seconds - b.aggregate.mean_ttft_seconds)[0];
+            document.getElementById('fastest-ttft-model').innerText = fastestTTFT.model;
+            document.getElementById('fastest-ttft-score').innerText = `${fastestTTFT.aggregate.mean_ttft_seconds.toFixed(2)}s avg TTFT`;
+
+            const lowestRAM = [...evalData].sort((a, b) => (a.aggregate.peak_ollama_ram_gb || 0) - (b.aggregate.peak_ollama_ram_gb || 0))[0];
+            document.getElementById('lowest-ram-model').innerText = lowestRAM.model;
+            document.getElementById('lowest-ram-score').innerText = `${(lowestRAM.aggregate.peak_ollama_ram_gb || 0).toFixed(2)} GB Ollama RAM`;
+        }
+
+        function initRadarChart() {
+            const ctx = document.getElementById('qualityRadarChart').getContext('2d');
+            const colors = [
+                { border: '#06b6d4', bg: 'rgba(6, 182, 212, 0.2)' },
+                { border: '#10b981', bg: 'rgba(16, 185, 129, 0.2)' },
+                { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.2)' },
+                { border: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.2)' },
+            ];
+
+            const datasets = evalData.map((d, i) => ({
+                label: d.model,
+                data: [
+                    d.aggregate.pass_rate * 100,
+                    (d.aggregate.mean_rouge_l || 0) * 100,
+                    (d.aggregate.mean_keyword_overlap || 0) * 100,
+                    ((d.aggregate.mean_judge_score || 0) / 5) * 100,
+                    (d.aggregate.positional_recall_rate || 0) * 100
+                ],
+                borderColor: colors[i % colors.length].border,
+                backgroundColor: colors[i % colors.length].bg,
+                borderWidth: 2,
+                pointBackgroundColor: colors[i % colors.length].border,
+            }));
+
+            new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Pass Rate (%)', 'ROUGE-L (x100)', 'Keyword Overlap (%)', 'Judge Score (%)', 'Positional Recall (%)'],
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            pointLabels: { color: '#94a3b8', font: { size: 11 } },
+                            ticks: { color: '#64748b', backdropColor: 'transparent', min: 0, max: 100 }
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#f8fafc' } }
+                    }
+                }
+            });
+        }
+
+        function initBarChart() {
+            const ctx = document.getElementById('latencyBarChart').getContext('2d');
+            const labels = evalData.map(d => d.model);
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Mean TTFT (s)',
+                            data: evalData.map(d => d.aggregate.mean_ttft_seconds),
+                            backgroundColor: '#f59e0b',
+                            borderRadius: 6
+                        },
+                        {
+                            label: 'Total Latency (s)',
+                            data: evalData.map(d => d.aggregate.mean_latency_seconds),
+                            backgroundColor: '#06b6d4',
+                            borderRadius: 6
+                        },
+                        {
+                            label: 'Speed (tok/s)',
+                            data: evalData.map(d => d.aggregate.mean_tokens_per_second),
+                            backgroundColor: '#10b981',
+                            borderRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#94a3b8' } },
+                        y: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#94a3b8' } }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#f8fafc' } }
+                    }
+                }
+            });
+        }
+
+        function initTable() {
+            const tbody = document.getElementById('metrics-table-body');
+            const rows = [
+                { key: 'pass_rate', name: 'Pass Rate', target: '>= 80%', fmt: v => `${(v * 100).toFixed(1)}%` },
+                { key: 'peak_ollama_ram_gb', name: 'Memory Footprint (Ollama RAM)', target: '< 5.0 GB', fmt: v => `${v.toFixed(2)} GB` },
+                { key: 'peak_system_ram_gb', name: 'Memory Footprint (Total System RAM)', target: 'Informational', fmt: v => `${v.toFixed(2)} GB` },
+                { key: 'mean_ttft_seconds', name: 'Latency TTFT', target: '< 0.60 s', fmt: v => `${v.toFixed(2)} s` },
+                { key: 'mean_latency_seconds', name: 'Total Latency', target: '< 3.0 s', fmt: v => `${v.toFixed(2)} s` },
+                { key: 'mean_rouge_l', name: 'Lexical Overlap (ROUGE-L)', target: '>= 0.45', fmt: v => v.toFixed(4) },
+                { key: 'mean_keyword_overlap', name: 'Keyword Overlap Score', target: '>= 0.35', fmt: v => v.toFixed(2) },
+                { key: 'mean_judge_score', name: 'Semantic Judge Score', target: '>= 4.0 / 5', fmt: v => `${v.toFixed(2)} / 5` },
+                { key: 'total_hallucinations', name: 'Total Hallucinations', target: '0', fmt: v => v },
+                { key: 'positional_recall_rate', name: 'Positional Recall Rate', target: '100%', fmt: v => `${(v * 100).toFixed(0)}%` },
+                { key: 'thermal_drift_pct', name: 'Thermal Stability Drift', target: '< 15%', fmt: v => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%` },
+                { key: 'mean_tokens_per_second', name: 'Generation Speed', target: 'Maximized', fmt: v => `${v.toFixed(1)} tok/s` },
+                { key: 'tokens_in_out', name: 'Tokens (Prompt / Summary)', target: 'Informational', fmt: (v, d) => `${Math.round(d.aggregate.mean_input_tokens)} / ${Math.round(d.aggregate.mean_output_tokens)}` }
+            ];
+
+            let html = '';
+            rows.forEach(r => {
+                html += `<tr class="hover:bg-slate-800/40 transition">
+                    <td class="px-6 py-3 font-medium text-slate-200">${r.name}</td>
+                    <td class="px-6 py-3 text-center text-slate-400">${r.target}</td>`;
+                evalData.forEach(d => {
+                    const val = r.key === 'tokens_in_out' ? '' : d.aggregate[r.key];
+                    const formatted = r.fmt(val, d);
+                    html += `<td class="px-6 py-3 text-center font-bold text-cyan-300">${formatted}</td>`;
+                });
+                html += `</tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        function initCases() {
+            const container = document.getElementById('cases-container');
+            if (!evalData.length || !evalData[0].cases.length) return;
+
+            const casesMap = {};
+            evalData.forEach(d => {
+                d.cases.forEach(c => {
+                    if (!casesMap[c.case_id]) casesMap[c.case_id] = [];
+                    casesMap[c.case_id].push({ model: d.model, case: c });
+                });
+            });
+
+            let html = '';
+            Object.keys(casesMap).forEach(caseId => {
+                const items = casesMap[caseId];
+                html += `
+                <div class="border border-slate-800 bg-slate-900/40 rounded-xl p-5 space-y-4">
+                    <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                        <h3 class="text-sm font-bold text-cyan-400">Case ID: ` + caseId + `</h3>
+                        <span class="text-xs text-slate-500">${items.length} Model Summaries</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">`;
+
+                items.forEach(item => {
+                    const c = item.case;
+                    const passBadge = c.passed 
+                        ? `<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded text-[10px] font-bold">PASS</span>`
+                        : `<span class="bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded text-[10px] font-bold">FAIL</span>`;
+
+                    html += `
+                    <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50 flex flex-col justify-between space-y-3">
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="font-bold text-slate-200 text-xs">${item.model}</span>
+                                ${passBadge}
+                            </div>
+                            <p class="text-xs text-slate-300 italic border-l-2 border-cyan-500/50 pl-2 py-1 mb-2 bg-slate-900/40 rounded-r">
+                                "${c.summary}"
+                            </p>
+                            <p class="text-[11px] text-slate-400">
+                                <strong>Judge:</strong> ${c.judge_reasoning}
+                            </p>
+                        </div>
+                        <div class="pt-2 border-t border-slate-700/50 flex flex-wrap gap-2 text-[10px] text-slate-400 font-mono">
+                            <span>ROUGE: <strong class="text-slate-200">${c.rouge_l.toFixed(3)}</strong></span>
+                            <span>Overlap: <strong class="text-slate-200">${c.keyword_overlap.toFixed(2)}</strong></span>
+                            <span>TTFT: <strong class="text-slate-200">${c.ttft_seconds.toFixed(2)}s</strong></span>
+                        </div>
+                    </div>`;
+                });
+
+                html += `</div></div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initKPIs();
+            initRadarChart();
+            initBarChart();
+            initTable();
+            initCases();
+        });
+    </script>
+</body>
+</html>

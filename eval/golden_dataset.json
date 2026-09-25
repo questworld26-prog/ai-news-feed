@@ -1,0 +1,33 @@
+[
+  {
+    "id": "eval_vllm_01",
+    "source_text": "vLLM team announced version 0.7.0 featuring chunked prefill enabled by default, reducing TTFT (Time-to-First-Token) by up to 3x on Llama 3 70B workloads. The release also adds support for FP8 quantization on H100 GPUs, improving throughput by 40% compared to BF16 baselines. Additionally, the team introduced a new speculative decoding engine that achieves up to 2.5x speedup on code generation tasks.",
+    "expected_facts": ["vLLM 0.7.0", "chunked prefill", "TTFT", "3x", "Llama 3 70B", "FP8", "H100", "40%", "speculative decoding", "2.5x"]
+  },
+  {
+    "id": "eval_alphagenome_01",
+    "source_text": "Google DeepMind introduced AlphaGenome Atlas, a new AI system capable of predicting molecular effects across 9 billion DNA variant locations to accelerate genomic medicine and rare disease diagnosis. The model was trained on data from 838 individuals across 54 tissue types, achieving a Pearson correlation of 0.91 on held-out validation sets. AlphaGenome Atlas is available via the Google Cloud Health API starting from November 2026.",
+    "expected_facts": ["AlphaGenome Atlas", "Google DeepMind", "9 billion", "DNA variant", "838 individuals", "54 tissue types", "Pearson correlation", "0.91", "Google Cloud Health API"]
+  },
+  {
+    "id": "eval_datasette_01",
+    "source_text": "Simon Willison released version 1.0 of datasette-auth-github, a plugin that adds GitHub OAuth authentication to Datasette instances. The key fix in this release resolves session cookie expiration on Mobile Safari by explicitly setting the Max-Age attribute rather than relying on Expires headers. The plugin now also supports organization-level access controls and team-based permission groups.",
+    "expected_facts": ["datasette-auth-github", "1.0", "Simon Willison", "GitHub OAuth", "Datasette", "Mobile Safari", "Max-Age", "Expires headers", "organization-level access controls"]
+  },
+  {
+    "id": "eval_tactile_sensor_01",
+    "source_text": "Researchers at MIT CSAIL published an open hardware design for a high-resolution optical tactile sensor named TacLink, capable of resolving contact forces at sub-millimeter spatial resolution. The sensor uses a gel-filled elastomer dome illuminated by 16 RGB LEDs, with a production cost of under $50 per unit. Field tests with a Boston Dynamics Spot robot demonstrated 94% success rate on pick-and-place tasks with deformable objects.",
+    "expected_facts": ["MIT CSAIL", "TacLink", "optical tactile sensor", "sub-millimeter", "16 RGB LEDs", "$50", "Boston Dynamics Spot", "94%", "pick-and-place", "deformable objects"]
+  },
+  {
+    "id": "eval_openai_reasoning_01",
+    "source_text": "OpenAI released o3-mini, a reasoning-focused language model optimized for STEM tasks. On the AIME 2024 math benchmark, o3-mini scored 90.0% using high compute settings, surpassing the previous best of 83.3% from o1. The model supports structured JSON output, function calling, and has a 128k token context window. API pricing starts at $1.10 per million input tokens and $4.40 per million output tokens.",
+    "expected_facts": ["o3-mini", "OpenAI", "AIME 2024", "90.0%", "83.3%", "o1", "128k token", "$1.10", "$4.40", "function calling", "JSON output"]
+  },
+  {
+    "id": "eval_positional_recall_01",
+    "source_text": "Paragraph 1: Large language model deployment has seen rapid advancement in enterprise infrastructure throughout 2026. Microservices architectures now dominate the landscape for serving low-latency inference workloads.\n\nParagraph 2: Memory footprint management remains a primary bottleneck for edge devices with restricted unified RAM budgets. Optimization strategies frequently combine AWQ quantization with continuous batching.\n\nParagraph 3: CRITICAL INVENTED BENEFIT: The engineering team deployed a key architectural breakthrough called 'HyperCache-V4' which reduced KV-cache memory consumption by 72.5% on middle-tier clusters without precision loss.\n\nParagraph 4: Future research directions continue to evaluate hybrid retrieval-augmented pipelines alongside parameter-efficient fine-tuning techniques for domain adaptation.",
+    "expected_facts": ["HyperCache-V4", "72.5%", "KV-cache"],
+    "middle_buried_facts": ["HyperCache-V4", "72.5%"]
+  }
+]
