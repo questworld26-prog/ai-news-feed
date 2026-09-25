@@ -34,6 +34,34 @@ ARTICLE:
 
 SUMMARY:"""
 
+[curation]
+temperature = 0.2
+num_ctx = 4096
+timeout_seconds = 120
+min_schema_pass_rate = 1.0
+min_selection_recall = 0.80
+min_selection_precision = 0.80
+target_max_latency_seconds = 15.0
+
+[script]
+word_target = 750
+word_tolerance = 250
+temperature = 0.7
+num_ctx = 4096
+timeout_seconds = 240
+min_story_coverage = 0.75
+max_leakage_count = 0
+min_judge_score = 3.5
+target_max_latency_seconds = 90.0
+
+[audit]
+temperature = 0.0
+num_ctx = 2048
+timeout_seconds = 60
+min_tpr = 0.80
+min_tnr = 0.80
+target_max_latency_seconds = 10.0
+
 [evaluation]
 # Path to the golden dataset file (relative to this config file's directory)
 golden_dataset_path = "golden_dataset.json"

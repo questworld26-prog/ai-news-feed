@@ -1,33 +1,178 @@
 [
   {
     "id": "eval_vllm_01",
+    "type": "summarization",
     "source_text": "vLLM team announced version 0.7.0 featuring chunked prefill enabled by default, reducing TTFT (Time-to-First-Token) by up to 3x on Llama 3 70B workloads. The release also adds support for FP8 quantization on H100 GPUs, improving throughput by 40% compared to BF16 baselines. Additionally, the team introduced a new speculative decoding engine that achieves up to 2.5x speedup on code generation tasks.",
     "expected_facts": ["vLLM 0.7.0", "chunked prefill", "TTFT", "3x", "Llama 3 70B", "FP8", "H100", "40%", "speculative decoding", "2.5x"]
   },
   {
     "id": "eval_alphagenome_01",
+    "type": "summarization",
     "source_text": "Google DeepMind introduced AlphaGenome Atlas, a new AI system capable of predicting molecular effects across 9 billion DNA variant locations to accelerate genomic medicine and rare disease diagnosis. The model was trained on data from 838 individuals across 54 tissue types, achieving a Pearson correlation of 0.91 on held-out validation sets. AlphaGenome Atlas is available via the Google Cloud Health API starting from November 2026.",
     "expected_facts": ["AlphaGenome Atlas", "Google DeepMind", "9 billion", "DNA variant", "838 individuals", "54 tissue types", "Pearson correlation", "0.91", "Google Cloud Health API"]
   },
   {
     "id": "eval_datasette_01",
+    "type": "summarization",
     "source_text": "Simon Willison released version 1.0 of datasette-auth-github, a plugin that adds GitHub OAuth authentication to Datasette instances. The key fix in this release resolves session cookie expiration on Mobile Safari by explicitly setting the Max-Age attribute rather than relying on Expires headers. The plugin now also supports organization-level access controls and team-based permission groups.",
     "expected_facts": ["datasette-auth-github", "1.0", "Simon Willison", "GitHub OAuth", "Datasette", "Mobile Safari", "Max-Age", "Expires headers", "organization-level access controls"]
   },
   {
     "id": "eval_tactile_sensor_01",
+    "type": "summarization",
     "source_text": "Researchers at MIT CSAIL published an open hardware design for a high-resolution optical tactile sensor named TacLink, capable of resolving contact forces at sub-millimeter spatial resolution. The sensor uses a gel-filled elastomer dome illuminated by 16 RGB LEDs, with a production cost of under $50 per unit. Field tests with a Boston Dynamics Spot robot demonstrated 94% success rate on pick-and-place tasks with deformable objects.",
     "expected_facts": ["MIT CSAIL", "TacLink", "optical tactile sensor", "sub-millimeter", "16 RGB LEDs", "$50", "Boston Dynamics Spot", "94%", "pick-and-place", "deformable objects"]
   },
   {
     "id": "eval_openai_reasoning_01",
+    "type": "summarization",
     "source_text": "OpenAI released o3-mini, a reasoning-focused language model optimized for STEM tasks. On the AIME 2024 math benchmark, o3-mini scored 90.0% using high compute settings, surpassing the previous best of 83.3% from o1. The model supports structured JSON output, function calling, and has a 128k token context window. API pricing starts at $1.10 per million input tokens and $4.40 per million output tokens.",
     "expected_facts": ["o3-mini", "OpenAI", "AIME 2024", "90.0%", "83.3%", "o1", "128k token", "$1.10", "$4.40", "function calling", "JSON output"]
   },
   {
     "id": "eval_positional_recall_01",
+    "type": "summarization",
     "source_text": "Paragraph 1: Large language model deployment has seen rapid advancement in enterprise infrastructure throughout 2026. Microservices architectures now dominate the landscape for serving low-latency inference workloads.\n\nParagraph 2: Memory footprint management remains a primary bottleneck for edge devices with restricted unified RAM budgets. Optimization strategies frequently combine AWQ quantization with continuous batching.\n\nParagraph 3: CRITICAL INVENTED BENEFIT: The engineering team deployed a key architectural breakthrough called 'HyperCache-V4' which reduced KV-cache memory consumption by 72.5% on middle-tier clusters without precision loss.\n\nParagraph 4: Future research directions continue to evaluate hybrid retrieval-augmented pipelines alongside parameter-efficient fine-tuning techniques for domain adaptation.",
     "expected_facts": ["HyperCache-V4", "72.5%", "KV-cache"],
     "middle_buried_facts": ["HyperCache-V4", "72.5%"]
+  },
+  {
+    "id": "curation_radar_clean_01",
+    "type": "curation",
+    "theme_dict": {
+      "name": "Practitioner's Radar",
+      "description": "Concrete technical breakthroughs, local model deployment patterns, architecture shifts, and hands-on tooling updates.",
+      "tone": "collegial, sharp, highly technical, focused on engineering tradeoffs"
+    },
+    "max_stories": 3,
+    "candidates": [
+      {
+        "title": "vLLM 0.7.0 ships chunked prefill reducing TTFT by 3x on Llama 3 70B",
+        "summary": "vLLM 0.7.0 enables chunked prefill by default and adds FP8 quantization on H100s with speculative decoding improvements.",
+        "source": "Hacker News",
+        "url": "https://github.com/vllm-project/vllm/releases/tag/v0.7.0"
+      },
+      {
+        "title": "Tech Giant AI Startup Raises $12B at Massive Valuation",
+        "summary": "Venture capital firms lead record-setting funding round for leading generative AI enterprise application provider.",
+        "source": "TechCrunch",
+        "url": "https://techcrunch.com/example-funding"
+      },
+      {
+        "title": "Apple MLX introduces unified FlashAttention-2 kernels for M4 Max",
+        "summary": "MLX team open-sources custom Metal FlashAttention kernels cutting attention latency by 45% on Apple Silicon.",
+        "source": "GitHub Releases",
+        "url": "https://github.com/ml-explore/mlx/releases"
+      },
+      {
+        "title": "Opinion: Why AI Will Completely Transform Enterprise Strategy by 2030",
+        "summary": "Executive op-ed discussing macroeconomic impacts, labor trends, and high-level corporate adoption curves.",
+        "source": "Forbes AI",
+        "url": "https://forbes.com/opinion-ai-transformation"
+      },
+      {
+        "title": "PyTorch 2.5 adds native dynamic shape compilation for TensorRT engines",
+        "summary": "PyTorch release optimizes torch.compile backend compilation for dynamic batch sizes on NVIDIA hardware.",
+        "source": "PyTorch Blog",
+        "url": "https://pytorch.org/blog/pytorch-2-5"
+      }
+    ],
+    "must_select": [1, 3, 5],
+    "must_reject": [2, 4]
+  },
+  {
+    "id": "curation_radar_adversarial_02",
+    "type": "curation",
+    "theme_dict": {
+      "name": "Practitioner's Radar",
+      "description": "Concrete technical implementations, open-source systems, and production engineering breakthroughs.",
+      "tone": "strictly engineering, zero marketing fluff"
+    },
+    "max_stories": 2,
+    "candidates": [
+      {
+        "title": "Celebrity launches AI companion app with viral social marketing",
+        "summary": "Social media influencer announces new branded chatbot powered by wrapper API.",
+        "source": "Tech Buzz",
+        "url": "https://techbuzz.com/celebrity-bot"
+      },
+      {
+        "title": "Triton 3.0 JIT compiler achieves zero-overhead kernel fusion on AMD ROCm",
+        "summary": "OpenAI Triton compiler team adds architecture-neutral memory scheduling and AMD MI300 backend support.",
+        "source": "OpenAI GitHub",
+        "url": "https://github.com/openai/triton"
+      },
+      {
+        "title": "Press Release: AI Startup wins Best Global Innovation Award at Summit",
+        "summary": "Corporate marketing announcement regarding industry trophy received at annual conference.",
+        "source": "PR Newswire",
+        "url": "https://prnewswire.com/award"
+      },
+      {
+        "title": "llama.cpp adds Vulkan tensor core offloading for low-power APUs",
+        "summary": "PR adds specialized Vulkan SPIR-V shaders enabling FP16 GEMM on integrated AMD and Intel graphics.",
+        "source": "GitHub",
+        "url": "https://github.com/ggerganov/llama.cpp"
+      }
+    ],
+    "must_select": [2, 4],
+    "must_reject": [1, 3]
+  },
+  {
+    "id": "script_radar_monologue_01",
+    "type": "script",
+    "theme_dict": {
+      "name": "Practitioner's Radar",
+      "description": "Technical breakthroughs, local model deployment, and production engineering.",
+      "tone": "collegial, sharp, conversational, rigorous engineering depth"
+    },
+    "word_target": 750,
+    "input_stories": [
+      {
+        "title": "vLLM 0.7.0 Enables Chunked Prefill by Default",
+        "summary": "vLLM version 0.7.0 turns on chunked prefill by default, cutting TTFT by up to 3x on Llama 3 70B workloads while adding FP8 quantization on H100s for 40% higher throughput."
+      },
+      {
+        "title": "Apple MLX Adds Native FlashAttention-2 on Metal",
+        "summary": "The MLX team open-sourced optimized Metal kernels for FlashAttention-2, delivering 45% lower attention latency on Apple Silicon M4 Max chips."
+      },
+      {
+        "title": "PyTorch 2.5 Native Dynamic Shape Compilation",
+        "summary": "PyTorch 2.5 enhances torch.compile with full dynamic shape support for TensorRT, eliminating recompilation overhead for varying request batch sizes."
+      },
+      {
+        "title": "Triton 3.0 JIT Memory Fusion on AMD ROCm",
+        "summary": "OpenAI Triton 3.0 JIT compiler achieves zero-overhead kernel fusion with unified memory scheduling on AMD MI300 hardware."
+      }
+    ],
+    "required_coverage_terms": ["vLLM", "chunked prefill", "MLX", "FlashAttention", "PyTorch", "torch.compile", "Triton"],
+    "forbidden_patterns": ["\\*", "#", "\\[", "\\]", "https?://", "www\\.", "available at", "check out the link"]
+  },
+  {
+    "id": "audit_clean_vllm_01",
+    "type": "audit",
+    "source_text": "vLLM team announced version 0.7.0 featuring chunked prefill enabled by default, reducing TTFT (Time-to-First-Token) by up to 3x on Llama 3 70B workloads. The release also adds support for FP8 quantization on H100 GPUs, improving throughput by 40% compared to BF16 baselines.",
+    "digest_summary": "vLLM 0.7.0 enables chunked prefill by default, reducing time to first token by 3x on Llama 3 70B. It also adds FP8 quantization on H100 GPUs for a 40% throughput increase.",
+    "is_poisoned": false,
+    "expected_verdict": true,
+    "injected_hallucinations": []
+  },
+  {
+    "id": "audit_poisoned_metrics_02",
+    "type": "audit",
+    "source_text": "vLLM team announced version 0.7.0 featuring chunked prefill enabled by default, reducing TTFT (Time-to-First-Token) by up to 3x on Llama 3 70B workloads. The release also adds support for FP8 quantization on H100 GPUs, improving throughput by 40% compared to BF16 baselines.",
+    "digest_summary": "vLLM 0.7.0 reduces TTFT by 10x on Llama 4 128B models and adds FP4 quantization on B200 GPUs for a 90% throughput boost.",
+    "is_poisoned": true,
+    "expected_verdict": false,
+    "injected_hallucinations": ["10x", "Llama 4 128B", "FP4", "B200", "90%"]
+  },
+  {
+    "id": "audit_poisoned_url_entity_03",
+    "type": "audit",
+    "source_text": "Researchers at MIT CSAIL published an open hardware design for a high-resolution optical tactile sensor named TacLink, capable of resolving contact forces at sub-millimeter spatial resolution with a unit cost under $50.",
+    "digest_summary": "MIT CSAIL created TacLink sensor costing $50, available for purchase at https://taclink.mit.edu/buy with Stanford Robotics integration.",
+    "is_poisoned": true,
+    "expected_verdict": false,
+    "injected_hallucinations": ["https://taclink.mit.edu/buy", "Stanford Robotics"]
   }
 ]
