@@ -14,6 +14,8 @@ import numpy as np
 import requests
 import soundfile as sf
 
+from model_provider import ModelProviderFactory
+
 logger = logging.getLogger("ai_briefing")
 
 
@@ -43,11 +45,19 @@ def chunk_text(text: str, max_words: int = 150) -> list[str]:
     return [c.strip() for c in chunks if c.strip()]
 
 
-def unload_ollama_models(ollama_url: str = "http://localhost:11434") -> None:
+def unload_ollama_models(ollama_url: str = "http://localhost:11434", config: dict[str, Any] | None = None) -> None:
     """
     Explicitly offload any active LLM models from Ollama VRAM/unified memory
     to ensure full memory headroom for kokoro-mlx audio synthesis.
     """
+    if config:
+        try:
+            provider = ModelProviderFactory.get_provider(config)
+            provider.unload_models()
+            return
+        except Exception as e:
+            logger.warning(f"Could not offload models via provider: {e}")
+
     cleaned_url = ollama_url.rstrip("/")
     try:
         ps_resp = requests.get(f"{cleaned_url}/api/ps", timeout=5)
@@ -97,11 +107,8 @@ def synthesize_audio(
     Offloads LLM models prior to synthesis and frees Metal tensor cache between chunks.
     Returns list of generated audio file paths (split if > max_file_size_mb).
     """
-    llm_cfg = config.get("llm", {})
-    ollama_url = llm_cfg.get("ollama_url", "http://localhost:11434")
-
     # Step 1: Offload LLM weights from unified memory before allocating TTS models
-    unload_ollama_models(ollama_url)
+    unload_ollama_models(config=config)
     clear_mlx_memory()
 
     tts_cfg = config.get("tts", {})

@@ -14,6 +14,7 @@ from typing import Any
 import requests
 from pydantic import BaseModel, Field
 
+from model_provider import ModelProviderFactory
 from story import BriefingOutput, Story
 
 logger = logging.getLogger("ai_briefing")
@@ -64,8 +65,7 @@ def llm_curate_stories(
     typed_candidates = [c if isinstance(c, Story) else Story.from_dict(c) for c in candidates]
 
     llm_cfg = config.get("llm", {})
-    ollama_url = llm_cfg.get("ollama_url", "http://localhost:11434").rstrip("/")
-    model = llm_cfg.get("model", "phi4-mini:3.8b")
+    model = llm_cfg.get("curation_model") or llm_cfg.get("model", "phi4-mini:3.8b")
     max_stories = config.get("feeds", {}).get("max_stories", 5)
 
     if len(typed_candidates) <= max_stories:
@@ -93,21 +93,15 @@ def llm_curate_stories(
 
     logger.info(f"LLM curation: querying {model} with CoT schema for theme '{theme_dict.get('name')}'...")
     try:
-        response = requests.post(
-            f"{ollama_url}/api/generate",
-            json={
-                "model": model,
-                "prompt": prompt,
-                "format": CurationResponse.model_json_schema(),
-                "stream": False,
-                "options": {"temperature": 0.2, "num_ctx": 4096},
-            },
+        provider = ModelProviderFactory.get_provider(config)
+        curation_res = provider.generate_structured(
+            prompt=prompt,
+            schema=CurationResponse,
+            model=model,
+            temperature=0.2,
+            num_ctx=4096,
             timeout=120,
         )
-        response.raise_for_status()
-        raw = response.json().get("response", "").strip()
-        curation_data = json.loads(raw)
-        curation_res = CurationResponse.model_validate(curation_data)
 
         # Print / Log Chain-of-Thought Evaluation Criteria & Justifications
         logger.info(f"\n=== LLM CURATION CRITERIA ({theme_dict.get('name')}) ===")
@@ -180,7 +174,6 @@ def generate_story_summary(
     s_obj = story if isinstance(story, Story) else Story.from_dict(story)
 
     llm_cfg = config.get("llm", {})
-    ollama_url = llm_cfg.get("ollama_url", "http://localhost:11434").rstrip("/")
     # Use specialized summary_model if configured, falling back to general model
     model = llm_cfg.get("summary_model") or llm_cfg.get("model", "qwen2.5:3b")
 
@@ -213,21 +206,15 @@ def generate_story_summary(
     )
 
     try:
-        resp = requests.post(
-            f"{ollama_url}/api/generate",
-            json={
-                "model": model,
-                "prompt": prompt,
-                "format": StorySummaryResponse.model_json_schema(),
-                "stream": False,
-                "options": {"temperature": 0.1, "num_ctx": 2048},
-            },
+        provider = ModelProviderFactory.get_provider(config)
+        res_obj = provider.generate_structured(
+            prompt=prompt,
+            schema=StorySummaryResponse,
+            model=model,
+            temperature=0.1,
+            num_ctx=2048,
             timeout=60,
         )
-        resp.raise_for_status()
-        raw = resp.json().get("response", "").strip()
-        data = json.loads(raw)
-        res_obj = StorySummaryResponse.model_validate(data)
         return res_obj.summary.strip()
     except Exception as exc:
         logger.warning(f"generate_story_summary failed for '{s_obj.title[:50]}': {exc}")
@@ -328,7 +315,6 @@ def generate_briefing_llm(
     typed_stories = [s if isinstance(s, Story) else Story.from_dict(s) for s in stories]
 
     llm_cfg = config.get("llm", {})
-    ollama_url = llm_cfg.get("ollama_url", "http://localhost:11434").rstrip("/")
     model = llm_cfg.get("script_model") or llm_cfg.get("model", "phi4-mini:3.8b")
     word_target = llm_cfg.get("script_word_target", 750)
 
@@ -392,18 +378,14 @@ def generate_briefing_llm(
 
             candidate_script = ""
             try:
-                resp_audio = requests.post(
-                    f"{ollama_url}/api/generate",
-                    json={
-                        "model": model,
-                        "prompt": script_prompt,
-                        "stream": False,
-                        "options": {"temperature": 0.7, "num_ctx": 4096},
-                    },
+                provider = ModelProviderFactory.get_provider(config)
+                raw_audio = provider.generate(
+                    prompt=script_prompt,
+                    model=model,
+                    temperature=0.7,
+                    num_ctx=4096,
                     timeout=240,
                 )
-                resp_audio.raise_for_status()
-                raw_audio = resp_audio.json().get("response", "").strip()
                 candidate_script = clean_script_for_audio(raw_audio)
             except Exception as e:
                 logger.error(f"Error generating audio script attempt {attempt}: {e}")

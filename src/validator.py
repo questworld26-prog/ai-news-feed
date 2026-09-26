@@ -15,6 +15,7 @@ import requests
 from pydantic import AliasChoices, BaseModel, Field
 
 from story import Story
+from model_provider import ModelProviderFactory
 
 logger = logging.getLogger("ai_briefing")
 
@@ -254,10 +255,9 @@ class FactCheckResponse(BaseModel):
 
 
 def llm_fact_check(source_text: str, digest_summary: str, config: dict[str, Any]) -> tuple[bool, str]:
-    """Use local Ollama model to perform a factual adherence audit."""
+    """Use local model via provider factory to perform a factual adherence audit."""
     llm_cfg = config.get("llm", {})
     testing_cfg = config.get("testing", {})
-    ollama_url = llm_cfg.get("ollama_url", "http://localhost:11434").rstrip("/")
     model = testing_cfg.get("audit_model") or testing_cfg.get("test_model") or llm_cfg.get("model", "qwen2.5:3b")
 
     # Expanded to 4000 characters so multi-story scripts have complete source visibility
@@ -274,21 +274,15 @@ def llm_fact_check(source_text: str, digest_summary: str, config: dict[str, Any]
     )
 
     try:
-        resp = requests.post(
-            f"{ollama_url}/api/generate",
-            json={
-                "model": model,
-                "prompt": prompt,
-                "format": FactCheckResponse.model_json_schema(),
-                "stream": False,
-                "options": {"temperature": 0.0, "num_ctx": 4096},
-            },
+        provider = ModelProviderFactory.get_provider(config)
+        res_obj = provider.generate_structured(
+            prompt=prompt,
+            schema=FactCheckResponse,
+            model=model,
+            temperature=0.0,
+            num_ctx=4096,
             timeout=60,
         )
-        resp.raise_for_status()
-        raw = resp.json().get("response", "").strip()
-        data = json.loads(raw)
-        res_obj = FactCheckResponse.model_validate(data)
         return res_obj.passed, res_obj.reasoning.strip()
     except Exception as e:
         logger.warning(f"LLM fact check call failed: {e}")
