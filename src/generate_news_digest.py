@@ -25,6 +25,7 @@ from briefing_generator import (
 )
 from news_fetcher import fetch_stories_for_theme
 from notifier import send_to_telegram, synthesize_audio
+from telemetry import PipelineTracker
 
 logging.basicConfig(
     level=logging.INFO,
@@ -129,34 +130,44 @@ def main() -> None:
         logger.error("No themes found in config.toml under [themes].")
         sys.exit(1)
 
+    tracker = PipelineTracker()
+
     theme_choice = args.theme.strip().lower() if args.theme else "auto"
     theme_key = None
 
-    if theme_choice in themes:
-        theme_key = theme_choice
-        logger.info(f"Explicit theme selected via CLI: '{theme_key}'")
-    elif theme_choice == "random":
-        theme_key = random.choice(list(themes.keys()))
-        logger.info(f"Random theme selected: '{theme_key}'")
-    else:
-        # Option 5: Story-Driven Dynamic Theme Routing via LAYA System 1
-        laya_cfg = config.get("laya", {})
-        if laya_cfg.get("enabled", True) and laya_cfg.get("enable_theme_routing", True):
-            try:
-                from news_fetcher import sample_breaking_headlines
-                from laya_decision import get_laya_engine
-
-                logger.info("📡 Sampling breaking headlines for LAYA dynamic theme routing...")
-                samples = sample_breaking_headlines(config, max_items=12)
-                if samples:
-                    engine = get_laya_engine(config)
-                    theme_key, score_dist = engine.route_theme_from_stories(samples, themes, config)
-                    logger.info(f"🎯 LAYA dynamic theme routing selected: '{theme_key}' (Signal distribution: {score_dist})")
-            except Exception as exc:
-                logger.warning(f"LAYA theme routing error: {exc}. Falling back to random choice.")
-
-        if not theme_key or theme_key not in themes:
+    with tracker.track_stage("Phase 0: Theme Selection", {"strategy": theme_choice}) as stage:
+        if theme_choice in themes:
+            theme_key = theme_choice
+            logger.info(f"Explicit theme selected via CLI: '{theme_key}'")
+            stage.set_metric("method", "CLI Explicit")
+        elif theme_choice == "random":
             theme_key = random.choice(list(themes.keys()))
+            logger.info(f"Random theme selected: '{theme_key}'")
+            stage.set_metric("method", "Random")
+        else:
+            # Option 5: Story-Driven Dynamic Theme Routing via LAYA System 1
+            laya_cfg = config.get("laya", {})
+            if laya_cfg.get("enabled", True) and laya_cfg.get("enable_theme_routing", True):
+                try:
+                    from news_fetcher import sample_breaking_headlines
+                    from laya_decision import get_laya_engine
+
+                    logger.info("📡 Sampling breaking headlines for LAYA dynamic theme routing...")
+                    samples = sample_breaking_headlines(config, max_items=12)
+                    if samples:
+                        engine = get_laya_engine(config)
+                        theme_key, score_dist = engine.route_theme_from_stories(samples, themes, config)
+                        logger.info(f"🎯 LAYA dynamic theme routing selected: '{theme_key}' (Signal distribution: {score_dist})")
+                        stage.set_metric("method", "LAYA System 1")
+                        stage.set_metric("headlines_sampled", len(samples))
+                except Exception as exc:
+                    logger.warning(f"LAYA theme routing error: {exc}. Falling back to random choice.")
+
+            if not theme_key or theme_key not in themes:
+                theme_key = random.choice(list(themes.keys()))
+                stage.set_metric("method", "Fallback Random")
+
+        stage.set_metric("selected_theme", theme_key)
 
     theme_dict = themes[theme_key]
     logger.info("=" * 60)
@@ -170,9 +181,13 @@ def main() -> None:
     logger.info("\n" + "=" * 60)
     logger.info("📡 PHASE 1: RSS Ingestion & Feed Aggregation")
     logger.info("=" * 60)
-    candidates = fetch_stories_for_theme(theme_dict, config)
+    with tracker.track_stage("Phase 1: RSS Ingestion", {"sources": len(theme_dict.get("sources", []))}) as stage:
+        candidates = fetch_stories_for_theme(theme_dict, config)
+        stage.set_metric("candidates_pool", len(candidates))
+
     if not candidates:
         logger.error(f"No stories retrieved for theme {theme_key}. Exiting.")
+        tracker.print_summary_dashboard()
         sys.exit(1)
 
     # -------------------------------------------------------------
@@ -181,7 +196,9 @@ def main() -> None:
     logger.info("\n" + "=" * 60)
     logger.info("🧠 PHASE 2: LLM Story Curation & Theme Prioritization")
     logger.info("=" * 60)
-    stories = llm_curate_stories(candidates, theme_dict, config)
+    with tracker.track_stage("Phase 2: Story Curation", {"candidates_in": len(candidates)}) as stage:
+        stories = llm_curate_stories(candidates, theme_dict, config)
+        stage.set_metric("curated_stories", len(stories))
 
     # -------------------------------------------------------------
     # PHASE 3 & 4: Validated Summaries & Spoken Script Generation
@@ -189,9 +206,12 @@ def main() -> None:
     logger.info("\n" + "=" * 60)
     logger.info("📝 PHASE 3 & 4: Story Summaries Validation & Audio Scripting")
     logger.info("=" * 60)
-    briefing_data = generate_briefing_llm(stories, theme_dict, config)
-    text_digest = briefing_data.text_digest
-    audio_script = briefing_data.audio_script
+    with tracker.track_stage("Phase 3 & 4: Synthesis & Validation", {"curated_stories": len(stories)}) as stage:
+        briefing_data = generate_briefing_llm(stories, theme_dict, config)
+        text_digest = briefing_data.text_digest
+        audio_script = briefing_data.audio_script
+        stage.set_metric("digest_words", len(text_digest.split()))
+        stage.set_metric("script_words", len(audio_script.split()))
 
     summary_file = output_dir / f"{today_str}_{theme_key}_summary.md"
     summary_file.write_text(briefing_data.to_markdown(), encoding="utf-8")
@@ -205,6 +225,7 @@ def main() -> None:
         print(text_digest)
         print("\n=== AUDIO SCRIPT (First 300 words) ===\n")
         print(" ".join(audio_script.split()[:300]) + "...\n")
+        tracker.print_summary_dashboard()
         logger.info("Dry-run finished. Exiting without TTS or Telegram.")
         return
 
@@ -216,7 +237,11 @@ def main() -> None:
     logger.info("=" * 60)
     audio_files: list[Path] = []
     if not args.skip_tts:
-        audio_files = synthesize_audio(audio_script, output_dir, config, today_str)
+        with tracker.track_stage("Phase 5: Local TTS Audio Synthesis", {"voice": config.get("tts", {}).get("voice", "bm_george")}) as stage:
+            audio_files = synthesize_audio(audio_script, output_dir, config, today_str)
+            total_audio_mb = sum(f.stat().st_size for f in audio_files) / (1024 * 1024) if audio_files else 0.0
+            stage.set_metric("audio_clips", len(audio_files))
+            stage.set_metric("total_audio_mb", f"{total_audio_mb:.2f} MB")
     else:
         logger.info("⏩ Skipping TTS synthesis per --skip-tts flag.")
 
@@ -226,13 +251,16 @@ def main() -> None:
     logger.info("\n" + "=" * 60)
     logger.info("🚀 PHASE 6: Telegram Notification & Media Upload")
     logger.info("=" * 60)
-    bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
-    chat_id = os.getenv("TELEGRAM_CHAT_ID", "").strip()
-    send_to_telegram(text_digest, audio_files, bot_token, chat_id)
+    with tracker.track_stage("Phase 6: Telegram Dispatch", {"audio_clips": len(audio_files)}) as stage:
+        bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+        chat_id = os.getenv("TELEGRAM_CHAT_ID", "").strip()
+        send_to_telegram(text_digest, audio_files, bot_token, chat_id)
+        stage.set_metric("status", "Sent" if (bot_token and chat_id) else "Mocked / Skipped")
 
     logger.info("\n" + "=" * 60)
     logger.info("✅ PIPELINE EXECUTION COMPLETED SUCCESSFULLY")
     logger.info("=" * 60)
+    tracker.print_summary_dashboard()
 
 
 if __name__ == "__main__":

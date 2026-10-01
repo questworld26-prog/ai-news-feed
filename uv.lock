@@ -35,9 +35,11 @@ dependencies = [
     { name = "laya" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "psutil" },
     { name = "pydantic" },
     { name = "python-dotenv" },
     { name = "requests" },
+    { name = "rich" },
     { name = "soundfile" },
     { name = "torch" },
 ]
@@ -45,9 +47,7 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "google-genai" },
-    { name = "psutil" },
     { name = "pytest" },
-    { name = "rich" },
     { name = "rouge-score" },
 ]
 
@@ -57,9 +57,11 @@ requires-dist = [
     { name = "kokoro-mlx", specifier = ">=0.1.2" },
     { name = "laya", specifier = ">=0.3.22" },
     { name = "numpy", specifier = ">=1.26.0" },
+    { name = "psutil", specifier = ">=7.2.2" },
     { name = "pydantic", specifier = ">=2.0.0" },
     { name = "python-dotenv", specifier = ">=1.2.3" },
     { name = "requests", specifier = ">=2.34.2" },
+    { name = "rich", specifier = ">=15.0.0" },
     { name = "soundfile", specifier = ">=0.14.0" },
     { name = "torch", specifier = ">=2.2.0" },
 ]
@@ -67,9 +69,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "google-genai", specifier = ">=2.25.0" },
-    { name = "psutil", specifier = ">=7.2.2" },
     { name = "pytest", specifier = ">=9.0.0" },
-    { name = "rich", specifier = ">=15.0.0" },
     { name = "rouge-score", specifier = ">=0.1.2" },
 ]
 
