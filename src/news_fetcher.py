@@ -282,11 +282,34 @@ def fetch_entries_from_source(src: dict[str, Any], hard_filters: list[str], now:
     return entries
 
 
-def build_candidate_pool(all_entries: list[Story], candidate_pool_size: int, max_per_source: int = 2) -> list[Story]:
-    """Filter duplicates, apply per-source limits, and select top candidate stories."""
+def build_candidate_pool(
+    all_entries: list[Story],
+    candidate_pool_size: int,
+    max_per_source: int = 2,
+    config: dict[str, Any] | None = None,
+) -> list[Story]:
+    """Filter duplicates, apply LAYA System 1 hype filter, enforce per-source limits, and select top candidate stories."""
     for entry in all_entries:
         entry.score = score_entry(entry)
     all_entries.sort(key=lambda x: x.score, reverse=True)
+
+    # Option 4: LAYA System 1 Semantic Hype & PR Filter
+    laya_cfg = (config or {}).get("laya", {})
+    if laya_cfg.get("enabled", True) and laya_cfg.get("enable_hype_filter", True):
+        try:
+            from laya_decision import get_laya_engine
+
+            engine = get_laya_engine(config)
+            filtered_entries: list[Story] = []
+            for item in all_entries:
+                is_hype, conf, reason = engine.filter_hype(item.title, item.summary, config)
+                if is_hype:
+                    logger.info(f"🚫 LAYA Hype Filter dropped: '{item.title[:55]}' ({reason})")
+                    continue
+                filtered_entries.append(item)
+            all_entries = filtered_entries
+        except Exception as exc:
+            logger.debug(f"LAYA hype filtering skipped due to error: {exc}")
 
     candidate_pool: list[Story] = []
     source_counts: dict[str, int] = {}
@@ -321,10 +344,12 @@ def build_candidate_pool(all_entries: list[Story], candidate_pool_size: int, max
 
 def fetch_stories_for_theme(theme_dict: dict[str, Any], config: dict[str, Any]) -> list[Story]:
     """
-    Fetch AI stories from RSS feeds specific to a chosen theme.
+    Fetch AI stories from RSS feeds specific to a chosen theme concurrently.
     Filters out noise using hard_filters, scores remaining stories,
     deduplicates fuzzy titles, caps per-source entries, and returns a candidate pool.
     """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
     sources = theme_dict.get("sources", [])
     hard_filters = theme_dict.get("hard_filters", [])
     candidate_pool_size = config.get("feeds", {}).get("candidate_pool_size", 15)
@@ -332,11 +357,73 @@ def fetch_stories_for_theme(theme_dict: dict[str, Any], config: dict[str, Any]) 
     all_entries: list[Story] = []
     now = datetime.now(UTC)
 
-    logger.info(f"Fetching from {len(sources)} sources for theme '{theme_dict.get('name')}'...")
-    for src in sources:
-        all_entries.extend(fetch_entries_from_source(src, hard_filters, now))
+    logger.info(f"Fetching concurrently from {len(sources)} sources for theme '{theme_dict.get('name')}'...")
+    max_workers = min(10, max(1, len(sources)))
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_src = {
+            executor.submit(fetch_entries_from_source, src, hard_filters, now): src
+            for src in sources
+        }
+        for future in as_completed(future_to_src):
+            src = future_to_src[future]
+            try:
+                entries = future.result()
+                all_entries.extend(entries)
+            except Exception as exc:
+                logger.warning(f"Failed to fetch entries from {src.get('name', 'Unknown')}: {exc}")
 
-    candidate_pool = build_candidate_pool(all_entries, candidate_pool_size)
+    candidate_pool = build_candidate_pool(all_entries, candidate_pool_size, config=config)
 
     logger.info(f"Built candidate pool of {len(candidate_pool)} unique stories for '{theme_dict.get('name')}'.")
     return candidate_pool
+
+
+def sample_breaking_headlines(config: dict[str, Any], max_items: int = 12) -> list[Story]:
+    """
+    Fetch a fast cross-section of top breaking headlines across feeds to power
+    Option 5 (LAYA Story-Driven Dynamic Theme Routing).
+    """
+    themes = config.get("themes", {})
+    if not themes:
+        return []
+
+    # Pick 1 primary source from each configured theme for broad coverage
+    sampled_sources: list[dict[str, Any]] = []
+    seen_urls: set[str] = set()
+    for theme in themes.values():
+        for src in theme.get("sources", []):
+            url = src.get("url", "")
+            if url and url not in seen_urls:
+                sampled_sources.append(src)
+                seen_urls.add(url)
+                break
+
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    now = datetime.now(UTC)
+    all_sample_entries: list[Story] = []
+    with ThreadPoolExecutor(max_workers=min(5, len(sampled_sources) or 1)) as executor:
+        future_to_src = {
+            executor.submit(fetch_entries_from_source, src, [], now): src
+            for src in sampled_sources
+        }
+        for future in as_completed(future_to_src):
+            try:
+                entries = future.result()
+                all_sample_entries.extend(entries)
+            except Exception:
+                pass
+
+    for e in all_sample_entries:
+        e.score = score_entry(e)
+    all_sample_entries.sort(key=lambda s: s.score, reverse=True)
+
+    # Return top unique stories
+    unique_samples: list[Story] = []
+    for s in all_sample_entries:
+        if not any(is_similar_title(s.title, u.title) for u in unique_samples):
+            unique_samples.append(s)
+            if len(unique_samples) >= max_items:
+                break
+    return unique_samples
+

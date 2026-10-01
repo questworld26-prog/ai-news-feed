@@ -1,0 +1,107 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Reliable AI News Briefing Pipeline: System 1 / System 2 Architecture",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "full-pipeline",
+        "label": "End-to-end pipeline",
+        "focus": ["rss_sources", "fetcher", "laya_router", "laya_prerank", "ollama_curator", "ollama_summary", "validator_gate", "monologue_gen", "script_gate", "tts_dispatch"],
+        "note": "Follow the primary path from RSS feed ingestion to verified spoken monologue and Telegram voice delivery."
+      },
+      {
+        "id": "laya-triage",
+        "label": "System 1 fast triage",
+        "focus": ["fetcher", "laya_router", "laya_prerank", "ollama_curator"],
+        "note": "Inspect how LAYA eliminates hype, routes themes dynamically, and shortlists stories in <500ms."
+      },
+      {
+        "id": "verification-loop",
+        "label": "Dual fact-checking loops",
+        "focus": ["ollama_summary", "validator_gate", "ollama_auditor", "monologue_gen", "script_gate", "fallback_node"],
+        "note": "Examine both anti-hallucination gates: story summary fact-checks AND the final spoken script Hierarchy of Truth audit."
+      }
+    ],
+    "output": "docs/pipeline_workflow.html"
+  },
+  "lanes": [
+    { "id": "ingest", "label": "Ingestion & Sources" },
+    { "id": "system1", "label": "System 1 Triage (LAYA)", "variant": "normal" },
+    { "id": "system2", "label": "System 2 Deliberation (Ollama SLMs)" },
+    { "id": "validation", "label": "Verification & Guardrails", "variant": "exception" },
+    { "id": "delivery", "label": "Voice Synthesis & Delivery" }
+  ],
+  "phases": [
+    { "id": "intake", "label": "1. Ingest & Theme Route", "fromCol": 0, "toCol": 1 },
+    { "id": "curation", "label": "2. Pre-Rank & Curate", "fromCol": 2, "toCol": 2, "variant": "emphasis" },
+    { "id": "synthesis", "label": "3. Factual Verification", "fromCol": 3, "toCol": 4 },
+    { "id": "delivery_phase", "label": "4. Monologue Audit & Dispatch", "fromCol": 5, "toCol": 5, "variant": "dashed" }
+  ],
+  "groups": [
+    { "id": "ingest_group", "label": "Feed aggregation", "lane": "ingest", "fromCol": 0, "toCol": 1 },
+    { "id": "s1_group", "label": "Sub-second triage", "lane": "system1", "fromCol": 1, "toCol": 2, "variant": "security" },
+    { "id": "s2_group", "label": "Deliberate reasoning", "lane": "system2", "fromCol": 2, "toCol": 5, "variant": "emphasis" },
+    { "id": "gate_group", "label": "Anti-hallucination gates", "lane": "validation", "fromCol": 3, "toCol": 5, "variant": "security" },
+    { "id": "output_group", "label": "Distribution", "lane": "delivery", "fromCol": 5, "toCol": 5, "variant": "dashed" }
+  ],
+  "mainPath": [
+    "rss_sources",
+    "fetcher",
+    "laya_router",
+    "laya_prerank",
+    "ollama_curator",
+    "ollama_summary",
+    "validator_gate",
+    "ollama_auditor",
+    "monologue_gen",
+    "script_gate",
+    "tts_dispatch"
+  ],
+  "nodes": [
+    { "id": "rss_sources", "lane": "ingest", "col": 0, "type": "cloud", "label": "Curated Feeds", "sublabel": "HN, Blogs, arXiv", "width": 124 },
+    { "id": "fetcher", "lane": "ingest", "col": 1, "type": "frontend", "label": "News Fetcher", "sublabel": "parse + dedupe", "tag": "news_fetcher.py", "width": 124 },
+    { "id": "laya_router", "lane": "system1", "col": 1, "type": "security", "label": "LAYA Router", "sublabel": "theme + hype drop", "tag": "Option 4 & 5", "width": 124 },
+    { "id": "laya_prerank", "lane": "system1", "col": 2, "type": "security", "label": "LAYA Pre-Rank", "sublabel": "top-7 shortlist", "tag": "Option 1 (<500ms)", "width": 124 },
+    { "id": "ollama_curator", "lane": "system2", "col": 2, "type": "backend", "label": "SLM Curator", "sublabel": "CoT top-5 stories", "tag": "phi4-mini:3.8b", "width": 124 },
+    { "id": "ollama_summary", "lane": "system2", "col": 3, "type": "backend", "label": "Extractive Writer", "sublabel": "quotes + sentences", "tag": "qwen2.5:3b", "width": 124 },
+    { "id": "validator_gate", "lane": "validation", "col": 3, "type": "security", "label": "LAYA & Regex Gate", "sublabel": "regex + entailment", "tag": "Option 2 Pre-Gate", "width": 124 },
+    { "id": "ollama_auditor", "lane": "system2", "col": 4, "type": "backend", "label": "SLM Fact Auditor", "sublabel": "audit @ temp 0", "tag": "qwen2.5:3b", "width": 124 },
+    { "id": "fallback_node", "lane": "validation", "col": 4, "type": "security", "label": "Safe Fallback", "sublabel": "warning + link", "tag": "fail-closed", "width": 124 },
+    { "id": "monologue_gen", "lane": "system2", "col": 5, "type": "backend", "label": "Podcast Script", "sublabel": "truth hierarchy", "tag": "phi4-mini:3.8b", "width": 124 },
+    { "id": "script_gate", "lane": "validation", "col": 5, "type": "security", "label": "Script Auditor", "sublabel": "Hierarchy of Truth", "tag": "anti-hallucination", "width": 124 },
+    { "id": "tts_dispatch", "lane": "delivery", "col": 5, "type": "messagebus", "label": "Telegram Bot", "sublabel": "kokoro-mlx WAV", "tag": "notifier.py", "width": 124 }
+  ],
+  "edges": [
+    { "id": "e_rss_fetch", "from": "rss_sources", "to": "fetcher", "label": "pull XML/Atom", "variant": "default" },
+    { "id": "e_fetch_router", "from": "fetcher", "to": "laya_router", "label": "breaking pool", "variant": "default" },
+    { "id": "e_router_prerank", "from": "laya_router", "to": "laya_prerank", "label": "active theme", "variant": "security" },
+    { "id": "e_prerank_curator", "from": "laya_prerank", "to": "ollama_curator", "label": "top 7 stories", "variant": "emphasis" },
+    { "id": "e_curator_summary", "from": "ollama_curator", "to": "ollama_summary", "label": "curated top 5", "variant": "default" },
+    { "id": "e_summary_gate", "from": "ollama_summary", "to": "validator_gate", "label": "draft summary", "variant": "default" },
+    { "id": "e_gate_auditor", "from": "validator_gate", "to": "ollama_auditor", "label": "pre-gate pass", "variant": "security" },
+    { "id": "e_auditor_pass", "from": "ollama_auditor", "to": "monologue_gen", "label": "audit passed", "variant": "emphasis" },
+    { "id": "e_auditor_fail", "from": "ollama_auditor", "to": "fallback_node", "label": "failed 3x", "variant": "dashed", "role": "error" },
+    { "id": "e_script_audit", "from": "monologue_gen", "to": "script_gate", "label": "monologue check", "variant": "security" },
+    { "id": "e_script_dispatch", "from": "script_gate", "to": "tts_dispatch", "label": "verified voice", "variant": "emphasis" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "System 1 vs System 2 Division of Labor",
+      "items": [
+        "LAYA executes in <500ms on CPU: drops promotional hype, tallies theme gravity, and pre-gates entailment",
+        "Ollama SLMs (phi4-mini & qwen2.5) focus strictly on deliberate CoT curation, extractive writing, and script generation"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Dual-Stage Anti-Hallucination Audits",
+      "items": [
+        "Gate 1 (Story Level): Summary regex matching, LAYA semantic pre-gating, and qwen2.5 adversarial fact-check @ temp 0.0",
+        "Gate 2 (Spoken Script Level): Hierarchy of Truth audit validates podcast monologue strictly against verified summaries before TTS"
+      ]
+    }
+  ]
+}

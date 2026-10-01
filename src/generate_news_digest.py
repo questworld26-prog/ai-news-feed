@@ -94,6 +94,11 @@ def main() -> None:
     parser.add_argument(
         "--all-themes", action="store_true", help="Generate full digest for all 4 themes in dry-run mode"
     )
+    parser.add_argument(
+        "--theme",
+        default="auto",
+        help="Specify theme key, 'auto' (LAYA story-driven dynamic routing), or 'random'",
+    )
     parser.add_argument("--force", action="store_true", help="Force execution even on weekends")
     args = parser.parse_args()
 
@@ -124,7 +129,35 @@ def main() -> None:
         logger.error("No themes found in config.toml under [themes].")
         sys.exit(1)
 
-    theme_key = random.choice(list(themes.keys()))
+    theme_choice = args.theme.strip().lower() if args.theme else "auto"
+    theme_key = None
+
+    if theme_choice in themes:
+        theme_key = theme_choice
+        logger.info(f"Explicit theme selected via CLI: '{theme_key}'")
+    elif theme_choice == "random":
+        theme_key = random.choice(list(themes.keys()))
+        logger.info(f"Random theme selected: '{theme_key}'")
+    else:
+        # Option 5: Story-Driven Dynamic Theme Routing via LAYA System 1
+        laya_cfg = config.get("laya", {})
+        if laya_cfg.get("enabled", True) and laya_cfg.get("enable_theme_routing", True):
+            try:
+                from news_fetcher import sample_breaking_headlines
+                from laya_decision import get_laya_engine
+
+                logger.info("📡 Sampling breaking headlines for LAYA dynamic theme routing...")
+                samples = sample_breaking_headlines(config, max_items=12)
+                if samples:
+                    engine = get_laya_engine(config)
+                    theme_key, score_dist = engine.route_theme_from_stories(samples, themes, config)
+                    logger.info(f"🎯 LAYA dynamic theme routing selected: '{theme_key}' (Signal distribution: {score_dist})")
+            except Exception as exc:
+                logger.warning(f"LAYA theme routing error: {exc}. Falling back to random choice.")
+
+        if not theme_key or theme_key not in themes:
+            theme_key = random.choice(list(themes.keys()))
+
     theme_dict = themes[theme_key]
     logger.info("=" * 60)
     logger.info(f"🎙️  AI NEWS DAILY BRIEFING PIPELINE — {today_str}")

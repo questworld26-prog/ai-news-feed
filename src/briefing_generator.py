@@ -64,6 +64,20 @@ def llm_curate_stories(
     """
     typed_candidates = [c if isinstance(c, Story) else Story.from_dict(c) for c in candidates]
 
+    # Option 1: LAYA System 1 Fast Theme Curation & Story Pre-Ranking
+    laya_cfg = config.get("laya", {})
+    if laya_cfg.get("enabled", True) and laya_cfg.get("enable_curation_prerank", True):
+        try:
+            from laya_decision import get_laya_engine
+
+            shortlist_size = int(laya_cfg.get("curation_shortlist_size", 7))
+            engine = get_laya_engine(config)
+            typed_candidates = engine.rank_candidates_for_theme(
+                typed_candidates, theme_dict, config, top_k=shortlist_size
+            )
+        except Exception as exc:
+            logger.debug(f"LAYA curation pre-ranking skipped: {exc}")
+
     llm_cfg = config.get("llm", {})
     model = llm_cfg.get("curation_model") or llm_cfg.get("model", "phi4-mini:3.8b")
     max_stories = config.get("feeds", {}).get("max_stories", 5)
@@ -327,9 +341,25 @@ def generate_briefing_llm(
     digest_sections = []
     stories_context = []
 
-    for idx, s in enumerate(typed_stories, 1):
-        # 1. Generate & validate each story summary immediately
-        validated_summary = generate_story_summary_validated(s, theme_dict, config)
+    # Process per-story summary synthesis and validation (parallelizable when OLLAMA_NUM_PARALLEL > 1)
+    from concurrent.futures import ThreadPoolExecutor
+
+    def process_story(s: Story) -> tuple[Story, str]:
+        try:
+            val_summary = generate_story_summary_validated(s, theme_dict, config)
+            return s, val_summary
+        except Exception as exc:
+            logger.warning(f"Unexpected error synthesizing summary for story '{s.title[:40]}': {exc}")
+            s.validated_summary = STORY_FALLBACK_SUMMARY
+            return s, STORY_FALLBACK_SUMMARY
+
+    # Default max_workers=1 to be safe with default single-threaded Ollama setups,
+    # or configurable up to 3 via config.toml [llm] synthesis_concurrency
+    synthesis_concurrency = config.get("llm", {}).get("synthesis_concurrency", 1)
+    with ThreadPoolExecutor(max_workers=max(1, synthesis_concurrency)) as executor:
+        results = list(executor.map(process_story, typed_stories))
+
+    for idx, (s, validated_summary) in enumerate(results, 1):
         section = f"## [{s.title}]({s.link})\n{validated_summary}\n"
         digest_sections.append(section)
 
@@ -340,6 +370,7 @@ def generate_briefing_llm(
             f"- Link: {s.link}\n"
             f"- Summary: {validated_summary}\n"
         )
+
 
     text_digest = "\n\n".join(digest_sections)
     full_text_digest = f"{theme_badge}\n{text_digest.strip()}"

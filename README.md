@@ -35,7 +35,10 @@ uv run python -m pytest tests/ -v
 
 ## 🏛️ System Architecture
 
-The pipeline is built as a modular, local-first, factual-guaranteed system designed to execute with zero paid cloud API dependencies on local hardware (Apple Silicon / Metal).
+The pipeline is built as a modular, local-first, factual-guaranteed system designed to execute with zero paid cloud API dependencies on local hardware (Apple Silicon / Metal), augmented with a **System 1 (LAYA) / System 2 (Ollama)** cognitive architecture.
+
+> 📖 **Full Engineering Guide**: See [docs/RELIABLE_NEWS_PIPELINE.md](file:///Users/prithis/QuestWorld/AI_news_voice_feed/docs/RELIABLE_NEWS_PIPELINE.md) for a comprehensive breakdown of each pipeline stage and reliability guarantee.  
+> 🗺️ **Interactive Flow Diagram**: Open [docs/pipeline_workflow.html](file:///Users/prithis/QuestWorld/AI_news_voice_feed/docs/pipeline_workflow.html) in your browser for the full interactive diagram with stage focus views and theme switching.
 
 ```mermaid
 flowchart TD

@@ -322,7 +322,36 @@ def validate_story(
         llm_passed = False
         llm_reasoning = f"Deterministic gate failure: {'; '.join(all_warnings)}"
     elif run_llm_check:
-        llm_passed, llm_reasoning = llm_fact_check(source_text, target_digest, config)
+        # Option 2: LAYA System 1 Semantic Fact-Checking & Hallucination Pre-Gate
+        laya_cfg = (config or {}).get("laya", {})
+        laya_handled = False
+        if laya_cfg.get("enabled", True) and laya_cfg.get("enable_fact_check_gate", True):
+            try:
+                from laya_decision import get_laya_engine
+
+                engine = get_laya_engine(config)
+                pregate_status, conf, pregate_reason = engine.fact_check_pregate(
+                    source_text, target_digest, config
+                )
+                if pregate_status is True:
+                    # High confidence grounded -> Fast PASS! Bypasses slow Ollama audit
+                    llm_passed = True
+                    llm_reasoning = pregate_reason
+                    logger.info(f"⚡ {pregate_reason}")
+                    laya_handled = True
+                elif pregate_status is False:
+                    # High confidence hallucination -> Fast FAIL! Fail fast for immediate retry
+                    llm_passed = False
+                    llm_reasoning = pregate_reason
+                    logger.warning(f"⚠️ {pregate_reason}")
+                    laya_handled = True
+                else:
+                    logger.info(f"🔍 {pregate_reason}")
+            except Exception as exc:
+                logger.debug(f"LAYA fact-check pregate skipped: {exc}")
+
+        if not laya_handled:
+            llm_passed, llm_reasoning = llm_fact_check(source_text, target_digest, config)
 
     passed = (overlap_score >= min_keyword_threshold) and (len(all_warnings) == 0) and llm_passed
 

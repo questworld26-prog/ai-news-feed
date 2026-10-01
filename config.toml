@@ -94,3 +94,19 @@ chunk_words = 150
 dir = "output"
 # Max audio file size in MB before splitting (Telegram limit is 50MB)
 max_file_size_mb = 45.0
+
+[laya]
+enabled = true
+model_id = "convaiinnovations/laya"
+device = "cpu"
+# Option 1: Fast Theme Curation Pre-Ranking (shortlists stories before Ollama CoT)
+enable_curation_prerank = true
+curation_shortlist_size = 7
+# Option 2: Semantic Fact-Checking Pre-Gate (fast-pass / fast-fail)
+enable_fact_check_gate = true
+fact_check_pass_threshold = 0.85
+fact_check_fail_threshold = 0.85
+# Option 4: Semantic Hype & PR Pre-Filter
+enable_hype_filter = true
+# Option 5: Story-Driven Dynamic Theme Selection (highest breaking news signal)
+enable_theme_routing = true
