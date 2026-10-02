@@ -33,22 +33,37 @@ def fetch_article_excerpt(url: str, max_chars: int = _ARTICLE_EXCERPT_CHARS) -> 
     is too short to provide meaningful curation context.
 
     Targets content containers (<article>, <main>, or paragraphs) and filters
-    common cookie consent notices and navigation headers.
-
-    Designed to fail silently: any network or parsing error returns ""
-    so it never blocks the fetch pipeline.
+    common cookie consent notices and navigation headers. Supports OpenGraph
+    meta description fallback when article bodies are dynamic or paywalled.
     """
-    if not url:
+    if not url or url.lower().endswith(".pdf"):
         return ""
     try:
         resp = requests.get(
             url,
-            timeout=6,
-            headers={"User-Agent": "Mozilla/5.0 (compatible; AIBriefingBot/1.0)"},
+            timeout=8,
+            headers={
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.9",
+            },
             allow_redirects=True,
         )
         resp.raise_for_status()
+        resp_headers = getattr(resp, "headers", {})
+        content_type = resp_headers.get("content-type", "").lower() if hasattr(resp_headers, "get") else ""
+        if "application/pdf" in content_type:
+            return ""
+
         html = resp.text
+
+        # Extract OpenGraph or meta description before stripping head tags
+        meta_desc = ""
+        og_match = re.search(r'(?i)<meta\s+property=["\']og:description["\']\s+content=["\']([^"\']+)["\']', html)
+        if not og_match:
+            og_match = re.search(r'(?i)<meta\s+name=["\']description["\']\s+content=["\']([^"\']+)["\']', html)
+        if og_match:
+            meta_desc = clean_html_text(og_match.group(1))
 
         # Remove <script>, <style>, <nav>, <footer>, and <head> blocks wholesale.
         html = re.sub(r"(?is)<(script|style|head|nav|footer|header|aside)[^>]*>.*?</\1>", " ", html)
@@ -62,16 +77,16 @@ def fetch_article_excerpt(url: str, max_chars: int = _ARTICLE_EXCERPT_CHARS) -> 
         filtered_paras = []
         cookie_pattern = re.compile(r"(?i)(cookie|privacy policy|terms of service|consent|subscribe to our newsletter)")
         for p in paragraphs:
-            # Strip tags from paragraph
             clean_p = re.sub(r"<[^>]+>", " ", p)
             clean_p = re.sub(r"&[a-zA-Z0-9#]+;", " ", clean_p)
             clean_p = re.sub(r"\s+", " ", clean_p).strip()
-            # Discard boilerplate cookie or subscription text
             if len(clean_p) >= 25 and not cookie_pattern.search(clean_p):
                 filtered_paras.append(clean_p)
 
         if filtered_paras:
             text = " ".join(filtered_paras)
+        elif meta_desc and len(meta_desc) >= 40:
+            text = meta_desc
         else:
             # Fallback: strip remaining HTML tags from candidate HTML
             text = re.sub(r"<[^>]+>", " ", candidate_html)
@@ -192,6 +207,13 @@ def parse_feed_entry(
         if fetched:
             summary = fetched
             logger.debug(f"Summary enriched via live fetch: '{title[:55]}'")
+
+    # Minimum Content Gate: discard stories with insufficient context (< 80 chars) to synthesize factually
+    if len(summary.strip()) < 80:
+        logger.debug(
+            f"Filtering out story with insufficient context ({len(summary.strip())} chars < 80): '{title[:45]}'"
+        )
+        return None
 
     return Story(
         source=name,

@@ -369,12 +369,21 @@ def generate_briefing_llm(
         section = f"## [{s.title}]({s.link})\n{validated_summary}\n"
         digest_sections.append(section)
 
+        # Sanitize summary for audio script generation so fallback error text is never read on air
+        audio_story_summary = validated_summary
+        if STORY_FALLBACK_SUMMARY in validated_summary or "⚠️" in validated_summary:
+            clean_raw = s.summary.strip()
+            if len(clean_raw) >= 40 and "failed to generate" not in clean_raw.lower():
+                audio_story_summary = clean_raw[:200]
+            else:
+                audio_story_summary = f"Focuses on recent developments and updates regarding {s.title}."
+
         stories_context.append(
             f"Story {idx}:\n"
             f"- Title: {s.title}\n"
             f"- Source: {s.source}\n"
             f"- Link: {s.link}\n"
-            f"- Summary: {validated_summary}\n"
+            f"- Summary: {audio_story_summary}\n"
         )
 
 

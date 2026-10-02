@@ -317,8 +317,11 @@ def validate_story(
 
     llm_passed = True
     llm_reasoning = "Skipped LLM self-check."
-    # Fast path: if deterministic gates fail (unanchored entities or numbers), fail immediately
-    if len(all_warnings) > 0:
+    # Fast path: if deterministic gates fail (low overlap, unanchored entities or numbers), fail immediately
+    if overlap_score < min_keyword_threshold:
+        llm_passed = False
+        llm_reasoning = f"Low keyword overlap ({overlap_score:.2f} < {min_keyword_threshold}): summary lacks factual connection to source."
+    elif len(all_warnings) > 0:
         llm_passed = False
         llm_reasoning = f"Deterministic gate failure: {'; '.join(all_warnings)}"
     elif run_llm_check:

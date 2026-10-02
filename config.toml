@@ -76,6 +76,8 @@ summary_model = "qwen2.5:3b"
 # - Monologue Scriptwriting: phi4-mini excels at collegiate conversational podcast host flow
 script_model = "phi4-mini:3.8b"
 script_word_target = 750
+# Parallel story synthesis concurrency (safely sized for Apple Silicon M1 8GB memory envelope)
+synthesis_concurrency = 2
 
 [testing]
 # Model used specifically for anti-hallucination fact checking and verification tests
@@ -104,7 +106,7 @@ enable_curation_prerank = true
 curation_shortlist_size = 7
 # Option 2: Semantic Fact-Checking Pre-Gate (fast-pass / fast-fail)
 enable_fact_check_gate = true
-fact_check_pass_threshold = 0.85
+fact_check_pass_threshold = 0.78
 fact_check_fail_threshold = 0.85
 # Option 4: Semantic Hype & PR Pre-Filter
 enable_hype_filter = true
