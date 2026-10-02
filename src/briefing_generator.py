@@ -275,6 +275,9 @@ def generate_story_summary_validated(
 
         if result.passed:
             s_obj.validated_summary = summary_text
+            s_obj.extra_metadata["retry_count"] = attempt
+            s_obj.extra_metadata["keyword_overlap"] = result.keyword_overlap_score
+            s_obj.extra_metadata["summary_status"] = "success"
             return summary_text
 
         for w in result.fabrication_warnings:
@@ -290,6 +293,9 @@ def generate_story_summary_validated(
         f"❌ Story [{title[:40]}...] failed fact-check after {_VALIDATION_MAX_RETRIES} attempts. Using fallback."
     )
     s_obj.validated_summary = STORY_FALLBACK_SUMMARY
+    s_obj.extra_metadata["retry_count"] = _VALIDATION_MAX_RETRIES
+    s_obj.extra_metadata["keyword_overlap"] = 0.0
+    s_obj.extra_metadata["summary_status"] = "failed"
     return STORY_FALLBACK_SUMMARY
 
 
@@ -377,12 +383,15 @@ def generate_briefing_llm(
 
     stories_block = "\n".join(stories_context)
     audio_script = ""
+    audio_passed = False
+    audio_attempts = 0
 
     if not text_only:
         logger.info(f"Generating spoken audio script (~{word_target} words) for theme '{theme_dict.get('name')}'...")
 
         audio_hint = ""
         for attempt in range(1, _VALIDATION_MAX_RETRIES + 1):
+            audio_attempts = attempt
             correction_block = (
                 f"\n\nCRITICAL FIX NEEDED FOR PREVIOUS AUDIO SCRIPT:\n"
                 f"Fact-checker error feedback: {audio_hint}\n"
@@ -428,6 +437,7 @@ def generate_briefing_llm(
 
                 if script_passed:
                     audio_script = candidate_script
+                    audio_passed = True
                     break
                 else:
                     logger.warning(f"  └─ Audio Script Fact-Check Reasoning: {reasoning}")
@@ -453,4 +463,8 @@ def generate_briefing_llm(
         stories=typed_stories,
         text_digest=full_text_digest,
         audio_script=audio_script,
+        metadata={
+            "audio_factcheck_passed": audio_passed,
+            "audio_factcheck_attempts": audio_attempts,
+        },
     )

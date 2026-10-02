@@ -10,6 +10,7 @@ output/
 
 # Local Output & Briefings
 output/
+eval/quality.db*
 
 # Secrets and environment
 .env

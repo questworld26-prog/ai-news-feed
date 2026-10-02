@@ -25,6 +25,7 @@ from briefing_generator import (
 )
 from news_fetcher import fetch_stories_for_theme
 from notifier import send_to_telegram, synthesize_audio
+from quality_tracker import QualityTracker, get_current_git_commit
 from telemetry import PipelineTracker
 
 logging.basicConfig(
@@ -216,6 +217,54 @@ def main() -> None:
     summary_file = output_dir / f"{today_str}_{theme_key}_summary.md"
     summary_file.write_text(briefing_data.to_markdown(), encoding="utf-8")
     logger.info(f"💾 Saved markdown briefing digest to: {summary_file}")
+
+    # Log quality metrics into SQLite database (eval/quality.db)
+    try:
+        qt = QualityTracker()
+        run_ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        run_id = f"run_{run_ts}_{theme_key}"
+        git_commit = get_current_git_commit()
+
+        models_used = {
+            "curation": config.get("llm", {}).get("curation_model") or config.get("llm", {}).get("model", "phi4-mini:3.8b"),
+            "summary": config.get("llm", {}).get("summary_model") or config.get("llm", {}).get("model", "qwen2.5:3b"),
+            "script": config.get("llm", {}).get("script_model") or config.get("llm", {}).get("model", "phi4-mini:3.8b"),
+            "audit": config.get("testing", {}).get("audit_model", "qwen2.5:3b"),
+            "theme_router": config.get("laya", {}).get("model_id", "convaiinnovations/laya"),
+            "tts_voice": config.get("tts", {}).get("voice", "bm_george"),
+        }
+
+        total_duration = sum(r.duration_s for r in tracker.records)
+        p3_record = next((r for r in tracker.records if "Phase 3" in r.name), None)
+        phase3_dur = p3_record.duration_s if p3_record else 0.0
+        phase3_delta = p3_record.mem_delta_mb if p3_record else 0.0
+        phase3_rss = p3_record.mem_end_mb if p3_record else 0.0
+
+        metadata = getattr(briefing_data, "metadata", {}) or {}
+        factcheck_passed = metadata.get("audio_factcheck_passed", True)
+        factcheck_retries = metadata.get("audio_factcheck_attempts", 1)
+
+        qt.log_run(
+            run_id=run_id,
+            run_date=today_str,
+            git_commit=git_commit,
+            models_used=models_used,
+            theme=theme_key,
+            strategy=theme_choice,
+            total_duration_s=total_duration,
+            phase3_duration_s=phase3_dur,
+            phase3_mem_delta_mb=phase3_delta,
+            phase3_mem_rss_mb=phase3_rss,
+            stories=briefing_data.stories,
+            audio_script=briefing_data.audio_script,
+            audio_script_target=config.get("llm", {}).get("script_word_target", 750),
+            factcheck_passed=factcheck_passed,
+            factcheck_retries=factcheck_retries,
+            theme_dict=theme_dict,
+        )
+        logger.info(f"📈 Quality metrics logged to SQLite (eval/quality.db) [Run ID: {run_id}]")
+    except Exception as exc:
+        logger.warning(f"Failed to record quality metrics to database: {exc}")
 
     if args.dry_run:
         logger.info("\n" + "=" * 60)

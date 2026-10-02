@@ -90,6 +90,7 @@ class BriefingOutput:
     stories: list[Story]
     text_digest: str
     audio_script: str = ""
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_markdown(self) -> str:
         """
