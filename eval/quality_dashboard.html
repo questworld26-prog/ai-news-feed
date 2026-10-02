@@ -207,6 +207,69 @@
       border: 1px solid var(--border-subtle);
       border-radius: 1rem;
       padding: 1.5rem;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .chart-card:hover {
+      border-color: var(--primary);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px rgba(99, 102, 241, 0.18);
+    }
+
+    .btn-enlarge-hint {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-dim);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-subtle);
+      border-radius: 0.4rem;
+      padding: 0.2rem 0.55rem;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    .chart-card:hover .btn-enlarge-hint {
+      color: #fff;
+      background: rgba(99, 102, 241, 0.25);
+      border-color: var(--border-accent);
+    }
+
+    .modal-enlarged {
+      max-width: 1100px;
+      width: 95vw;
+    }
+    .enlarged-canvas-container {
+      position: relative;
+      height: 480px;
+      width: 100%;
+      margin: 1.25rem 0;
+    }
+    .enlarged-stats-pill {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
+      border-radius: 0.75rem;
+      padding: 0.75rem 1.1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      flex: 1;
+      min-width: 140px;
+    }
+    .enlarged-stats-label {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+    }
+    .enlarged-stats-val {
+      font-family: var(--font-heading);
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #fff;
     }
 
     .chart-header {
@@ -561,40 +624,52 @@
 
     <!-- Charts Grid -->
     <div class="charts-grid">
-      <div class="chart-card">
+      <div class="chart-card" data-chart-type="failure" title="Click to enlarge chart">
         <div class="chart-header">
           <h3>📉 Story Failure Rate Trend (%)</h3>
-          <span class="badge badge-theme">Lower is better</span>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <span class="badge badge-theme">Lower is better</span>
+            <span class="btn-enlarge-hint">⛶ Enlarge</span>
+          </div>
         </div>
         <div class="chart-container">
           <canvas id="chart-failure-rate"></canvas>
         </div>
       </div>
 
-      <div class="chart-card">
+      <div class="chart-card" data-chart-type="audio" title="Click to enlarge chart">
         <div class="chart-header">
           <h3>🎙️ Audio Script Word Count vs Target</h3>
-          <span class="badge badge-theme">Target: 750 words</span>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <span class="badge badge-theme">Target: 750 words</span>
+            <span class="btn-enlarge-hint">⛶ Enlarge</span>
+          </div>
         </div>
         <div class="chart-container">
           <canvas id="chart-audio-words"></canvas>
         </div>
       </div>
 
-      <div class="chart-card">
+      <div class="chart-card" data-chart-type="latency" title="Click to enlarge chart">
         <div class="chart-header">
           <h3>⏱️ Synthesis & Pipeline Latency (s)</h3>
-          <span class="badge badge-theme">Phase 3 & 4 vs Total</span>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <span class="badge badge-theme">Phase 3 & 4 vs Total</span>
+            <span class="btn-enlarge-hint">⛶ Enlarge</span>
+          </div>
         </div>
         <div class="chart-container">
           <canvas id="chart-latency"></canvas>
         </div>
       </div>
 
-      <div class="chart-card">
+      <div class="chart-card" data-chart-type="reviews" title="Click to enlarge chart">
         <div class="chart-header">
           <h3>⭐ Human Star Ratings & Reviews</h3>
-          <span class="badge badge-theme">1–5 Scale</span>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <span class="badge badge-theme">1–5 Scale</span>
+            <span class="btn-enlarge-hint">⛶ Enlarge</span>
+          </div>
         </div>
         <div class="chart-container">
           <canvas id="chart-reviews"></canvas>
@@ -690,6 +765,25 @@
     </div>
   </div>
 
+  <!-- Enlarged Chart Modal -->
+  <div class="modal-overlay" id="enlarge-chart-modal">
+    <div class="modal-content modal-enlarged">
+      <div class="modal-header">
+        <div class="modal-title">
+          <h2 id="enlarged-chart-title">Enlarged Chart View</h2>
+          <p id="enlarged-chart-subtitle" style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.2rem;"></p>
+        </div>
+        <button class="btn-close" id="btn-close-enlarge-modal">&times;</button>
+      </div>
+
+      <div class="enlarged-canvas-container">
+        <canvas id="enlarged-chart-canvas"></canvas>
+      </div>
+
+      <div id="enlarged-stats-container" style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1.25rem;"></div>
+    </div>
+  </div>
+
   <script>
     let allRuns = [];
     let currentSelectedRunId = null;
@@ -699,6 +793,7 @@
     let chartAudio = null;
     let chartLatency = null;
     let chartReviews = null;
+    let chartEnlarged = null;
 
     const themeEmojis = {
       'practitioner_radar': '🧭',
@@ -853,8 +948,26 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
+          plugins: {
+            tooltip: {
+              callbacks: {
+                afterLabel: function(ctx) {
+                  const run = chronological[ctx.dataIndex];
+                  if (run && run.total_duration_s > 0) {
+                    const pct = ((run.phase3_duration_s / run.total_duration_s) * 100).toFixed(1);
+                    return `Phase 3 & 4 is ${pct}% of total run`;
+                  }
+                  return '';
+                }
+              }
+            }
+          },
           scales: {
-            y: { min: 0, grid: { color: 'rgba(255,255,255,0.05)' } },
+            y: {
+              min: 0,
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              title: { display: true, text: 'Seconds', color: 'rgba(255,255,255,0.4)', font: { size: 10 } }
+            },
             x: { grid: { display: false } }
           }
         }
@@ -1091,6 +1204,299 @@
       } catch (e) {
         alert('Backfill failed: ' + e);
         btn.textContent = '↻ Scan & Backfill Past Digests';
+      }
+    });
+
+    // --- Enlarged Chart Modal Implementation ---
+    function openEnlargedChart(type) {
+      if (!allRuns || allRuns.length === 0) return;
+      const chronological = [...allRuns].reverse();
+      const labels = chronological.map(r => `${r.run_date} (${r.theme.split('_')[0]})`);
+
+      const modalTitle = document.getElementById('enlarged-chart-title');
+      const modalSubtitle = document.getElementById('enlarged-chart-subtitle');
+      const statsContainer = document.getElementById('enlarged-stats-container');
+      const canvas = document.getElementById('enlarged-chart-canvas');
+
+      if (chartEnlarged) {
+        chartEnlarged.destroy();
+        chartEnlarged = null;
+      }
+
+      statsContainer.innerHTML = '';
+      let chartConfig = null;
+
+      if (type === 'failure') {
+        modalTitle.textContent = '📉 Story Failure Rate Trend (%) & Retries';
+        modalSubtitle.textContent = 'Tracks percentage of stories returning ⚠️ fallback summary and total retry loops';
+        const failureData = chronological.map(r => parseFloat((r.story_failure_rate * 100).toFixed(1)));
+        const retryData = chronological.map(r => r.total_retries);
+
+        const avgFail = (failureData.reduce((a, b) => a + b, 0) / failureData.length).toFixed(1);
+        const maxFail = Math.max(...failureData).toFixed(1);
+        const totalRetries = retryData.reduce((a, b) => a + b, 0);
+
+        statsContainer.innerHTML = `
+          <div class="enlarged-stats-pill">
+            <span class="enlarged-stats-label">Avg Failure Rate</span>
+            <span class="enlarged-stats-val" style="color: ${avgFail > 20 ? 'var(--accent-rose)' : 'var(--accent-emerald)'}">${avgFail}%</span>
+          </div>
+          <div class="enlarged-stats-pill">
+            <span class="enlarged-stats-label">Peak Failure Rate</span>
+            <span class="enlarged-stats-val" style="color: var(--accent-rose)">${maxFail}%</span>
+          </div>
+          <div class="enlarged-stats-pill">
+            <span class="enlarged-stats-label">Total Retries Run</span>
+            <span class="enlarged-stats-val" style="color: var(--accent-amber)">${totalRetries}</span>
+          </div>
+          <div class="enlarged-stats-pill">
+            <span class="enlarged-stats-label">Latest Failure Rate</span>
+            <span class="enlarged-stats-val">${failureData[failureData.length - 1]}%</span>
+          </div>
+        `;
+
+        chartConfig = {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: 'Story Failure Rate (%)',
+                data: failureData,
+                borderColor: '#f43f5e',
+                backgroundColor: 'rgba(244, 63, 94, 0.15)',
+                fill: true,
+                tension: 0.3,
+                pointRadius: 6,
+                pointHoverRadius: 8,
+              },
+              {
+                label: 'Total Story Retries',
+                data: retryData,
+                borderColor: '#f59e0b',
+                backgroundColor: 'transparent',
+                borderDash: [6, 4],
+                tension: 0.2,
+                pointRadius: 5,
+                yAxisID: 'y1'
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            scales: {
+              y: { min: 0, max: 100, grid: { color: 'rgba(255,255,255,0.06)' }, title: { display: true, text: 'Failure Rate (%)' } },
+              y1: { position: 'right', min: 0, grid: { drawOnChartArea: false }, title: { display: true, text: 'Retries Count' } },
+              x: { grid: { color: 'rgba(255,255,255,0.04)' } }
+            }
+          }
+        };
+      } else if (type === 'audio') {
+        modalTitle.textContent = '🎙️ Audio Script Word Count vs Target';
+        modalSubtitle.textContent = 'Monologues generated for Kokoro-mlx voice synthesis vs 750 words target';
+        const audioWords = chronological.map(r => r.audio_script_word_count);
+        const avgWords = Math.round(audioWords.reduce((a, b) => a + b, 0) / audioWords.length);
+        const minWords = Math.min(...audioWords);
+        const maxWords = Math.max(...audioWords);
+
+        statsContainer.innerHTML = `
+          <div class="enlarged-stats-pill">
+            <span class="enlarged-stats-label">Target Word Count</span>
+            <span class="enlarged-stats-val" style="color: var(--accent-emerald)">750 w</span>
+          </div>
+          <div class="enlarged-stats-pill">
+            <span class="enlarged-stats-label">Average Words</span>
+            <span class="enlarged-stats-val">${avgWords} w</span>
+          </div>
+          <div class="enlarged-stats-pill">
+            <span class="enlarged-stats-label">Min / Max Range</span>
+            <span class="enlarged-stats-val" style="font-size: 1.1rem">${minWords} – ${maxWords} w</span>
+          </div>
+          <div class="enlarged-stats-pill">
+            <span class="enlarged-stats-label">Latest Script</span>
+            <span class="enlarged-stats-val">${audioWords[audioWords.length - 1]} w</span>
+          </div>
+        `;
+
+        chartConfig = {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: 'Audio Script Words',
+                data: audioWords,
+                backgroundColor: '#6366f1',
+                borderRadius: 6
+              },
+              {
+                type: 'line',
+                label: 'Target (750)',
+                data: labels.map(() => 750),
+                borderColor: '#10b981',
+                borderWidth: 2,
+                pointRadius: 0,
+                fill: false
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: { min: 0, max: 1000, grid: { color: 'rgba(255,255,255,0.06)' }, title: { display: true, text: 'Word Count' } },
+              x: { grid: { color: 'rgba(255,255,255,0.04)' } }
+            }
+          }
+        };
+      } else if (type === 'latency') {
+        modalTitle.textContent = '⏱️ Synthesis & Pipeline Latency Breakdown';
+        modalSubtitle.textContent = 'Phase 3 & 4 (LLM Story Summaries + Audio Script Monologue) vs Total Pipeline Time';
+        const totalDur = chronological.map(r => r.total_duration_s);
+        const p3Dur = chronological.map(r => r.phase3_duration_s);
+
+        const validP3 = p3Dur.filter(v => v > 0);
+        const validTot = totalDur.filter(v => v > 0);
+        const avgP3 = validP3.length ? (validP3.reduce((a, b) => a + b, 0) / validP3.length).toFixed(1) : '0';
+        const avgTot = validTot.length ? (validTot.reduce((a, b) => a + b, 0) / validTot.length).toFixed(1) : '0';
+        const avgPct = validTot.length ? ((avgP3 / avgTot) * 100).toFixed(1) : '0';
+
+        statsContainer.innerHTML = `
+          <div class="enlarged-stats-pill">
+            <span class="enlarged-stats-label">Avg Phase 3 & 4 Time</span>
+            <span class="enlarged-stats-val" style="color: #a855f7">${avgP3}s</span>
+          </div>
+          <div class="enlarged-stats-pill">
+            <span class="enlarged-stats-label">Avg Total Pipeline</span>
+            <span class="enlarged-stats-val" style="color: #06b6d4">${avgTot}s</span>
+          </div>
+          <div class="enlarged-stats-pill">
+            <span class="enlarged-stats-label">Synthesis Share</span>
+            <span class="enlarged-stats-val" style="color: var(--accent-amber)">${avgPct}%</span>
+          </div>
+          <div class="enlarged-stats-pill">
+            <span class="enlarged-stats-label">Latest Phase 3 & 4</span>
+            <span class="enlarged-stats-val">${p3Dur[p3Dur.length - 1]}s</span>
+          </div>
+        `;
+
+        chartConfig = {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: 'Phase 3 & 4 Synthesis (s)',
+                data: p3Dur,
+                backgroundColor: '#a855f7',
+                borderRadius: 6
+              },
+              {
+                label: 'Total Pipeline (s)',
+                data: totalDur,
+                backgroundColor: '#06b6d4',
+                borderRadius: 6
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+              tooltip: {
+                callbacks: {
+                  afterLabel: function(ctx) {
+                    const run = chronological[ctx.dataIndex];
+                    if (run && run.total_duration_s > 0) {
+                      const pct = ((run.phase3_duration_s / run.total_duration_s) * 100).toFixed(1);
+                      return `Phase 3 & 4 represents ${pct}% of total runtime`;
+                    }
+                    return '';
+                  }
+                }
+              }
+            },
+            scales: {
+              y: { min: 0, grid: { color: 'rgba(255,255,255,0.06)' }, title: { display: true, text: 'Duration (Seconds)' } },
+              x: { grid: { color: 'rgba(255,255,255,0.04)' } }
+            }
+          }
+        };
+      } else if (type === 'reviews') {
+        modalTitle.textContent = '⭐ Human Feedback & Quality Ratings';
+        modalSubtitle.textContent = '1 to 5 star ratings submitted after reading digests or listening to audio briefings';
+        const ratedRuns = chronological.filter(r => r.human_rating);
+        const ratings = ratedRuns.map(r => r.human_rating);
+        const avgR = ratings.length ? (ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1) : '0';
+
+        statsContainer.innerHTML = `
+          <div class="enlarged-stats-pill">
+            <span class="enlarged-stats-label">Total User Reviews</span>
+            <span class="enlarged-stats-val">${ratedRuns.length}</span>
+          </div>
+          <div class="enlarged-stats-pill">
+            <span class="enlarged-stats-label">Average Rating</span>
+            <span class="enlarged-stats-val" style="color: #fbbf24">★ ${avgR} / 5</span>
+          </div>
+          <div class="enlarged-stats-pill">
+            <span class="enlarged-stats-label">5-Star Briefings</span>
+            <span class="enlarged-stats-val">${ratings.filter(r => r === 5).length}</span>
+          </div>
+        `;
+
+        chartConfig = {
+          type: 'bar',
+          data: {
+            labels: ratedRuns.length ? ratedRuns.map(r => `${r.run_date} (${r.theme.split('_')[0]})`) : ['No Reviews Logged Yet'],
+            datasets: [{
+              label: 'Human Rating (1–5 ★)',
+              data: ratedRuns.length ? ratings : [0],
+              backgroundColor: '#fbbf24',
+              borderRadius: 6
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: { min: 0, max: 5, ticks: { stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.06)' }, title: { display: true, text: 'Stars' } },
+              x: { grid: { color: 'rgba(255,255,255,0.04)' } }
+            }
+          }
+        };
+      }
+
+      chartEnlarged = new Chart(canvas, chartConfig);
+      document.getElementById('enlarge-chart-modal').classList.add('active');
+    }
+
+    // Chart click listener to enlarge
+    document.querySelectorAll('.chart-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const chartType = card.getAttribute('data-chart-type');
+        if (chartType) {
+          openEnlargedChart(chartType);
+        }
+      });
+    });
+
+    document.getElementById('btn-close-enlarge-modal').addEventListener('click', () => {
+      document.getElementById('enlarge-chart-modal').classList.remove('active');
+    });
+
+    document.getElementById('enlarge-chart-modal').addEventListener('click', (e) => {
+      if (e.target.id === 'enlarge-chart-modal') {
+        document.getElementById('enlarge-chart-modal').classList.remove('active');
+      }
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        document.getElementById('enlarge-chart-modal').classList.remove('active');
+        document.getElementById('run-modal').classList.remove('active');
       }
     });
 
