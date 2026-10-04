@@ -102,6 +102,11 @@ def main() -> None:
         help="Specify theme key, 'auto' (LAYA story-driven dynamic routing), or 'random'",
     )
     parser.add_argument("--force", action="store_true", help="Force execution even on weekends")
+    parser.add_argument(
+        "--clear-history",
+        action="store_true",
+        help="Clear the briefed story history database and exit",
+    )
     args = parser.parse_args()
 
     project_root = Path(__file__).resolve().parent.parent
@@ -109,6 +114,16 @@ def main() -> None:
 
     config_path = project_root / args.config
     config = load_config(config_path)
+
+    if args.clear_history:
+        from story_history import StoryHistoryManager
+
+        dedup_cfg = config.get("deduplication", {})
+        history_db = project_root / dedup_cfg.get("history_db_path", "eval/quality.db")
+        mgr = StoryHistoryManager(history_db)
+        mgr.clear_history()
+        logger.info("🧹 Successfully cleared briefed story history database.")
+        sys.exit(0)
 
     today_str = datetime.now().strftime("%Y-%m-%d")
     output_dir = project_root / config.get("output", {}).get("dir", "output")
@@ -265,6 +280,19 @@ def main() -> None:
         logger.info(f"📈 Quality metrics logged to SQLite (eval/quality.db) [Run ID: {run_id}]")
     except Exception as exc:
         logger.warning(f"Failed to record quality metrics to database: {exc}")
+
+    # Record briefed stories into persistent sliding-window history (skip during dry-run)
+    if not args.dry_run:
+        try:
+            from story_history import StoryHistoryManager
+
+            dedup_cfg = config.get("deduplication", {})
+            history_db = project_root / dedup_cfg.get("history_db_path", "eval/quality.db")
+            history_mgr = StoryHistoryManager(history_db)
+            history_mgr.record_briefed_stories(briefing_data.stories, theme_name=theme_key)
+            logger.info("📚 Briefed stories recorded to sliding-window recurrence history.")
+        except Exception as exc:
+            logger.warning(f"Failed to record briefed stories to history database: {exc}")
 
     if args.dry_run:
         logger.info("\n" + "=" * 60)

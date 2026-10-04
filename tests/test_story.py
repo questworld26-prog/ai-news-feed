@@ -87,6 +87,19 @@ def test_story_to_structured_prompt_dict():
         "points": 10,
     }
 
+    s_up = Story(
+        source="TechCrunch",
+        title="Model Benchmark Update",
+        link="https://techcrunch.com/model-bench",
+        summary="Updated scores released.",
+        points=15,
+        is_update=True,
+        original_briefed_date="2026-10-01",
+    )
+    struct_dict_up = s_up.to_structured_prompt_dict()
+    assert struct_dict_up["is_update"] is True
+    assert struct_dict_up["original_briefed_date"] == "2026-10-01"
+
 
 def test_briefing_output_markdown_rendering():
     from story import BriefingOutput

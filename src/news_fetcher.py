@@ -313,6 +313,19 @@ def build_candidate_pool(
     """Filter duplicates, apply LAYA System 1 hype filter, enforce per-source limits, and select top candidate stories."""
     for entry in all_entries:
         entry.score = score_entry(entry)
+
+    # Sliding-Window Recurrence Filter with Soft Score Decay
+    dedup_cfg = (config or {}).get("deduplication", {})
+    if dedup_cfg.get("enable_recurrence_filter", True):
+        try:
+            from story_history import StoryHistoryManager
+
+            history_db = dedup_cfg.get("history_db_path")
+            history_mgr = StoryHistoryManager(history_db)
+            all_entries = history_mgr.apply_soft_decay(all_entries, config=config)
+        except Exception as exc:
+            logger.warning(f"Recurrence filter soft decay skipped due to error: {exc}")
+
     all_entries.sort(key=lambda x: x.score, reverse=True)
 
     # Option 4: LAYA System 1 Semantic Hype & PR Filter

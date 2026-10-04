@@ -25,6 +25,8 @@ class Story:
     score: float = 0.0
     validated_summary: str | None = None
     extra_metadata: dict[str, Any] = field(default_factory=dict)
+    is_update: bool = False
+    original_briefed_date: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert Story instance to dictionary representation."""
@@ -38,6 +40,8 @@ class Story:
             "score": self.score,
             "validated_summary": self.validated_summary,
             "extra_metadata": self.extra_metadata,
+            "is_update": self.is_update,
+            "original_briefed_date": self.original_briefed_date,
         }
 
     @classmethod
@@ -53,14 +57,21 @@ class Story:
             score=data.get("score", 0.0),
             validated_summary=data.get("validated_summary"),
             extra_metadata=data.get("extra_metadata", {}),
+            is_update=data.get("is_update", False),
+            original_briefed_date=data.get("original_briefed_date"),
         )
 
     def to_prompt_context(self, idx: int | None = None, max_summary_chars: int = 400) -> str:
         """Format story for inclusion in LLM prompts."""
         prefix = f"{idx}. " if idx is not None else ""
+        update_tag = (
+            f" [UPDATE - Previously briefed on {self.original_briefed_date}]"
+            if self.is_update and self.original_briefed_date
+            else (" [UPDATE]" if self.is_update else "")
+        )
         s_text = self.summary[:max_summary_chars] if self.summary else "No summary available."
         return (
-            f"{prefix}[{self.source}] {self.title}\n"
+            f"{prefix}[{self.source}]{update_tag} {self.title}\n"
             f"   Link: {self.link}\n"
             f"   Points: {self.points}\n"
             f"   Summary: {s_text}"
@@ -68,13 +79,17 @@ class Story:
 
     def to_structured_prompt_dict(self) -> dict[str, Any]:
         """Return structured dict formatted for schema-constrained LLM outputs."""
-        return {
+        d = {
             "source": self.source,
             "title": self.title,
             "link": self.link,
             "summary": self.summary,
             "points": self.points,
         }
+        if self.is_update:
+            d["is_update"] = True
+            d["original_briefed_date"] = self.original_briefed_date
+        return d
 
 
 @dataclass

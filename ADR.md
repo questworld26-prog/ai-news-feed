@@ -141,6 +141,25 @@ Engineering teams and tech executives require daily briefings on AI developments
      - If keyword overlap falls below `min_keyword_threshold` ($0.35$), fail fast immediately in $<1\text{ms}$ without burning a 30-second Ollama audit call.
 - **Rationale**: 100% of historical 3-retry summarization failures were caused by information starvation (empty link posts or unparseable PDFs). Enforcing an ingestion content gate prevents failure cascades, while concurrency of 2 unlocks multi-core parallelism safely within an 8GB hardware budget.
 
+---
+
+### ADR-09: Sliding-Window Recurrence Filter with Soft Score Decay & Update Tracking
+- **Decision**: Implement persistent cross-day story tracking in SQLite (`briefed_story_history`) with a configurable rolling lookback window (default 7 days) and soft score decay:
+  1. **Canonical URL & Title Matching**:
+     - Normalize URLs by stripping tracking parameters (`utm_*`, `ref`, `source`, `fbclid`, etc.) and normalizing fragments and trailing slashes.
+     - Normalize titles by stripping common aggregator tags (`[Show HN]`, `[Paper]`) and comparing via `SequenceMatcher` with a $0.80$ similarity threshold.
+  2. **Soft Score Decay**:
+     - Rather than hard-dropping recurring stories, multiply their calculated relevance score by `decay_factor = 0.25` (a 75% score reduction).
+     - Allows fast-moving, massive breaking stories (e.g., 500+ HN points or multi-day releases) to still qualify while preventing routine stories from crowding out fresh news.
+  3. **Update / Follow-up Tracking**:
+     - Tag qualifying recurring stories with `is_update = True` and link back to `original_briefed_date`.
+     - Automatically render markdown summaries with `_🔄 Follow-up to our YYYY-MM-DD briefing._` annotations and prompt the monologue scriptwriter to frame the story as an explicit continuation.
+  4. **Post-Briefing Commit**:
+     - Automatically record delivered stories into SQLite upon briefing completion (bypassed in `--dry-run` mode).
+- **Rationale**: RSS news cycles linger across 48–96 hours. Stateless single-run deduplication caused consecutive daily briefings to repeat identical news items. Sliding-window recurrence with soft score decay guarantees fresh daily intelligence without blinding the system to major evolving stories.
+
+---
+
 ## 3. Testing & QA Strategy Summary
 
 

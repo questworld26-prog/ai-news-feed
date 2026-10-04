@@ -366,7 +366,12 @@ def generate_briefing_llm(
         results = list(executor.map(process_story, typed_stories))
 
     for idx, (s, validated_summary) in enumerate(results, 1):
-        section = f"## [{s.title}]({s.link})\n{validated_summary}\n"
+        if getattr(s, "is_update", False):
+            prev_d = getattr(s, "original_briefed_date", None)
+            update_line = f"_🔄 Follow-up to our {prev_d} briefing._\n\n" if prev_d else "_🔄 Follow-up to our earlier briefing._\n\n"
+            section = f"## [{s.title}]({s.link})\n{update_line}{validated_summary}\n"
+        else:
+            section = f"## [{s.title}]({s.link})\n{validated_summary}\n"
         digest_sections.append(section)
 
         # Sanitize summary for audio script generation so fallback error text is never read on air
@@ -378,10 +383,16 @@ def generate_briefing_llm(
             else:
                 audio_story_summary = f"Focuses on recent developments and updates regarding {s.title}."
 
+        update_flag_str = ""
+        if getattr(s, "is_update", False):
+            prev_d = getattr(s, "original_briefed_date", None)
+            update_flag_str = f"- Status: UPDATE / Follow-up (previously briefed on {prev_d})\n" if prev_d else "- Status: UPDATE / Follow-up\n"
+
         stories_context.append(
             f"Story {idx}:\n"
             f"- Title: {s.title}\n"
             f"- Source: {s.source}\n"
+            f"{update_flag_str}"
             f"- Link: {s.link}\n"
             f"- Summary: {audio_story_summary}\n"
         )
@@ -418,6 +429,7 @@ def generate_briefing_llm(
                 f"STRICT RULES:\n"
                 f"- Open smoothly with today's theme (e.g., 'Welcome back. Today we're looking through our {theme_dict.get('name')} lens...').\n"
                 f"- Walk through all {len(typed_stories)} stories with natural conversational transitions and genuine technical depth.\n"
+                f"- If a story has 'Status: UPDATE / Follow-up', frame it conversationally as a follow-up or update to earlier coverage (e.g. 'Following up on our earlier coverage...', 'An update to the story we tracked earlier...'), highlighting what is new.\n"
                 f"- Write phonetically clean spoken English: absolutely NO markdown asterisks, hashes, bullets, brackets, or code symbols.\n"
                 f"- Absolutely NO URLs, domain names, links, or 'available at' phrases.\n"
                 f"- Conclude with a warm, professional wrap-up.\n"

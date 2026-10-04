@@ -3,6 +3,18 @@ max_stories = 5
 # How many unique candidates to collect before LLM curation picks the final max_stories
 candidate_pool_size = 15
 
+[deduplication]
+# Enable persistent sliding-window cross-day recurrence suppression
+enable_recurrence_filter = true
+# Rolling window in days to check for prior coverage
+lookback_days = 7
+# Score multiplier applied to recurring stories (0.25 = 75% score reduction)
+decay_factor = 0.25
+# Title fuzzy similarity threshold (0.0 - 1.0)
+title_similarity_threshold = 0.80
+# Database path for briefed story history
+history_db_path = "eval/quality.db"
+
 [schedule]
 weekdays_only = true
 
