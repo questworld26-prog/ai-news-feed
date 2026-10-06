@@ -152,11 +152,32 @@ def run_server(port: int = 8765, host: str = "127.0.0.1") -> None:
         added = tracker.backfill_from_markdown_files(REPO_ROOT / "output")
         logger.info(f"Initialized quality DB with {added} backfilled historical runs.")
 
-    server_address = (host, port)
-    httpd = ThreadingHTTPServer(server_address, DashboardRequestHandler)
+    ThreadingHTTPServer.allow_reuse_address = True
+    actual_port = port
+    max_attempts = 10
+    httpd = None
+
+    for _ in range(max_attempts):
+        try:
+            server_address = (host, actual_port)
+            httpd = ThreadingHTTPServer(server_address, DashboardRequestHandler)
+            break
+        except OSError as err:
+            if err.errno == 48 or getattr(err, "winerror", None) == 10048:
+                logger.warning(
+                    f"Port {actual_port} is already in use. Trying port {actual_port + 1}..."
+                )
+                actual_port += 1
+            else:
+                raise
+
+    if not httpd:
+        logger.error(f"Could not bind to any port in range {port}-{port + max_attempts - 1}.")
+        sys.exit(1)
+
     print("\n" + "=" * 65)
     print(f"🚀 AI News Voice Feed — Quality Tracker Dashboard running at:")
-    print(f"👉 http://{host}:{port}/")
+    print(f"👉 http://{host}:{actual_port}/")
     print("=" * 65 + "\n")
 
     try:

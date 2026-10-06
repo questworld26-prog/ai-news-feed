@@ -413,52 +413,67 @@ def fetch_stories_for_theme(theme_dict: dict[str, Any], config: dict[str, Any]) 
     return candidate_pool
 
 
-def sample_breaking_headlines(config: dict[str, Any], max_items: int = 12) -> list[Story]:
+def sample_breaking_headlines(
+    config: dict[str, Any], max_items: int = 12, quota_per_theme: int = 2
+) -> list[Story]:
     """
-    Fetch a fast cross-section of top breaking headlines across feeds to power
+    Fetch a balanced cross-section of top breaking headlines across all configured themes
+    using Stratified Sampling (an equal quota per theme) to power
     Option 5 (LAYA Story-Driven Dynamic Theme Routing).
     """
     themes = config.get("themes", {})
     if not themes:
         return []
 
-    # Pick 1 primary source from each configured theme for broad coverage
-    sampled_sources: list[dict[str, Any]] = []
-    seen_urls: set[str] = set()
-    for theme in themes.values():
-        for src in theme.get("sources", []):
-            url = src.get("url", "")
-            if url and url not in seen_urls:
-                sampled_sources.append(src)
-                seen_urls.add(url)
-                break
+    laya_cfg = config.get("laya", {})
+    quota = int(laya_cfg.get("theme_routing_quota_per_theme", quota_per_theme))
 
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
     now = datetime.now(UTC)
-    all_sample_entries: list[Story] = []
-    with ThreadPoolExecutor(max_workers=min(5, len(sampled_sources) or 1)) as executor:
-        future_to_src = {
-            executor.submit(fetch_entries_from_source, src, [], now): src
-            for src in sampled_sources
-        }
-        for future in as_completed(future_to_src):
+
+    def fetch_theme_quota(theme_key: str, theme_dict: dict[str, Any]) -> list[Story]:
+        sources = theme_dict.get("sources", [])
+        if not sources:
+            return []
+        # Sample top 2 sources from this theme to provide backup if primary feed is quiet or down
+        selected_sources = sources[:2]
+        theme_entries: list[Story] = []
+        for src in selected_sources:
             try:
-                entries = future.result()
-                all_sample_entries.extend(entries)
+                entries = fetch_entries_from_source(src, [], now)
+                theme_entries.extend(entries)
             except Exception:
                 pass
 
-    for e in all_sample_entries:
-        e.score = score_entry(e)
-    all_sample_entries.sort(key=lambda s: s.score, reverse=True)
+        for e in theme_entries:
+            e.score = score_entry(e)
+            e.extra_metadata["sampled_theme"] = theme_key
+        theme_entries.sort(key=lambda s: s.score, reverse=True)
 
-    # Return top unique stories
-    unique_samples: list[Story] = []
-    for s in all_sample_entries:
-        if not any(is_similar_title(s.title, u.title) for u in unique_samples):
-            unique_samples.append(s)
-            if len(unique_samples) >= max_items:
-                break
-    return unique_samples
+        unique_theme_stories: list[Story] = []
+        for s in theme_entries:
+            if not any(is_similar_title(s.title, u.title) for u in unique_theme_stories):
+                unique_theme_stories.append(s)
+                if len(unique_theme_stories) >= quota:
+                    break
+        return unique_theme_stories
+
+    balanced_samples: list[Story] = []
+    with ThreadPoolExecutor(max_workers=min(4, len(themes))) as executor:
+        future_to_theme = {
+            executor.submit(fetch_theme_quota, t_key, t_dict): t_key
+            for t_key, t_dict in themes.items()
+        }
+        for future in as_completed(future_to_theme):
+            try:
+                stories = future.result()
+                balanced_samples.extend(stories)
+            except Exception:
+                pass
+
+    logger.info(
+        f"📡 Sampled {len(balanced_samples)} balanced headlines across {len(themes)} themes (quota={quota}/theme)."
+    )
+    return balanced_samples[:max_items]
 

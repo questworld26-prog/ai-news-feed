@@ -31,6 +31,23 @@ uv run python -m pytest tests/ -v
 
 *Note: Multi-layer evaluation checks Structural Regex (`## [Title](URL)`), HHH Guardrails (Helpful, Honest, Harmless), 1–5 Rubric Scoring, and multi-run Pass@K / Pass Rate % metrics.*
 
+### 📊 Telemetrics & Quality Web Dashboard
+
+Launch the interactive telemetrics webpage server to monitor pipeline execution telemetry, memory footprints, fact-checking pass rates, and submit human quality reviews:
+
+```bash
+uv run python eval/serve_dashboard.py
+```
+
+Once launched, open your browser at:  
+👉 **`http://127.0.0.1:8765/`**
+
+**Options**:
+* `--port PORT`: Specify custom port (default: `8765`)
+* `--host HOST`: Specify host IP address (default: `127.0.0.1`)
+
+*Note: The server automatically initializes `eval/quality.db` and backfills telemetry metrics from existing briefing files in `output/` if starting fresh.*
+
 ---
 
 ## 🏛️ System Architecture
@@ -122,6 +139,10 @@ AI_news_voice_feed/
 ├── ADR.md                        # Architectural Decision Record (architecture, decisions & testing)
 ├── .env.example                  # Environment template for Telegram credentials
 ├── .gitignore                    # Local storage ignore rules
+├── eval/                         # Quality tracker DB, dashboard UI & server
+│   ├── quality.db                # SQLite database for execution telemetry & quality scores
+│   ├── quality_dashboard.html    # Interactive telemetrics web interface
+│   └── serve_dashboard.py        # Web server & REST API for telemetrics dashboard
 ├── launchd/
 │   └── com.aibriefing.daily.plist # macOS LaunchAgent configuration
 ├── output/                       # Generated audio (.wav) and markdown (.md) briefings
@@ -130,6 +151,8 @@ AI_news_voice_feed/
 │   ├── news_fetcher.py           # RSS aggregation, cleaning, scoring & filtering
 │   ├── briefing_generator.py     # LLM story curation, markdown digest & monologue generator
 │   ├── story.py                  # Structured Story and BriefingOutput data contracts
+│   ├── story_history.py          # Persistent sliding-window recurrence & decay manager
+│   ├── quality_tracker.py        # Telemetry & quality score logging manager
 │   ├── notifier.py               # Local TTS synthesis & Telegram dispatch
 │   ├── validator.py              # Anti-hallucination validation module & deterministic entity gates
 │   └── evaluator.py              # Evaluation harness (Regex, HHH Guardrails, LLM-as-a-Judge)

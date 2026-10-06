@@ -10,7 +10,9 @@ Provides ultra-low-latency, single-pass decision-making for:
 from __future__ import annotations
 
 import logging
+import sqlite3
 import threading
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -21,6 +23,37 @@ logger = logging.getLogger("ai_briefing")
 _laya_lock = threading.Lock()
 _laya_agent = None
 _laya_initialized = False
+
+
+def get_recent_briefed_themes(db_path: Path | str | None = None, limit: int = 2) -> list[str]:
+    """Retrieve the most recent briefed themes from quality.db to apply rotation cooldowns."""
+    db = Path(db_path or "eval/quality.db")
+    if not db.exists():
+        return []
+    try:
+        with sqlite3.connect(str(db), timeout=5.0) as conn:
+            cur = conn.cursor()
+            try:
+                cur.execute(
+                    "SELECT theme FROM runs WHERE theme IS NOT NULL AND theme != '' ORDER BY id DESC LIMIT ?",
+                    (limit,),
+                )
+                themes = [row[0] for row in cur.fetchall() if row[0]]
+                if themes:
+                    return themes
+            except sqlite3.OperationalError:
+                pass
+            try:
+                cur.execute(
+                    "SELECT DISTINCT theme_name FROM briefed_story_history ORDER BY briefed_at DESC LIMIT ?",
+                    (limit,),
+                )
+                return [row[0] for row in cur.fetchall() if row[0]]
+            except sqlite3.OperationalError:
+                pass
+    except Exception as exc:
+        logger.debug(f"Could not retrieve recent themes for cooldown: {exc}")
+    return []
 
 
 class LayaDecisionEngine:
@@ -279,7 +312,29 @@ class LayaDecisionEngine:
             except Exception as exc:
                 logger.debug(f"LAYA theme routing evaluation error on story '{s.title[:40]}': {exc}")
 
-        # Pick theme with highest score
+        # Pick theme with highest score (after applying cooldown penalties)
+        laya_cfg = (config or {}).get("laya", {})
+        if laya_cfg.get("enable_theme_cooldown", True):
+            db_path = (config or {}).get("deduplication", {}).get("history_db_path", "eval/quality.db")
+            recent_themes = get_recent_briefed_themes(db_path=db_path, limit=2)
+            penalty_1 = float(laya_cfg.get("theme_cooldown_recent_1", 0.65))
+            penalty_2 = float(laya_cfg.get("theme_cooldown_recent_2", 0.85))
+
+            if len(recent_themes) >= 1 and recent_themes[0] in cumulative_scores:
+                last_theme = recent_themes[0]
+                cumulative_scores[last_theme] *= penalty_1
+                logger.info(
+                    f"📉 Recent theme cooldown applied: '{last_theme}' (yesterday's winner) score multiplied by {penalty_1:.2f}"
+                )
+
+            if len(recent_themes) >= 2 and recent_themes[1] in cumulative_scores:
+                prev_theme = recent_themes[1]
+                if prev_theme != recent_themes[0]:
+                    cumulative_scores[prev_theme] *= penalty_2
+                    logger.info(
+                        f"📉 Recent theme cooldown applied: '{prev_theme}' (2 days ago winner) score multiplied by {penalty_2:.2f}"
+                    )
+
         best_theme = max(cumulative_scores, key=lambda k: cumulative_scores[k])
         total = sum(cumulative_scores.values()) or 1.0
         normalized_scores = {k: round(v / total, 3) for k, v in cumulative_scores.items()}

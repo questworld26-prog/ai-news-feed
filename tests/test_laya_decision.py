@@ -135,3 +135,86 @@ def test_laya_disabled_fallback():
     dummy_config = {"laya": {"enabled": False}}
 
     assert not LayaDecisionEngine.is_enabled(dummy_config)
+
+
+def test_get_recent_briefed_themes(tmp_path: Path):
+    """Test extraction of recent briefed themes from SQLite database."""
+    import sqlite3
+    from laya_decision import get_recent_briefed_themes
+
+    db_path = tmp_path / "test_runs.db"
+    with sqlite3.connect(str(db_path)) as conn:
+        conn.execute(
+            """
+            CREATE TABLE runs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                run_date TEXT,
+                theme TEXT
+            );
+            """
+        )
+        conn.execute("INSERT INTO runs (run_date, theme) VALUES ('2026-10-01', 'practitioner_radar');")
+        conn.execute("INSERT INTO runs (run_date, theme) VALUES ('2026-10-02', 'builders_digest');")
+        conn.execute("INSERT INTO runs (run_date, theme) VALUES ('2026-10-03', 'practitioner_radar');")
+        conn.commit()
+
+    recent = get_recent_briefed_themes(db_path, limit=2)
+    assert recent == ["practitioner_radar", "builders_digest"]
+
+
+def test_laya_route_theme_cooldown_penalty(tmp_path: Path):
+    """Test that recent theme cooldown penalty reduces score of recently briefed themes."""
+    import sqlite3
+
+    db_path = tmp_path / "test_cooldown.db"
+    with sqlite3.connect(str(db_path)) as conn:
+        conn.execute("CREATE TABLE runs (id INTEGER PRIMARY KEY AUTOINCREMENT, theme TEXT);")
+        # practitioner_radar won most recently
+        conn.execute("INSERT INTO runs (theme) VALUES ('practitioner_radar');")
+        conn.commit()
+
+    engine = get_laya_engine()
+    themes = {
+        "practitioner_radar": {
+            "name": "Practitioner's Radar",
+            "description": "Production systems and MLOps",
+            "tone": "collegial, sharp",
+        },
+        "builders_digest": {
+            "name": "Builder's Digest",
+            "description": "Developer tooling and weekend hacking",
+            "tone": "practical, hands-on",
+        },
+    }
+
+    # Ambiguous story that could match either theme
+    story = Story(
+        title="Building LLM Microservices with Docker and Python",
+        link="https://example.com/microservice",
+        summary="A practical guide to containerizing LLM APIs for development and deployment.",
+        source="Test Feed",
+    )
+
+    # 1. With cooldown enabled
+    config_with_cooldown = {
+        "laya": {
+            "enabled": True,
+            "enable_theme_cooldown": True,
+            "theme_cooldown_recent_1": 0.50,
+        },
+        "deduplication": {"history_db_path": str(db_path)},
+    }
+    _, dist_cooldown = engine.route_theme_from_stories([story], themes, config=config_with_cooldown)
+
+    # 2. With cooldown disabled
+    config_no_cooldown = {
+        "laya": {
+            "enabled": True,
+            "enable_theme_cooldown": False,
+        },
+        "deduplication": {"history_db_path": str(db_path)},
+    }
+    _, dist_no_cooldown = engine.route_theme_from_stories([story], themes, config=config_no_cooldown)
+
+    # The penalized theme's share should be lower when cooldown is active
+    assert dist_cooldown["practitioner_radar"] < dist_no_cooldown["practitioner_radar"]
