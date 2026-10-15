@@ -23,6 +23,7 @@ try:
     from rich.console import Console
     from rich.panel import Panel
     from rich.table import Table
+
     _HAS_RICH = True
 except ImportError:
     _HAS_RICH = False
@@ -78,7 +79,9 @@ class PipelineTracker:
         return 0.0
 
     @contextmanager
-    def track_stage(self, name: str, initial_metrics: dict[str, Any] | None = None) -> Generator[StageContext, None, None]:
+    def track_stage(
+        self, name: str, initial_metrics: dict[str, Any] | None = None
+    ) -> Generator[StageContext, None, None]:
         """Context manager to measure time and memory usage for a pipeline stage."""
         ctx = StageContext(name, self)
         if initial_metrics:
@@ -135,7 +138,9 @@ class PipelineTracker:
             )
         else:
             print(f"\n--- STAGE STATS: {record.name} ---")
-            print(f"Time Taken: {time_str} | Memory: {record.mem_end_mb:.1f} MB ({delta_str}) | System RAM: {record.system_ram_pct}%")
+            print(
+                f"Time Taken: {time_str} | Memory: {record.mem_end_mb:.1f} MB ({delta_str}) | System RAM: {record.system_ram_pct}%"
+            )
             if record.metrics:
                 print(f"Metrics: {record.metrics}")
             print("---------------------------------\n")

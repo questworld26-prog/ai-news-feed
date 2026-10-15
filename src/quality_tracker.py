@@ -173,9 +173,9 @@ class QualityTracker:
             retries = extra.get("retry_count", 1)
             total_retries += retries
 
-            is_fallback = "failed to generate a reliable summary" in summary.lower() or extra.get(
-                "summary_status"
-            ) == "failed"
+            is_fallback = (
+                "failed to generate a reliable summary" in summary.lower() or extra.get("summary_status") == "failed"
+            )
             status = "failed" if is_fallback else "success"
             if is_fallback:
                 stories_failed += 1
@@ -292,7 +292,9 @@ class QualityTracker:
             )
             return cur.rowcount > 0
 
-    def get_runs(self, limit: int = 100, theme: str | None = None, git_commit: str | None = None) -> list[dict[str, Any]]:
+    def get_runs(
+        self, limit: int = 100, theme: str | None = None, git_commit: str | None = None
+    ) -> list[dict[str, Any]]:
         """Retrieve runs ordered by most recent first."""
         query = "SELECT * FROM runs WHERE 1=1"
         params: list[Any] = []
@@ -367,9 +369,12 @@ class QualityTracker:
                 """
             ).fetchone()
 
-            avg_overlap = conn.execute(
-                "SELECT AVG(keyword_overlap) FROM story_scores WHERE summary_status = 'success'"
-            ).fetchone()[0] or 0.0
+            avg_overlap = (
+                conn.execute(
+                    "SELECT AVG(keyword_overlap) FROM story_scores WHERE summary_status = 'success'"
+                ).fetchone()[0]
+                or 0.0
+            )
 
             return {
                 "total_runs": row["total_runs"],
@@ -446,6 +451,76 @@ class QualityTracker:
             backfilled += 1
 
         return backfilled
+
+    def promote_story_to_golden(
+        self,
+        run_id: str,
+        story_idx: int,
+        correction: str = "",
+        notes: str = "",
+        golden_path: Path | str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Tier 4 HITL Continuous Promotion:
+        Promote a failed, low-rated, or corrected story from quality.db into
+        the golden benchmark dataset (eval/golden_dataset.json) as a permanent regression test.
+        """
+        detail = self.get_run_detail(run_id)
+        if not detail:
+            raise ValueError(f"Run ID '{run_id}' not found in quality database.")
+
+        stories = detail.get("stories", [])
+        if story_idx < 0 or story_idx >= len(stories):
+            raise IndexError(f"Story index {story_idx} out of bounds (total stories: {len(stories)}).")
+
+        story = stories[story_idx]
+        target_path = Path(golden_path or "eval/golden_dataset.json")
+
+        existing_dataset = []
+        if target_path.exists():
+            try:
+                with open(target_path, encoding="utf-8") as f:
+                    existing_dataset = json.load(f)
+            except Exception as e:
+                logger.warning(f"Failed to read existing golden dataset: {e}")
+
+        case_id = f"hitl_{run_id}_{story_idx}"
+        is_failed = story.get("summary_status") == "failed"
+
+        record = {
+            "id": case_id,
+            "theme": detail.get("theme", "practitioner_radar"),
+            "type": "audit",
+            "is_poisoned": is_failed,
+            "source_text": f"{story.get('story_title', '')}\n{story.get('story_url', '')}",
+            "digest_summary": story.get("summary_text", ""),
+            "injected_hallucinations": [correction] if correction else [],
+            "expected_verdict": not is_failed,
+            "promoted_by": "human_reviewer",
+            "promoted_from_run": run_id,
+            "notes": notes or f"Promoted from human review of run {run_id}",
+        }
+
+        # Check if already present, update or append
+        updated = False
+        for i, item in enumerate(existing_dataset):
+            if item.get("id") == case_id:
+                existing_dataset[i] = record
+                updated = True
+                break
+        if not updated:
+            existing_dataset.append(record)
+
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(target_path, "w", encoding="utf-8") as f:
+            json.dump(existing_dataset, f, indent=2, ensure_ascii=False)
+
+        return {
+            "status": "ok",
+            "case_id": case_id,
+            "file_path": str(target_path),
+            "total_cases": len(existing_dataset),
+        }
 
 
 def parse_summary_markdown(content: str) -> tuple[list[dict[str, Any]], str]:

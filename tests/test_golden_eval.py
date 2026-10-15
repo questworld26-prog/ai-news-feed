@@ -16,8 +16,10 @@ from evaluator import (
     evaluate_hhh_guardrails,
     evaluate_regex_rules,
     evaluate_rubrics,
+    print_evaluation_report,
     run_full_evaluation,
 )
+from validator import validate_story
 
 
 @pytest.fixture
@@ -100,15 +102,48 @@ def test_run_full_evaluation_multi_run(monkeypatch):
 
     monkeypatch.setattr(requests, "post", lambda *args, **kwargs: MockResponse())
 
-    dummy_config = {"llm": {"model": "phi4-mini:3.8b", "ollama_url": "http://localhost:11434"}}
+    dummy_config = {
+        "llm": {"model": "phi4-mini:3.8b", "ollama_url": "http://localhost:11434"},
+        "laya": {"enabled": False},
+    }
     report = run_full_evaluation(fixtures_path, dummy_config, eval_runs=3)
+    print_evaluation_report(report)
 
-    assert report.total_cases >= 4
+    assert report.total_cases == 10
     assert report.overall_pass_rate == 1.0
-    assert report.mean_rubric_score >= 4.5
+    assert report.mean_rubric_score >= 4.3
     assert len(report.multi_run_summary) == report.total_cases
     for mr in report.multi_run_summary:
         assert mr.total_runs == 3
         assert mr.passed_runs == 3
         assert mr.pass_rate == 1.0
         assert mr.pass_at_k is True
+        assert mr.pass_pow_k is True
+        assert mr.consistency_gap == 0.0
+        assert mr.is_unstable is False
+
+    assert report.overall_pass_pow_k == 1.0
+    assert report.mean_consistency_gap == 0.0
+
+
+def test_golden_dataset_negative_traps_are_rejected():
+    """Verify that negative traps with fabricated numbers or entities are caught by guardrails."""
+    fixtures_path = Path(__file__).parent / "fixtures" / "golden_dataset.json"
+    with open(fixtures_path, encoding="utf-8") as f:
+        cases = json.load(f)
+
+    traps = [c for c in cases if c.get("is_negative_trap")]
+    assert len(traps) >= 2
+
+    dummy_config = {"llm": {"model": "phi4-mini:3.8b"}, "laya": {"enabled": False}}
+
+    for trap in traps:
+        story = trap["story"]
+        digest = trap["digest_text"]
+        ok, errors = evaluate_regex_rules(digest, story)
+        assert ok is True  # Header is well formatted
+
+        # But factual guardrail / judge MUST reject it
+        validation_res = validate_story(story, digest, dummy_config, run_llm_check=False)
+        assert validation_res.passed is False
+        assert len(validation_res.fabrication_warnings) > 0

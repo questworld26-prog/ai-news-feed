@@ -173,7 +173,9 @@ def main() -> None:
                     if samples:
                         engine = get_laya_engine(config)
                         theme_key, score_dist = engine.route_theme_from_stories(samples, themes, config)
-                        logger.info(f"🎯 LAYA dynamic theme routing selected: '{theme_key}' (Signal distribution: {score_dist})")
+                        logger.info(
+                            f"🎯 LAYA dynamic theme routing selected: '{theme_key}' (Signal distribution: {score_dist})"
+                        )
                         stage.set_metric("method", "LAYA System 1")
                         stage.set_metric("headlines_sampled", len(samples))
                 except Exception as exc:
@@ -241,7 +243,8 @@ def main() -> None:
         git_commit = get_current_git_commit()
 
         models_used = {
-            "curation": config.get("llm", {}).get("curation_model") or config.get("llm", {}).get("model", "phi4-mini:3.8b"),
+            "curation": config.get("llm", {}).get("curation_model")
+            or config.get("llm", {}).get("model", "phi4-mini:3.8b"),
             "summary": config.get("llm", {}).get("summary_model") or config.get("llm", {}).get("model", "qwen2.5:3b"),
             "script": config.get("llm", {}).get("script_model") or config.get("llm", {}).get("model", "phi4-mini:3.8b"),
             "audit": config.get("testing", {}).get("audit_model", "qwen2.5:3b"),
@@ -314,7 +317,9 @@ def main() -> None:
     logger.info("=" * 60)
     audio_files: list[Path] = []
     if not args.skip_tts:
-        with tracker.track_stage("Phase 5: Local TTS Audio Synthesis", {"voice": config.get("tts", {}).get("voice", "bm_george")}) as stage:
+        with tracker.track_stage(
+            "Phase 5: Local TTS Audio Synthesis", {"voice": config.get("tts", {}).get("voice", "bm_george")}
+        ) as stage:
             audio_files = synthesize_audio(audio_script, output_dir, config, today_str)
             total_audio_mb = sum(f.stat().st_size for f in audio_files) / (1024 * 1024) if audio_files else 0.0
             stage.set_metric("audio_clips", len(audio_files))

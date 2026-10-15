@@ -291,7 +291,9 @@ def fetch_entries_from_source(src: dict[str, Any], hard_filters: list[str], now:
 
         except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as net_err:
             if attempt < max_retries:
-                logger.warning(f"  ⚠️ Timeout/Connection error on {name} (attempt {attempt}/{max_retries}): {net_err}. Retrying in 2s...")
+                logger.warning(
+                    f"  ⚠️ Timeout/Connection error on {name} (attempt {attempt}/{max_retries}): {net_err}. Retrying in 2s..."
+                )
                 import time
 
                 time.sleep(2)
@@ -395,10 +397,7 @@ def fetch_stories_for_theme(theme_dict: dict[str, Any], config: dict[str, Any]) 
     logger.info(f"Fetching concurrently from {len(sources)} sources for theme '{theme_dict.get('name')}'...")
     max_workers = min(10, max(1, len(sources)))
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_to_src = {
-            executor.submit(fetch_entries_from_source, src, hard_filters, now): src
-            for src in sources
-        }
+        future_to_src = {executor.submit(fetch_entries_from_source, src, hard_filters, now): src for src in sources}
         for future in as_completed(future_to_src):
             src = future_to_src[future]
             try:
@@ -413,9 +412,7 @@ def fetch_stories_for_theme(theme_dict: dict[str, Any], config: dict[str, Any]) 
     return candidate_pool
 
 
-def sample_breaking_headlines(
-    config: dict[str, Any], max_items: int = 12, quota_per_theme: int = 2
-) -> list[Story]:
+def sample_breaking_headlines(config: dict[str, Any], max_items: int = 12, quota_per_theme: int = 2) -> list[Story]:
     """
     Fetch a balanced cross-section of top breaking headlines across all configured themes
     using Stratified Sampling (an equal quota per theme) to power
@@ -461,10 +458,7 @@ def sample_breaking_headlines(
 
     balanced_samples: list[Story] = []
     with ThreadPoolExecutor(max_workers=min(4, len(themes))) as executor:
-        future_to_theme = {
-            executor.submit(fetch_theme_quota, t_key, t_dict): t_key
-            for t_key, t_dict in themes.items()
-        }
+        future_to_theme = {executor.submit(fetch_theme_quota, t_key, t_dict): t_key for t_key, t_dict in themes.items()}
         for future in as_completed(future_to_theme):
             try:
                 stories = future.result()
@@ -476,4 +470,3 @@ def sample_breaking_headlines(
         f"📡 Sampled {len(balanced_samples)} balanced headlines across {len(themes)} themes (quota={quota}/theme)."
     )
     return balanced_samples[:max_items]
-

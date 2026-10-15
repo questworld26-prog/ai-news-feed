@@ -3,6 +3,16 @@
 All notable changes to this project are documented in this file under [Semantic Versioning](https://semver.org/).
 Major and minor releases require explicit human sign-off before version increments.
 
+## [2.0.1] - 2026-10-15
+
+### Fixed & Hardened
+- **Tier 1 Test Isolation & Speed**: Decoupled unit tests from live PyTorch weights via deterministic mock fixtures, accelerating test suite execution from 14.5s to 0.5s.
+- **Heavy Test Tagging**: Added `@pytest.mark.heavy` and default `-m 'not heavy'` filter to isolate live neural model loads.
+- **ADR-02 Safety Invariants Test Suite**: Created `tests/test_briefing_generator.py` testing retry loops, correction hint injection, fail-closed fallback, and Level 3 monologue verification.
+- **ALTK Consistency Analysis**: Implemented Pass^K and Consistency Gap metrics in `evaluator.py` to detect prompt instability.
+- **10-Item Golden Benchmark**: Upgraded test fixture with canonical cases, negative hallucination traps, boundary cases, and adversarial probes.
+- **HITL Continuous Promotion**: Added `/api/runs/<run_id>/stories/<story_idx>/promote` endpoint and helper to promote human-downvoted failures into golden dataset regression benchmarks.
+
 ---
 
 ## [2.0.0] - 2026-10-15

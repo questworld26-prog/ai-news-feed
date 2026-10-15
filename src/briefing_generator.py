@@ -366,7 +366,11 @@ def generate_briefing_llm(
     for idx, (s, validated_summary) in enumerate(results, 1):
         if getattr(s, "is_update", False):
             prev_d = getattr(s, "original_briefed_date", None)
-            update_line = f"_🔄 Follow-up to our {prev_d} briefing._\n\n" if prev_d else "_🔄 Follow-up to our earlier briefing._\n\n"
+            update_line = (
+                f"_🔄 Follow-up to our {prev_d} briefing._\n\n"
+                if prev_d
+                else "_🔄 Follow-up to our earlier briefing._\n\n"
+            )
             section = f"## [{s.title}]({s.link})\n{update_line}{validated_summary}\n"
         else:
             section = f"## [{s.title}]({s.link})\n{validated_summary}\n"
@@ -384,7 +388,11 @@ def generate_briefing_llm(
         update_flag_str = ""
         if getattr(s, "is_update", False):
             prev_d = getattr(s, "original_briefed_date", None)
-            update_flag_str = f"- Status: UPDATE / Follow-up (previously briefed on {prev_d})\n" if prev_d else "- Status: UPDATE / Follow-up\n"
+            update_flag_str = (
+                f"- Status: UPDATE / Follow-up (previously briefed on {prev_d})\n"
+                if prev_d
+                else "- Status: UPDATE / Follow-up\n"
+            )
 
         stories_context.append(
             f"Story {idx}:\n"
@@ -394,7 +402,6 @@ def generate_briefing_llm(
             f"- Link: {s.link}\n"
             f"- Summary: {audio_story_summary}\n"
         )
-
 
     text_digest = "\n\n".join(digest_sections)
     full_text_digest = f"{theme_badge}\n{text_digest.strip()}"

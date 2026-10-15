@@ -10,8 +10,66 @@ from pathlib import Path
 # Add src/ to path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
+import pytest
+
 from laya_decision import LayaDecisionEngine, get_laya_engine
 from story import Story
+
+
+class MockLayaAgent:
+    """Mock LAYA agent providing deterministic System 1 responses for fast-path unit tests."""
+
+    def system_one(self, state: dict, questions: dict) -> dict:
+        answers = {}
+        if "quality_category" in questions or "content_type" in questions:
+            text = f"{state.get('title', '')} {state.get('headline', '')} {state.get('summary', '')}".lower()
+            key = "quality_category" if "quality_category" in questions else "content_type"
+            if any(k in text for k in ["raises 50m", "stealth ai startup", "proprietary ai vision", "fundraising"]):
+                answers[key] = {"choice": "hype", "answer_confidence": 0.95}
+            else:
+                answers[key] = {"choice": "technical", "answer_confidence": 0.92}
+
+        if "is_grounded" in questions:
+            gen = state.get("generated_summary", "").lower()
+            if any(k in gen for k in ["100 billion", "quantum computing", "openai partnered with microsoft"]):
+                answers["is_grounded"] = {"choice": "hallucinated", "answer_confidence": 0.95}
+            else:
+                answers["is_grounded"] = {"choice": "grounded", "answer_confidence": 0.94}
+
+        if "theme_fit" in questions:
+            headline = state.get("headline", "").lower()
+            if "rag" in headline or "fastapi" in headline:
+                answers["theme_fit"] = {"choice": "theme_aligned", "answer_confidence": 0.92}
+            else:
+                answers["theme_fit"] = {"choice": "off_topic", "answer_confidence": 0.88}
+
+        if "theme_match" in questions:
+            headline = state.get("headline", "").lower()
+            if "vllm" in headline or "triton" in headline:
+                answers["theme_match"] = {
+                    "choice": "practitioner_radar",
+                    "probabilities": {"practitioner_radar": 0.85, "builders_digest": 0.15},
+                }
+            elif "microservice" in headline:
+                answers["theme_match"] = {
+                    "choice": "practitioner_radar",
+                    "probabilities": {"practitioner_radar": 0.55, "builders_digest": 0.45},
+                }
+            else:
+                answers["theme_match"] = {
+                    "choice": "practitioner_radar",
+                    "probabilities": {"practitioner_radar": 0.5, "builders_digest": 0.5},
+                }
+        return {"answers": answers}
+
+
+@pytest.fixture(autouse=True)
+def mock_laya_agent_autouse(monkeypatch, request):
+    """Automatically mock LAYA inference for fast-path Tier 1 unit tests."""
+    if request.node.get_closest_marker("heavy"):
+        return
+    mock_agent = MockLayaAgent()
+    monkeypatch.setattr(LayaDecisionEngine, "load_agent", lambda self: mock_agent)
 
 
 def test_laya_filter_hype_technical_vs_fluff():
@@ -219,3 +277,18 @@ def test_laya_route_theme_cooldown_penalty(tmp_path: Path):
 
     # The penalized theme's share should be lower when cooldown is active
     assert dist_cooldown["practitioner_radar"] < dist_no_cooldown["practitioner_radar"]
+
+
+@pytest.mark.heavy
+def test_laya_live_model_inference():
+    """Heavy Tier 3 integration test: loads real weights when explicitly requested via `pytest -m heavy`."""
+    engine = LayaDecisionEngine()
+    agent = engine.load_agent()
+    if agent is None:
+        pytest.skip("LAYA library or checkpoint not locally available.")
+    is_hype, conf, reason = engine.filter_hype(
+        title="vLLM v0.6.0 Released with Speculative Decoding and Chunked Prefill",
+        summary="Detailed benchmarks showing 3x throughput improvements on multi-GPU server deployments.",
+    )
+    assert not is_hype
+    assert "technical" in reason.lower()

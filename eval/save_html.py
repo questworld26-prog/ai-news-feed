@@ -32,9 +32,12 @@ def save_html_dashboard(
     judge_model = config["judge"]["model"]
 
     # Build model table header columns
-    model_th_elements = "".join([f'<th class="px-6 py-4 font-semibold text-center text-cyan-400">{m}</th>' for m in models])
+    model_th_elements = "".join(
+        [f'<th class="px-6 py-4 font-semibold text-center text-cyan-400">{m}</th>' for m in models]
+    )
 
-    html_template = """<!DOCTYPE html>
+    html_template = (
+        """<!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
@@ -86,15 +89,23 @@ def save_html_dashboard(
                 </div>
                 <div>
                     <h1 class="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">LLM Summarization Model Comparison</h1>
-                    <p class="text-xs text-slate-400">Benchmark Dashboard • """ + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + """</p>
+                    <p class="text-xs text-slate-400">Benchmark Dashboard • """
+        + datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        + """</p>
                 </div>
             </div>
             <div class="flex items-center gap-3 text-xs text-slate-400 bg-slate-800/60 px-4 py-2 rounded-xl border border-slate-700/50">
-                <span>Judge: <strong class="text-slate-200">""" + str(judge_model) + """</strong></span>
+                <span>Judge: <strong class="text-slate-200">"""
+        + str(judge_model)
+        + """</strong></span>
                 <span class="text-slate-600">•</span>
-                <span>Cases: <strong class="text-slate-200">""" + str(n_cases) + """</strong></span>
+                <span>Cases: <strong class="text-slate-200">"""
+        + str(n_cases)
+        + """</strong></span>
                 <span class="text-slate-600">•</span>
-                <span>Runs/case: <strong class="text-slate-200">""" + str(eval_runs) + """</strong></span>
+                <span>Runs/case: <strong class="text-slate-200">"""
+        + str(eval_runs)
+        + """</strong></span>
             </div>
         </div>
     </header>
@@ -104,8 +115,12 @@ def save_html_dashboard(
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div class="glass-card p-5 rounded-2xl">
                 <div class="text-xs font-medium text-slate-400 uppercase tracking-wider">Models Evaluated</div>
-                <div class="text-3xl font-extrabold text-white mt-1">""" + str(len(models)) + """</div>
-                <div class="text-xs text-cyan-400 mt-2 truncate">""" + ", ".join(models) + """</div>
+                <div class="text-3xl font-extrabold text-white mt-1">"""
+        + str(len(models))
+        + """</div>
+                <div class="text-xs text-cyan-400 mt-2 truncate">"""
+        + ", ".join(models)
+        + """</div>
             </div>
             <div class="glass-card p-5 rounded-2xl">
                 <div class="text-xs font-medium text-slate-400 uppercase tracking-wider">Top Pass Rate Model</div>
@@ -157,7 +172,9 @@ def save_html_dashboard(
                         <tr>
                             <th class="px-6 py-4 font-semibold">Metric / Category</th>
                             <th class="px-6 py-4 font-semibold text-center">Target Threshold</th>
-                            """ + model_th_elements + """
+                            """
+        + model_th_elements
+        + """
                         </tr>
                     </thead>
                     <tbody id="metrics-table-body" class="divide-y divide-slate-800/60 font-mono text-xs">
@@ -175,11 +192,13 @@ def save_html_dashboard(
     </main>
 
     <script>
-        const evalData = """ + raw_json_str + """;
+        const evalData = """
+        + raw_json_str
+        + """;
 
         function initKPIs() {
             if (!evalData.length) return;
-            
+
             const bestPass = [...evalData].sort((a, b) => b.aggregate.pass_rate - a.aggregate.pass_rate)[0];
             document.getElementById('top-pass-model').innerText = bestPass.model;
             document.getElementById('top-pass-score').innerText = `${(bestPass.aggregate.pass_rate * 100).toFixed(1)}% pass rate`;
@@ -342,7 +361,7 @@ def save_html_dashboard(
 
                 items.forEach(item => {
                     const c = item.case;
-                    const passBadge = c.passed 
+                    const passBadge = c.passed
                         ? `<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded text-[10px] font-bold">PASS</span>`
                         : `<span class="bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded text-[10px] font-bold">FAIL</span>`;
 
@@ -383,6 +402,7 @@ def save_html_dashboard(
     </script>
 </body>
 </html>"""
+    )
 
     html_path.write_text(html_template, encoding="utf-8")
     return html_path

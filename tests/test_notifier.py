@@ -40,8 +40,10 @@ def test_chunk_text_respects_max_words():
     chunks = chunk_text(text, max_words=10)
     assert len(chunks) >= 2
     for chunk in chunks:
-        # Each chunk should contain non-empty text
-        assert len(chunk.strip()) > 0
+        # High-fidelity anti-mirage assertion: assert length bound is strictly respected
+        words = chunk.strip().split()
+        assert len(words) > 0
+        assert len(words) <= 10
 
 
 def test_send_to_telegram_skips_when_credentials_missing():

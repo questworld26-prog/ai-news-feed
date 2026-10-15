@@ -1,6 +1,6 @@
 [project]
 name = "ai-news-voice-feed"
-version = "2.0.0"
+version = "2.0.1"
 description = "Automated daily AI news briefing pipeline with theme curation, local TTS, anti-hallucination validation, and Telegram delivery"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -28,6 +28,10 @@ dev = [
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
+markers = [
+    "heavy: tests that load live PyTorch / Ollama / Kokoro models into memory (Opt-in only)",
+]
+addopts = "-m 'not heavy'"
 
 [tool.ruff]
 target-version = "py311"

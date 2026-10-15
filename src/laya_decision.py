@@ -94,9 +94,7 @@ class LayaDecisionEngine:
             return True
         return bool(config.get("laya", {}).get("enabled", True))
 
-    def filter_hype(
-        self, title: str, summary: str, config: dict[str, Any] | None = None
-    ) -> tuple[bool, float, str]:
+    def filter_hype(self, title: str, summary: str, config: dict[str, Any] | None = None) -> tuple[bool, float, str]:
         """
         Option 4: Semantic Hype & PR Pre-Filter.
         Classifies incoming RSS feed items into technical substance vs promotional hype.
@@ -280,8 +278,7 @@ class LayaDecisionEngine:
             return theme_keys[0], {k: 1.0 / len(theme_keys) for k in theme_keys}
 
         theme_criteria = {
-            k: f"{v.get('name', k)}: {v.get('description', '')}. Focus: {v.get('tone', '')}"
-            for k, v in themes.items()
+            k: f"{v.get('name', k)}: {v.get('description', '')}. Focus: {v.get('tone', '')}" for k, v in themes.items()
         }
 
         # Initialize cumulative score per theme

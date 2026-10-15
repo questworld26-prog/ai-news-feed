@@ -24,12 +24,24 @@ options:
 
 ### Testing & Quality Verification
 
-Run the full evaluation test suite (Golden Dataset, HHH Guardrails, 1–5 Rubrics, and Regex rules):
+Run the fast-path test suite (runs in < 1s with decoupled mock providers):
 ```bash
-uv run python -m pytest tests/ -v
+uv run pytest
 ```
 
-*Note: Multi-layer evaluation checks Structural Regex (`## [Title](URL)`), HHH Guardrails (Helpful, Honest, Harmless), 1–5 Rubric Scoring, and multi-run Pass@K / Pass Rate % metrics.*
+Print the detailed Multi-Layer Evaluation & Reliability Report (Structural Regex, HHH Guardrails, 1–5 Rubrics, and ALTK Consistency Gap tables):
+```bash
+uv run python src/evaluator.py
+# Or view with pytest stdout capture disabled:
+uv run pytest -s tests/test_golden_eval.py
+```
+
+Run heavy, live neural model integration tests (loads LAYA / Ollama models into memory):
+```bash
+uv run pytest -m heavy
+```
+
+*Note: Multi-layer evaluation checks Structural Regex (`## [Title](URL)`), HHH Guardrails (Helpful, Honest, Harmless), 1–5 Rubric Scoring, and ALTK Consistency Gap ($\text{Pass}^K$ vs $\text{Mean@K}$).*
 
 ### 📊 Telemetrics & Quality Web Dashboard
 

@@ -103,9 +103,7 @@ def test_log_run_and_get_detail(temp_tracker):
 
 
 def test_human_review_update(temp_tracker):
-    stories = [
-        {"title": "Test Story", "link": "https://test.com", "summary": "Valid summary", "extra_metadata": {}}
-    ]
+    stories = [{"title": "Test Story", "link": "https://test.com", "summary": "Valid summary", "extra_metadata": {}}]
     run_id = temp_tracker.log_run(
         run_id="run_review_test",
         run_date="2026-10-02",
@@ -156,3 +154,56 @@ Welcome back. Today we look through our practitioner lens at distributed nodes a
     assert stories[1]["title"] == "Second Test Story"
     assert stories[1]["extra_metadata"]["summary_status"] == "failed"
     assert "Welcome back" in script
+
+
+def test_promote_story_to_golden(temp_tracker, tmp_path):
+    """Tier 4 HITL Promotion: Verify promoting a flagged story into a golden benchmark file."""
+    import json
+
+    stories = [
+        {
+            "title": "Poisoned Benchmark Claim",
+            "link": "https://example.com/poisoned",
+            "summary": "⚠️ Failed to generate a reliable summary. Read the original article.",
+            "extra_metadata": {"summary_status": "failed", "retry_count": 3},
+        }
+    ]
+    run_id = temp_tracker.log_run(
+        run_id="run_promote_test",
+        run_date="2026-10-15",
+        git_commit="git123",
+        models_used={},
+        theme="practitioner_radar",
+        strategy="auto",
+        total_duration_s=40.0,
+        phase3_duration_s=20.0,
+        phase3_mem_delta_mb=0.0,
+        phase3_mem_rss_mb=50.0,
+        stories=stories,
+        audio_script="Short script",
+    )
+
+    golden_file = tmp_path / "test_golden.json"
+    golden_file.write_text("[]", encoding="utf-8")
+
+    result = temp_tracker.promote_story_to_golden(
+        run_id=run_id,
+        story_idx=0,
+        correction="Invented 100x speedup claim",
+        notes="Reviewer flagged hallucinated numbers",
+        golden_path=golden_file,
+    )
+
+    assert result["status"] == "ok"
+    assert result["case_id"] == f"hitl_{run_id}_0"
+    assert result["total_cases"] == 1
+
+    with open(golden_file, encoding="utf-8") as f:
+        promoted = json.load(f)
+
+    assert len(promoted) == 1
+    case = promoted[0]
+    assert case["id"] == f"hitl_{run_id}_0"
+    assert case["is_poisoned"] is True
+    assert case["injected_hallucinations"] == ["Invented 100x speedup claim"]
+    assert case["promoted_by"] == "human_reviewer"

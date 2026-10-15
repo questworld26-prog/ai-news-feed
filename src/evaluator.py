@@ -43,8 +43,11 @@ class MultiRunResult(NamedTuple):
     story_title: str
     total_runs: int
     passed_runs: int
-    pass_rate: float  # passed_runs / total_runs
-    pass_at_k: bool  # True if at least 1 run passed
+    pass_rate: float  # Mean@K: passed_runs / total_runs
+    pass_at_k: bool  # True if at least 1 run passed (optimistic Pass@1-of-K)
+    pass_pow_k: bool  # True if ALL K consecutive runs passed (Pass^K reliability standard)
+    consistency_gap: float  # Mean@K - Pass^K (ALTK Evolve consistency gap)
+    is_unstable: bool  # True if consistency_gap > 0.15 (unstable prompt / pipeline)
     mean_rubric_score: float  # Average 1-5 rubric score across runs
     run_details: list[dict[str, Any]]
 
@@ -54,8 +57,10 @@ class EvaluationReport(NamedTuple):
     regex_pass_count: int
     hhh_pass_count: int
     llm_judge_pass_count: int
-    overall_pass_rate: float
+    overall_pass_rate: float  # Overall Mean@K
     mean_rubric_score: float
+    overall_pass_pow_k: float  # Fraction of cases passing ALL K attempts (Pass^K)
+    mean_consistency_gap: float  # Mean consistency gap across cases
     details: list[dict[str, Any]]
     multi_run_summary: list[MultiRunResult]
 
@@ -254,15 +259,27 @@ def run_full_evaluation(
         for run_idx in range(1, eval_runs + 1):
             if generate_fn:
                 digest_text = generate_fn(story, item.get("theme", "practitioner_radar"))
+            elif "digest_text" in item:
+                digest_text = item["digest_text"]
             else:
                 digest_text = f"## [{story.get('title')}]({story.get('link')})\n\n{story.get('summary')}"
 
             regex_ok, regex_errors = evaluate_regex_rules(digest_text, story, custom_regex)
             hhh = evaluate_hhh_guardrails(digest_text, story)
             llm_pass, score, reasoning = evaluate_llm_judge(digest_text, story, config)
-            rubric = evaluate_rubrics(digest_text, story, config)
+            rubric = evaluate_rubrics(digest_text, story)
 
-            run_passed = regex_ok and hhh.passed and llm_pass
+            is_negative_trap = item.get("is_negative_trap", False)
+            is_adversarial = item.get("is_adversarial", False)
+            if is_negative_trap:
+                # For negative hallucination traps, evaluation passes when guardrails catch/reject the ungrounded content
+                run_passed = (not llm_pass) or (not hhh.passed)
+            elif is_adversarial:
+                # For adversarial probes, evaluation passes when structural checks or guardrails catch/reject the attack
+                run_passed = (not regex_ok) or (not hhh.passed) or (not llm_pass)
+            else:
+                run_passed = regex_ok and hhh.passed and llm_pass
+
             if run_passed:
                 passed_runs += 1
 
@@ -282,12 +299,27 @@ def run_full_evaluation(
 
             # Use first run for primary summary counters
             if run_idx == 1:
-                if regex_ok:
-                    regex_passes += 1
-                if hhh.passed:
-                    hhh_passes += 1
-                if llm_pass:
-                    llm_passes += 1
+                if is_negative_trap:
+                    if regex_ok:
+                        regex_passes += 1
+                    if not hhh.passed:
+                        hhh_passes += 1
+                    if not llm_pass:
+                        llm_passes += 1
+                elif is_adversarial:
+                    if not regex_ok:
+                        regex_passes += 1
+                    if not hhh.passed:
+                        hhh_passes += 1
+                    if not llm_pass or not regex_ok:
+                        llm_passes += 1
+                else:
+                    if regex_ok:
+                        regex_passes += 1
+                    if hhh.passed:
+                        hhh_passes += 1
+                    if llm_pass:
+                        llm_passes += 1
 
                 details.append(
                     {
@@ -304,8 +336,12 @@ def run_full_evaluation(
                     }
                 )
 
-        pass_rate = passed_runs / float(eval_runs)
+        mean_at_k = passed_runs / float(eval_runs)
         mean_case_rubric = round(sum(case_rubric_scores) / len(case_rubric_scores), 2)
+        all_k_passed = passed_runs == eval_runs
+        pass_pow_k_val = 1.0 if all_k_passed else 0.0
+        consistency_gap = round(max(0.0, mean_at_k - pass_pow_k_val), 3)
+        is_unstable = consistency_gap > 0.15
 
         multi_run_summaries.append(
             MultiRunResult(
@@ -313,16 +349,24 @@ def run_full_evaluation(
                 story_title=story.get("title", ""),
                 total_runs=eval_runs,
                 passed_runs=passed_runs,
-                pass_rate=pass_rate,
+                pass_rate=mean_at_k,
                 pass_at_k=(passed_runs > 0),
+                pass_pow_k=all_k_passed,
+                consistency_gap=consistency_gap,
+                is_unstable=is_unstable,
                 mean_rubric_score=mean_case_rubric,
                 run_details=run_details,
             )
         )
 
     total = len(cases)
-    overall_pass_rate = (llm_passes / total) if total > 0 else 0.0
+    overall_pass_rate = round(sum(mr.pass_rate for mr in multi_run_summaries) / float(total), 3) if total > 0 else 0.0
     overall_mean_rubric = round(sum(all_rubric_scores) / len(all_rubric_scores), 2) if all_rubric_scores else 0.0
+    pass_pow_k_cases = sum(1 for mr in multi_run_summaries if mr.pass_pow_k)
+    overall_pass_pow_k = round(pass_pow_k_cases / float(total), 3) if total > 0 else 0.0
+    mean_consistency_gap = (
+        round(sum(mr.consistency_gap for mr in multi_run_summaries) / float(total), 3) if total > 0 else 0.0
+    )
 
     return EvaluationReport(
         total_cases=total,
@@ -331,6 +375,142 @@ def run_full_evaluation(
         llm_judge_pass_count=llm_passes,
         overall_pass_rate=overall_pass_rate,
         mean_rubric_score=overall_mean_rubric,
+        overall_pass_pow_k=overall_pass_pow_k,
+        mean_consistency_gap=mean_consistency_gap,
         details=details,
         multi_run_summary=multi_run_summaries,
     )
+
+
+def print_evaluation_report(report: EvaluationReport) -> None:
+    """Pretty-print the multi-layer evaluation report using Rich tables."""
+    try:
+        from rich.console import Console
+        from rich.panel import Panel
+        from rich.table import Table
+
+        console = Console()
+    except ImportError:
+        print("\n=== Multi-Layer Evaluation Report ===")
+        print(f"Total Cases: {report.total_cases} | Pass Rate (Mean@K): {report.overall_pass_rate:.1%}")
+        print(f"Pass^K: {report.overall_pass_pow_k:.1%} | Consistency Gap: {report.mean_consistency_gap:.3f}")
+        return
+
+    # 1. Summary Panel
+    gap_color = "green" if report.mean_consistency_gap <= 0.15 else "bold red"
+    summary_text = (
+        f"[bold]Total Cases:[/bold] {report.total_cases}    "
+        f"[bold]Layer 1 (Regex):[/bold] {report.regex_pass_count}/{report.total_cases}    "
+        f"[bold]Layer 2 (HHH):[/bold] {report.hhh_pass_count}/{report.total_cases}    "
+        f"[bold]Layer 3 (Judge):[/bold] {report.llm_judge_pass_count}/{report.total_cases}\n"
+        f"[bold]Mean@K (Pass Rate):[/bold] {report.overall_pass_rate:.1%}    "
+        f"[bold]Pass^K (All Passed):[/bold] {report.overall_pass_pow_k:.1%}    "
+        f"[bold]Mean Consistency Gap:[/bold] [{gap_color}]{report.mean_consistency_gap:.3f}[/{gap_color}]    "
+        f"[bold]Mean Rubric:[/bold] {report.mean_rubric_score}/5.0"
+    )
+    console.print()
+    console.print(Panel(summary_text, title="🎯 Multi-Layer AI Evaluation & Reliability Summary", border_style="cyan"))
+
+    # 2. Layer 1 & Layer 2 Guardrails Table
+    t1 = Table(title="Layer 1 & Layer 2: Structural Link Hygiene, HHH Guardrails & 1–5 Rubrics", show_lines=True)
+    t1.add_column("Case ID", style="cyan", no_wrap=True)
+    t1.add_column("Title", style="white")
+    t1.add_column("Regex Link", justify="center")
+    t1.add_column("HHH Verdict", justify="center")
+    t1.add_column("Honest", justify="center")
+    t1.add_column("Helpful", justify="center")
+    t1.add_column("Harmless", justify="center")
+    t1.add_column("Avg Rubric", justify="center")
+
+    for d in report.details:
+        regex_badge = "[green]PASS[/green]" if d["regex_pass"] else "[red]FAIL[/red]"
+        hhh_badge = "[green]PASS[/green]" if d["hhh_pass"] else "[red]FAIL[/red]"
+        rub = d.get("rubric")
+        h_score = f"{rub.honest_score:.1f}" if rub else "-"
+        hp_score = f"{rub.helpful_score:.1f}" if rub else "-"
+        hm_score = f"{rub.harmless_score:.1f}" if rub else "-"
+        avg_score = f"{rub.average_score:.2f}" if rub else "-"
+
+        t1.add_row(
+            d["id"],
+            d.get("title", "")[:45],
+            regex_badge,
+            hhh_badge,
+            h_score,
+            hp_score,
+            hm_score,
+            avg_score,
+        )
+    console.print(t1)
+
+    # 3. Layer 3 & ALTK Consistency Gap Table
+    t2 = Table(title="Layer 3 & ALTK Evolve Consistency: Mean@K vs Pass^K", show_lines=True)
+    t2.add_column("Case ID", style="cyan", no_wrap=True)
+    t2.add_column("Runs", justify="center")
+    t2.add_column("Passed", justify="center")
+    t2.add_column("Mean@K", justify="center")
+    t2.add_column("Pass^K", justify="center")
+    t2.add_column("Consistency Gap", justify="center")
+    t2.add_column("Stability", justify="center")
+
+    for mr in report.multi_run_summary:
+        mean_k_str = f"{mr.pass_rate:.1%}"
+        pass_pow_str = "[green]PASS[/green]" if mr.pass_pow_k else "[red]FAIL[/red]"
+        gap_style = "green" if mr.consistency_gap <= 0.15 else "bold red"
+        gap_str = f"[{gap_style}]{mr.consistency_gap:.3f}[/{gap_style}]"
+        stab_str = "[green]STABLE[/green]" if not mr.is_unstable else "[bold red]UNSTABLE (>0.15)[/bold red]"
+
+        t2.add_row(
+            mr.case_id,
+            str(mr.total_runs),
+            str(mr.passed_runs),
+            mean_k_str,
+            pass_pow_str,
+            gap_str,
+            stab_str,
+        )
+    console.print(t2)
+    console.print()
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Multi-Layer AI Evaluation Harness")
+    parser.add_argument(
+        "--runs", type=int, default=3, help="Number of repeated evaluation trials per case (default: 3)"
+    )
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default="tests/fixtures/golden_dataset.json",
+        help="Path to golden dataset (default: tests/fixtures/golden_dataset.json)",
+    )
+    parser.add_argument(
+        "--live",
+        action="store_true",
+        help="Connect to live Ollama instance (default: fast deterministic evaluation)",
+    )
+    args = parser.parse_args()
+
+    dataset_path = Path(args.dataset)
+    if not dataset_path.is_absolute():
+        dataset_path = Path(__file__).resolve().parent.parent / dataset_path
+
+    if not args.live:
+        import unittest.mock as mock
+
+        import requests
+
+        class MockResp:
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return {"response": json.dumps({"pass": True, "reasoning": "Factual and supported."})}
+
+        requests.post = mock.MagicMock(return_value=MockResp())
+
+    cfg = {"llm": {"model": "phi4-mini:3.8b"}, "laya": {"enabled": False}}
+    rep = run_full_evaluation(dataset_path, cfg, eval_runs=args.runs)
+    print_evaluation_report(rep)

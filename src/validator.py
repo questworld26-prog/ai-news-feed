@@ -331,9 +331,7 @@ def validate_story(
                 from laya_decision import get_laya_engine
 
                 engine = get_laya_engine(config)
-                pregate_status, conf, pregate_reason = engine.fact_check_pregate(
-                    source_text, target_digest, config
-                )
+                pregate_status, conf, pregate_reason = engine.fact_check_pregate(source_text, target_digest, config)
                 if pregate_status is True:
                     # High confidence grounded -> Fast PASS! Bypasses slow Ollama audit
                     llm_passed = True

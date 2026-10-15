@@ -49,11 +49,11 @@ except ImportError:
     sys.exit(1)
 
 try:
+    from rich import box
     from rich.console import Console
     from rich.panel import Panel
     from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
     from rich.table import Table
-    from rich import box
 except ImportError:
     print("ERROR: `rich` not installed. Run: uv add rich --group dev")
     sys.exit(1)
@@ -78,6 +78,7 @@ except ImportError:
 
 try:
     from dotenv import load_dotenv
+
     load_dotenv()
 except ImportError:
     pass
@@ -92,10 +93,11 @@ if str(SRC_DIR) not in sys.path:
 try:
     from briefing_generator import CurationResponse, clean_script_for_audio
     from validator import llm_fact_check
-    from story import Story
 except ImportError as e:
     console_err = Console()
-    console_err.print(f"[yellow]Warning: Could not import production schemas directly ({e}). Using local definitions.[/yellow]")
+    console_err.print(
+        f"[yellow]Warning: Could not import production schemas directly ({e}). Using local definitions.[/yellow]"
+    )
 
     class StorySelectionJustification(BaseModel):
         index: int = Field(description="1-based integer index of the candidate story")
@@ -109,6 +111,7 @@ except ImportError as e:
     def clean_script_for_audio(raw_script: str) -> str:  # type: ignore[no-redef]
         text = re.sub(r"[*_#`~>|-]", " ", raw_script or "")
         return re.sub(r"\s+", " ", text).strip()
+
 
 # ── HTML Dashboard Generator Import ──────────────────────────────────────────
 try:
@@ -127,6 +130,7 @@ console = Console()
 # ─────────────────────────────────────────────────────────────────────────────
 # Config and Dataset Loading
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def load_config() -> dict[str, Any]:
     """Load eval_config.toml."""
@@ -152,6 +156,7 @@ def load_golden_dataset(config: dict[str, Any]) -> list[dict[str, Any]]:
 # ─────────────────────────────────────────────────────────────────────────────
 # Ollama Utilities & Memory Profiling
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def get_ollama_models(ollama_url: str) -> list[str]:
     """Query Ollama for the list of locally available models."""
@@ -214,14 +219,14 @@ def get_system_and_ollama_memory_gb(ollama_url: str = "http://localhost:11434") 
     if not psutil:
         return {"process_rss_gb": 0.0, "ollama_process_rss_gb": 0.0, "system_used_ram_gb": 0.0}
 
-    process_rss = psutil.Process().memory_info().rss / (1024 ** 3)
-    system_used = psutil.virtual_memory().used / (1024 ** 3)
+    process_rss = psutil.Process().memory_info().rss / (1024**3)
+    system_used = psutil.virtual_memory().used / (1024**3)
 
     ollama_rss = 0.0
-    for p in psutil.process_iter(['name', 'memory_info']):
+    for p in psutil.process_iter(["name", "memory_info"]):
         try:
-            if 'ollama' in (p.info['name'] or '').lower():
-                ollama_rss += p.info['memory_info'].rss / (1024 ** 3)
+            if "ollama" in (p.info["name"] or "").lower():
+                ollama_rss += p.info["memory_info"].rss / (1024**3)
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             pass
 
@@ -235,6 +240,7 @@ def get_system_and_ollama_memory_gb(ollama_url: str = "http://localhost:11434") 
 # ─────────────────────────────────────────────────────────────────────────────
 # Generation Functions
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def generate_summary_ollama(
     source_text: str,
@@ -295,7 +301,14 @@ def generate_summary_ollama(
             gen_time = max(total_latency - ttft_val, 0.001)
             tok_per_sec = len(summary.split()) / gen_time
 
-        return summary, round(total_latency, 3), round(ttft_val, 3), round(tok_per_sec, 2), prompt_eval_count, eval_count
+        return (
+            summary,
+            round(total_latency, 3),
+            round(ttft_val, 3),
+            round(tok_per_sec, 2),
+            prompt_eval_count,
+            eval_count,
+        )
     else:
         resp = requests.post(
             f"{ollama_url}/api/generate",
@@ -371,6 +384,7 @@ def compute_length_metrics(summary: str) -> dict[str, int]:
 # ─────────────────────────────────────────────────────────────────────────────
 # Gemini Judge Setup & Scoring
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def build_gemini_client() -> genai.Client | None:
     """Build and return an authenticated Gemini client if API key is present."""
@@ -598,6 +612,7 @@ def llm_judge_script_score(
 # Evaluator: Role 1 — Summarization
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def evaluate_summarization_case(
     case: dict[str, Any],
     model: str,
@@ -648,7 +663,7 @@ def evaluate_summarization_case(
     positional_recall_passed = True
     if buried_facts:
         found_buried = sum(1 for bf in buried_facts if bf.lower() in summary.lower())
-        positional_recall_passed = (found_buried == len(buried_facts))
+        positional_recall_passed = found_buried == len(buried_facts)
 
     judge = llm_judge_score(
         source_text=source_text,
@@ -701,6 +716,7 @@ def evaluate_summarization_case(
 # ─────────────────────────────────────────────────────────────────────────────
 # Evaluator: Role 2 — Curation
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def evaluate_curation_case(
     case: dict[str, Any],
@@ -808,6 +824,7 @@ def evaluate_curation_case(
 # ─────────────────────────────────────────────────────────────────────────────
 # Evaluator: Role 3 — Script Generation
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def evaluate_script_case(
     case: dict[str, Any],
@@ -933,6 +950,7 @@ def evaluate_script_case(
 # Evaluator: Role 4 — Adversarial Audit
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def evaluate_audit_case(
     case: dict[str, Any],
     model: str,
@@ -948,7 +966,6 @@ def evaluate_audit_case(
     injected_hallucinations = case.get("injected_hallucinations", [])
 
     ollama_url = config.get("ollama", {}).get("url", "http://localhost:11434").rstrip("/")
-    audit_cfg = config.get("audit", {})
 
     # Mock minimal pipeline config dictionary expected by validator.py
     validator_mock_config = {
@@ -974,7 +991,7 @@ def evaluate_audit_case(
 
     latency = time.perf_counter() - start_time
     # Accurate detection: verdict matches expected_verdict
-    accurate_verdict = (verdict_passed == expected_verdict)
+    accurate_verdict = verdict_passed == expected_verdict
 
     return {
         "case_id": case_id,
@@ -997,6 +1014,7 @@ def evaluate_audit_case(
 # Dispatcher: Unified Model Evaluation
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def evaluate_model(
     model: str,
     dataset: list[dict[str, Any]],
@@ -1016,7 +1034,9 @@ def evaluate_model(
         if task_filter == "all" or task_filter == c_type:
             filtered_cases.append(c)
 
-    console.print(f"\n[bold cyan]━━━ Evaluating model: [yellow]{model}[/yellow] ({len(filtered_cases)} case(s), {eval_runs} pass(es)) ━━━[/bold cyan]")
+    console.print(
+        f"\n[bold cyan]━━━ Evaluating model: [yellow]{model}[/yellow] ({len(filtered_cases)} case(s), {eval_runs} pass(es)) ━━━[/bold cyan]"
+    )
 
     total_eval_steps = len(filtered_cases) * eval_runs
     with Progress(
@@ -1028,7 +1048,7 @@ def evaluate_model(
         console=console,
         transient=True,
     ) as progress:
-        task_bar = progress.add_task(f"  Running evaluations...", total=total_eval_steps)
+        task_bar = progress.add_task("  Running evaluations...", total=total_eval_steps)
 
         for case in filtered_cases:
             case_id = case["id"]
@@ -1036,7 +1056,9 @@ def evaluate_model(
 
             for run_idx in range(1, eval_runs + 1):
                 run_suffix = f" (Pass {run_idx}/{eval_runs})" if eval_runs > 1 else ""
-                progress.update(task_bar, description=f"  [dim]Case [{case_type}]:[/dim] [bold]{case_id}{run_suffix}[/bold]")
+                progress.update(
+                    task_bar, description=f"  [dim]Case [{case_type}]:[/dim] [bold]{case_id}{run_suffix}[/bold]"
+                )
                 console.print(f"\n  [dim]▶ [{case_type.upper()}] [{case_id}{run_suffix}] Querying {model}...[/dim]")
 
                 if case_type == "curation":
@@ -1119,19 +1141,30 @@ def evaluate_model(
         agg["mean_tokens_per_second"] = round(sum(r.get("tokens_per_second", 0.0) for r in sum_cases) / n_s, 1)
         agg["mean_input_tokens"] = round(sum(r.get("input_tokens", 0) for r in sum_cases) / n_s, 1)
         agg["mean_output_tokens"] = round(sum(r.get("output_tokens", 0) for r in sum_cases) / n_s, 1)
-        agg["positional_recall_rate"] = round(sum(1 for r in sum_cases if r.get("positional_recall_passed", True)) / n_s, 4)
+        agg["positional_recall_rate"] = round(
+            sum(1 for r in sum_cases if r.get("positional_recall_passed", True)) / n_s, 4
+        )
         first_half = [r["latency_seconds"] for r in sum_cases[: max(1, n_s // 2)]]
-        sec_half = [r["latency_seconds"] for r in sum_cases[max(1, n_s // 2):]]
+        sec_half = [r["latency_seconds"] for r in sum_cases[max(1, n_s // 2) :]]
         avg_f = sum(first_half) / len(first_half) if first_half else 0.001
         avg_s = sum(sec_half) / len(sec_half) if sec_half else 0.001
         agg["thermal_drift_pct"] = round(((avg_s - avg_f) / max(avg_f, 0.001)) * 100, 1)
     else:
-        agg.update({
-            "summarization_pass_rate": 0.0, "mean_rouge_l": 0.0, "mean_keyword_overlap": 0.0,
-            "mean_judge_score": 0.0, "total_hallucinations": 0, "mean_ttft_seconds": 0.0,
-            "mean_tokens_per_second": 0.0, "mean_input_tokens": 0.0, "mean_output_tokens": 0.0,
-            "positional_recall_rate": 0.0, "thermal_drift_pct": 0.0,
-        })
+        agg.update(
+            {
+                "summarization_pass_rate": 0.0,
+                "mean_rouge_l": 0.0,
+                "mean_keyword_overlap": 0.0,
+                "mean_judge_score": 0.0,
+                "total_hallucinations": 0,
+                "mean_ttft_seconds": 0.0,
+                "mean_tokens_per_second": 0.0,
+                "mean_input_tokens": 0.0,
+                "mean_output_tokens": 0.0,
+                "positional_recall_rate": 0.0,
+                "thermal_drift_pct": 0.0,
+            }
+        )
 
     # Curation aggregates
     if cur_cases:
@@ -1154,7 +1187,11 @@ def evaluate_model(
     if aud_cases:
         poisoned_cases = [r for r in aud_cases if r.get("is_poisoned")]
         clean_cases = [r for r in aud_cases if not r.get("is_poisoned")]
-        tpr = (sum(1 for r in poisoned_cases if not r.get("actual_verdict")) / len(poisoned_cases)) if poisoned_cases else 1.0
+        tpr = (
+            (sum(1 for r in poisoned_cases if not r.get("actual_verdict")) / len(poisoned_cases))
+            if poisoned_cases
+            else 1.0
+        )
         tnr = (sum(1 for r in clean_cases if r.get("actual_verdict")) / len(clean_cases)) if clean_cases else 1.0
         agg["audit_tpr"] = round(tpr, 4)
         agg["audit_tnr"] = round(tnr, 4)
@@ -1173,6 +1210,7 @@ def evaluate_model(
 # ─────────────────────────────────────────────────────────────────────────────
 # Presentation: Comparison Tables & Markdown Reports
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def print_comparison_table(all_results: list[dict[str, Any]]) -> None:
     """Print a rich terminal table with metrics broken down by pipeline role."""
@@ -1211,29 +1249,35 @@ def print_comparison_table(all_results: list[dict[str, Any]]) -> None:
         ("  Overall Pass Rate", lambda r: fmt_pct(r["aggregate"].get("pass_rate"))),
         ("  Peak Ollama RAM (<5GB)", lambda r: f"{r['aggregate'].get('peak_ollama_ram_gb', 0.0):.2f} GB"),
         ("  Mean Total Latency", lambda r: fmt_lat(r["aggregate"].get("mean_latency_seconds"))),
-
         ("[bold]ROLE 1: SUMMARIZATION[/bold]", None),
         ("  Pass Rate", lambda r: fmt_pct(r["aggregate"].get("summarization_pass_rate"))),
         ("  ROUGE-L F1 (>= 0.45)", lambda r: f"{r['aggregate'].get('mean_rouge_l', 0.0):.4f}"),
         ("  Keyword Overlap", lambda r: f"{r['aggregate'].get('mean_keyword_overlap', 0.0):.2f}"),
         ("  Semantic Judge Score (1-5)", lambda r: fmt_score(r["aggregate"].get("mean_judge_score"))),
-        ("  Total Hallucinations", lambda r: f"[{'green' if r['aggregate'].get('total_hallucinations', 0) == 0 else 'red'}]{r['aggregate'].get('total_hallucinations', 0)}[/{'green' if r['aggregate'].get('total_hallucinations', 0) == 0 else 'red'}]"),
+        (
+            "  Total Hallucinations",
+            lambda r: (
+                f"[{'green' if r['aggregate'].get('total_hallucinations', 0) == 0 else 'red'}]{r['aggregate'].get('total_hallucinations', 0)}[/{'green' if r['aggregate'].get('total_hallucinations', 0) == 0 else 'red'}]"
+            ),
+        ),
         ("  TTFT Latency (<0.60s)", lambda r: fmt_lat(r["aggregate"].get("mean_ttft_seconds"))),
         ("  Generation Speed", lambda r: f"{r['aggregate'].get('mean_tokens_per_second', 0.0):.1f} tok/s"),
-
         ("[bold]ROLE 2: CURATION (Pydantic CoT)[/bold]", None),
         ("  JSON Schema Pass Rate", lambda r: fmt_pct(r["aggregate"].get("curation_schema_pass_rate"))),
         ("  Story Selection Recall", lambda r: fmt_pct(r["aggregate"].get("curation_mean_recall"))),
         ("  Hype/Decoy Avoidance (Precision)", lambda r: fmt_pct(r["aggregate"].get("curation_mean_precision"))),
         ("  Curation Latency", lambda r: fmt_lat(r["aggregate"].get("curation_mean_latency"))),
-
         ("[bold]ROLE 3: SCRIPT GENERATION (~750 words)[/bold]", None),
         ("  Story Coverage Rate", lambda r: fmt_pct(r["aggregate"].get("script_mean_coverage"))),
-        ("  Leakage Count (*, #, URLs)", lambda r: f"[{'green' if r['aggregate'].get('script_mean_leakage', 0) == 0 else 'red'}]{r['aggregate'].get('script_mean_leakage', 0):.1f}[/{'green' if r['aggregate'].get('script_mean_leakage', 0) == 0 else 'red'}]"),
+        (
+            "  Leakage Count (*, #, URLs)",
+            lambda r: (
+                f"[{'green' if r['aggregate'].get('script_mean_leakage', 0) == 0 else 'red'}]{r['aggregate'].get('script_mean_leakage', 0):.1f}[/{'green' if r['aggregate'].get('script_mean_leakage', 0) == 0 else 'red'}]"
+            ),
+        ),
         ("  Script Judge Score (1-5)", lambda r: fmt_score(r["aggregate"].get("script_mean_judge"))),
         ("  Mean Script Word Count", lambda r: f"{round(r['aggregate'].get('script_mean_words', 0))} w"),
         ("  Script Latency", lambda r: fmt_lat(r["aggregate"].get("script_mean_latency"))),
-
         ("[bold]ROLE 4: ADVERSARIAL AUDIT SAFETY[/bold]", None),
         ("  Hallucination Catch Rate (TPR)", lambda r: fmt_pct(r["aggregate"].get("audit_tpr"))),
         ("  Clean Pass Rate (TNR)", lambda r: fmt_pct(r["aggregate"].get("audit_tnr"))),
@@ -1303,7 +1347,10 @@ def save_markdown_report(all_results: list[dict[str, Any]], config: dict[str, An
     if all_results and all_results[0].get("cases"):
         case_ids = [c["case_id"] for c in all_results[0]["cases"]]
         for cid in case_ids:
-            case_type = next((c.get("type", "summarization") for c in all_results[0]["cases"] if c["case_id"] == cid), "summarization")
+            case_type = next(
+                (c.get("type", "summarization") for c in all_results[0]["cases"] if c["case_id"] == cid),
+                "summarization",
+            )
             lines.append(f"### Case: `{cid}` `[{case_type.upper()}]`\n")
 
             for r in all_results:
@@ -1311,20 +1358,32 @@ def save_markdown_report(all_results: list[dict[str, Any]], config: dict[str, An
                 if not m_case:
                     continue
                 status_str = "PASSED" if m_case.get("passed") else "FAILED"
-                lines.append(f"**Model `{r['model']}`:** `{status_str}` (Latency: {m_case.get('latency_seconds', 0.0):.2f}s)")
+                lines.append(
+                    f"**Model `{r['model']}`:** `{status_str}` (Latency: {m_case.get('latency_seconds', 0.0):.2f}s)"
+                )
 
                 if case_type == "curation":
-                    lines.append(f"- Schema valid: `{m_case.get('schema_valid')}`, Selected indices: `{m_case.get('selected_indices')}`")
-                    lines.append(f"- Recall: `{m_case.get('selection_recall', 0.0):.1%}`, Precision: `{m_case.get('selection_precision', 0.0):.1%}`\n")
+                    lines.append(
+                        f"- Schema valid: `{m_case.get('schema_valid')}`, Selected indices: `{m_case.get('selected_indices')}`"
+                    )
+                    lines.append(
+                        f"- Recall: `{m_case.get('selection_recall', 0.0):.1%}`, Precision: `{m_case.get('selection_precision', 0.0):.1%}`\n"
+                    )
                 elif case_type == "script":
-                    lines.append(f"- Words: `{m_case.get('word_count')}`, Coverage: `{m_case.get('coverage_score', 0.0):.1%}`, Leakage: `{m_case.get('leakage_count')}`")
+                    lines.append(
+                        f"- Words: `{m_case.get('word_count')}`, Coverage: `{m_case.get('coverage_score', 0.0):.1%}`, Leakage: `{m_case.get('leakage_count')}`"
+                    )
                     lines.append(f"- Judge Score: `{m_case.get('judge_score')}/5` ({m_case.get('judge_reasoning')})\n")
                 elif case_type == "audit":
-                    lines.append(f"- Poisoned test: `{m_case.get('is_poisoned')}`, Model verdict: `{'PASS' if m_case.get('actual_verdict') else 'FAIL'}` (Accurate: `{m_case.get('accurate_verdict')}`)")
+                    lines.append(
+                        f"- Poisoned test: `{m_case.get('is_poisoned')}`, Model verdict: `{'PASS' if m_case.get('actual_verdict') else 'FAIL'}` (Accurate: `{m_case.get('accurate_verdict')}`)"
+                    )
                     lines.append(f"- Auditor reasoning: *{m_case.get('reasoning')}*\n")
                 else:
                     lines.append(f"- Summary: > {m_case.get('summary')}")
-                    lines.append(f"- ROUGE-L: `{m_case.get('rouge_l', 0.0):.4f}`, Overlap: `{m_case.get('keyword_overlap', 0.0):.2f}`, Judge: `{m_case.get('judge_score')}/5`\n")
+                    lines.append(
+                        f"- ROUGE-L: `{m_case.get('rouge_l', 0.0):.4f}`, Overlap: `{m_case.get('keyword_overlap', 0.0):.2f}`, Judge: `{m_case.get('judge_score')}/5`\n"
+                    )
 
     lines.append("---\n")
     lines.append("## Raw JSON Appendix\n")
@@ -1339,6 +1398,7 @@ def save_markdown_report(all_results: list[dict[str, Any]], config: dict[str, An
 # ─────────────────────────────────────────────────────────────────────────────
 # CLI & Main Entry Point
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Multi-Role LLM Evaluation Harness for AI News Voice Feed")
@@ -1412,12 +1472,16 @@ def main() -> None:
     # Markdown report
     console.print("[bold]Step 5:[/bold] Saving reports...")
     report_path = save_markdown_report(all_results, config)
-    console.print(f"  [green]OK[/green] Markdown report: [link file://{report_path}]{report_path}[/link file://{report_path}]")
+    console.print(
+        f"  [green]OK[/green] Markdown report: [link file://{report_path}]{report_path}[/link file://{report_path}]"
+    )
 
     # HTML dashboard
     try:
         html_path = save_html_dashboard(all_results, config)
-        console.print(f"  [green]OK[/green] HTML dashboard: [link file://{html_path}]{html_path}[/link file://{html_path}]")
+        console.print(
+            f"  [green]OK[/green] HTML dashboard: [link file://{html_path}]{html_path}[/link file://{html_path}]"
+        )
     except Exception as e:
         console.print(f"  [yellow]Notice: HTML dashboard generator skipped ({e}).[/yellow]")
 

@@ -134,6 +134,26 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
                 self._send_json({"error": "Run not found or update failed"}, status=HTTPStatus.NOT_FOUND)
             return
 
+        # API: /api/runs/<run_id>/stories/<story_idx>/promote
+        match_promote = re.match(r"^/api/runs/([^/]+)/stories/(\d+)/promote$", path)
+        if match_promote:
+            run_id = match_promote.group(1)
+            story_idx = int(match_promote.group(2))
+            correction = payload.get("correction", "")
+            notes = payload.get("notes", "")
+            try:
+                res = self.tracker.promote_story_to_golden(
+                    run_id=run_id,
+                    story_idx=story_idx,
+                    correction=correction,
+                    notes=notes,
+                    golden_path=REPO_ROOT / "eval" / "golden_dataset.json",
+                )
+                self._send_json(res)
+            except Exception as e:
+                self._send_json({"error": str(e)}, status=HTTPStatus.BAD_REQUEST)
+            return
+
         # API: /api/backfill
         if path == "/api/backfill":
             out_dir = REPO_ROOT / "output"
@@ -164,9 +184,7 @@ def run_server(port: int = 8765, host: str = "127.0.0.1") -> None:
             break
         except OSError as err:
             if err.errno == 48 or getattr(err, "winerror", None) == 10048:
-                logger.warning(
-                    f"Port {actual_port} is already in use. Trying port {actual_port + 1}..."
-                )
+                logger.warning(f"Port {actual_port} is already in use. Trying port {actual_port + 1}...")
                 actual_port += 1
             else:
                 raise
@@ -176,7 +194,7 @@ def run_server(port: int = 8765, host: str = "127.0.0.1") -> None:
         sys.exit(1)
 
     print("\n" + "=" * 65)
-    print(f"🚀 AI News Voice Feed — Quality Tracker Dashboard running at:")
+    print("🚀 AI News Voice Feed — Quality Tracker Dashboard running at:")
     print(f"👉 http://{host}:{actual_port}/")
     print("=" * 65 + "\n")
 
