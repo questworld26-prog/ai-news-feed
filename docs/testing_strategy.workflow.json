@@ -1,0 +1,178 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "AI News Voice Feed: 4-Tier Testing & Reliability Strategy",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "fast-ci-path",
+        "label": "Fast CI & Deterministic Gates",
+        "focus": ["dev_commit", "fast_gate", "golden_dataset", "guardrail_eval"],
+        "note": "Follow code changes through sub-second mock testing and seeded benchmark evaluation."
+      },
+      {
+        "id": "altk-heavy-eval",
+        "label": "ALTK Evolve Consistency Gate",
+        "focus": ["golden_dataset", "altk_runner", "stability_gate", "live_pipeline"],
+        "note": "Inspect K=3 multi-sample stability verification against live neural models (LAYA and Ollama)."
+      },
+      {
+        "id": "hitl-flywheel",
+        "label": "Runtime Telemetry & HITL Flywheel",
+        "focus": ["live_pipeline", "quality_db", "hitl_dashboard", "golden_dataset"],
+        "note": "Observe how production runs stream telemetry to SQLite and human downvotes are promoted into regression tests."
+      }
+    ],
+    "output": "docs/testing_strategy.html"
+  },
+  "lanes": [
+    { "id": "lane_fast", "label": "Tier 1: Fast-Path CI (<1s)" },
+    { "id": "lane_eval", "label": "Tier 2: Golden Benchmark & Guardrails" },
+    { "id": "lane_heavy", "label": "Tier 3: Heavy Reliability (ALTK K=3)" },
+    { "id": "lane_prod", "label": "Tier 4: Production & HITL Feedback" }
+  ],
+  "phases": [
+    { "id": "phase_ci", "label": "1. Fast CI Gate", "fromCol": 0, "toCol": 1 },
+    { "id": "phase_eval", "label": "2. Benchmark & Stability", "fromCol": 2, "toCol": 3, "variant": "emphasis" },
+    { "id": "phase_prod", "label": "3. Production & HITL Loop", "fromCol": 4, "toCol": 5, "variant": "dashed" }
+  ],
+  "groups": [
+    { "id": "grp_fast", "label": "Fast path checks", "lane": "lane_fast", "fromCol": 0, "toCol": 1 },
+    { "id": "grp_eval", "label": "Seed evaluation", "lane": "lane_eval", "fromCol": 2, "toCol": 3, "variant": "emphasis" },
+    { "id": "grp_heavy", "label": "Consistency testing", "lane": "lane_heavy", "fromCol": 2, "toCol": 3, "variant": "security" },
+    { "id": "grp_prod", "label": "Observability & feedback", "lane": "lane_prod", "fromCol": 1, "toCol": 5, "variant": "dashed" }
+  ],
+  "mainPath": [
+    "dev_commit",
+    "fast_gate",
+    "golden_dataset",
+    "guardrail_eval",
+    "stability_gate",
+    "live_pipeline",
+    "quality_db"
+  ],
+  "nodes": [
+    {
+      "id": "dev_commit",
+      "lane": "lane_fast",
+      "col": 0,
+      "type": "frontend",
+      "label": "Code & Prompts",
+      "sublabel": "git commit / PR",
+      "width": 132
+    },
+    {
+      "id": "fast_gate",
+      "lane": "lane_fast",
+      "col": 1,
+      "type": "security",
+      "label": "Fast CI Gate",
+      "sublabel": "uv run pytest (0.5s)",
+      "tag": "mocked LAYA / Ollama",
+      "width": 140
+    },
+    {
+      "id": "golden_dataset",
+      "lane": "lane_eval",
+      "col": 2,
+      "type": "database",
+      "label": "10-Item Benchmark",
+      "sublabel": "golden_dataset.json",
+      "tag": "seeded scenarios",
+      "width": 140
+    },
+    {
+      "id": "guardrail_eval",
+      "lane": "lane_eval",
+      "col": 3,
+      "type": "backend",
+      "label": "Guardrail Evals",
+      "sublabel": "HHH rubric & traps",
+      "tag": "fail-closed",
+      "width": 140
+    },
+    {
+      "id": "altk_runner",
+      "lane": "lane_heavy",
+      "col": 2,
+      "type": "backend",
+      "label": "ALTK Multi-Sample",
+      "sublabel": "K=3 trials per item",
+      "brand": "pytorch",
+      "tag": "pytest -m heavy",
+      "width": 140
+    },
+    {
+      "id": "stability_gate",
+      "lane": "lane_heavy",
+      "col": 3,
+      "type": "security",
+      "label": "Consistency Gate",
+      "sublabel": "Pass^K vs Mean@K",
+      "tag": "Gap <= 0.15",
+      "width": 140
+    },
+    {
+      "id": "live_pipeline",
+      "lane": "lane_prod",
+      "col": 4,
+      "type": "backend",
+      "label": "Voice Feed Engine",
+      "sublabel": "daily briefing run",
+      "tag": "Ollama + Kokoro",
+      "width": 140
+    },
+    {
+      "id": "quality_db",
+      "lane": "lane_prod",
+      "col": 5,
+      "type": "database",
+      "label": "Quality Tracker",
+      "sublabel": "quality.db metrics",
+      "brand": "sqlite",
+      "tag": "TTFT & entailment",
+      "width": 140
+    },
+    {
+      "id": "hitl_dashboard",
+      "lane": "lane_prod",
+      "col": 1,
+      "type": "frontend",
+      "label": "HITL Dashboard",
+      "sublabel": "serve_dashboard.py",
+      "tag": "review & triage",
+      "width": 140
+    }
+  ],
+  "edges": [
+    { "id": "e_dev_fast", "from": "dev_commit", "to": "fast_gate", "label": "push", "variant": "default" },
+    { "id": "e_fast_data", "from": "fast_gate", "to": "golden_dataset", "label": "pass", "variant": "emphasis" },
+    { "id": "e_data_guard", "from": "golden_dataset", "to": "guardrail_eval", "label": "evaluate", "variant": "default" },
+    { "id": "e_data_heavy", "from": "golden_dataset", "to": "altk_runner", "label": "opt-in heavy", "variant": "dashed" },
+    { "id": "e_heavy_stab", "from": "altk_runner", "to": "stability_gate", "label": "K=3 passes", "variant": "default" },
+    { "id": "e_guard_stab", "from": "guardrail_eval", "to": "stability_gate", "label": "rubric >= 4", "variant": "emphasis" },
+    { "id": "e_stab_live", "from": "stability_gate", "to": "live_pipeline", "label": "promote release", "variant": "security" },
+    { "id": "e_live_db", "from": "live_pipeline", "to": "quality_db", "label": "log telemetry", "variant": "default" },
+    { "id": "e_db_hitl", "from": "quality_db", "to": "hitl_dashboard", "label": "inspect runs", "variant": "dashed" },
+    { "id": "e_hitl_data", "from": "hitl_dashboard", "to": "golden_dataset", "label": "promote regression", "variant": "emphasis" }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Decoupled Fast CI & ALTK Stability (Tiers 1 & 3)",
+      "items": [
+        "Default test suite runs in ~0.5s via mocked weights; live neural models run conditionally via -m heavy",
+        "K=3 repeated evaluations track Pass^K vs Mean@K to detect non-deterministic drift (Gap <= 0.15)"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Seeded Benchmarks & HITL Flywheel (Tiers 2 & 4)",
+      "items": [
+        "10-Item Golden Dataset tests canonical cases, negative hallucination traps, and fail-closed fallback",
+        "Daily runs stream telemetry to SQLite; downvoted stories are promoted directly into regression tests"
+      ]
+    }
+  ]
+}
