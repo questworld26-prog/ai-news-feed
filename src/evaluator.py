@@ -497,9 +497,16 @@ if __name__ == "__main__":
         help="Path to golden dataset (default: tests/fixtures/golden_dataset.json)",
     )
     parser.add_argument(
-        "--live",
-        action="store_true",
-        help="Connect to live Ollama instance (default: fast deterministic evaluation)",
+        "--model",
+        type=str,
+        default="qwen2.5:3b",
+        help="Ollama judge model for Layer 3 evaluation (default: qwen2.5:3b)",
+    )
+    parser.add_argument(
+        "--ollama-url",
+        type=str,
+        default="http://localhost:11434",
+        help="Ollama base URL (default: http://localhost:11434)",
     )
     args = parser.parse_args()
 
@@ -507,20 +514,11 @@ if __name__ == "__main__":
     if not dataset_path.is_absolute():
         dataset_path = Path(__file__).resolve().parent.parent / dataset_path
 
-    if not args.live:
-        import unittest.mock as mock
-
-        import requests
-
-        class MockResp:
-            def raise_for_status(self):
-                pass
-
-            def json(self):
-                return {"response": json.dumps({"pass": True, "reasoning": "Factual and supported."})}
-
-        requests.post = mock.MagicMock(return_value=MockResp())
-
-    cfg = {"llm": {"model": "phi4-mini:3.8b"}, "laya": {"enabled": False}}
+    cfg = {
+        "llm": {"model": args.model, "ollama_url": args.ollama_url},
+        "testing": {"audit_model": args.model},
+        "laya": {"enabled": False},
+    }
     rep = run_full_evaluation(dataset_path, cfg, eval_runs=args.runs)
     print_evaluation_report(rep)
+
