@@ -6,6 +6,27 @@
 
 ---
 
+## Table of Contents
+
+- [1. Context & Problem Statement](#1-context--problem-statement)
+- [2. Decision Log & Architectural Choices](#2-decision-log--architectural-choices)
+  - [ADR-01: Modular Single-Responsibility Pipeline Architecture](#adr-01-modular-single-responsibility-pipeline-architecture)
+  - [ADR-02: Three-Stage LLM Pipeline with Immediate Per-Item Factual Validation](#adr-02-three-stage-llm-pipeline-with-immediate-per-item-factual-validation)
+  - [ADR-03: Multi-Layer Evaluation Harness (Regex, HHH Guardrails, LLM-as-a-Judge)](#adr-03-multi-layer-evaluation-harness-regex-hhh-guardrails-llm-as-a-judge)
+  - [ADR-04: Local-First Privacy & Zero Paid API Footprint](#adr-04-local-first-privacy--zero-paid-api-footprint)
+  - [ADR-05: Strategy 2 Hard Filters & Deduplication](#adr-05-strategy-2-hard-filters--deduplication)
+  - [ADR-06: Inline Per-Item Summary & Audio Script Fact-Check Loop](#adr-06-inline-per-item-summary--audio-script-fact-check-loop)
+  - [ADR-07: Small-Model Factual Hardening & Truth Hierarchy](#adr-07-small-model-factual-hardening-extractive-anchoring-positive-constraints-few-shot-grounding--truth-hierarchy)
+  - [ADR-08: Structured Data Contracts (`Story`, `BriefingOutput`) & Schema-Constrained Decoding](#adr-08-structured-data-contracts-story-briefingoutput-and-schema-constrained-decoding)
+  - [ADR-09: Rejection of Multi-Agent Architecture in Favor of In-Process Pipeline Parallelism](#adr-09-rejection-of-multi-agent-architecture-in-favor-of-in-process-pipeline-parallelism)
+  - [ADR-10: System 1 / System 2 Cognitive Architecture with LAYA Decision Engine](#adr-10-system-1--system-2-cognitive-architecture-with-laya-decision-engine)
+  - [ADR-11: Ingestion Context Hardening, Parallel Synthesis Concurrency, and Monologue Sanitization](#adr-11-ingestion-context-hardening-parallel-synthesis-concurrency-and-monologue-sanitization)
+  - [ADR-12: Sliding-Window Recurrence Filter with Soft Score Decay & Update Tracking](#adr-12-sliding-window-recurrence-filter-with-soft-score-decay--update-tracking)
+- [3. Testing & QA Strategy Summary](#3-testing--qa-strategy-summary)
+- [4. Consequences & Trade-offs](#4-consequences--trade-offs)
+
+---
+
 ## 1. Context & Problem Statement
 
 Engineering teams and tech executives require daily briefings on AI developments. However, standard AI news feeds suffer from three major operational issues:
@@ -143,7 +164,7 @@ Engineering teams and tech executives require daily briefings on AI developments
 
 ---
 
-### ADR-09: Sliding-Window Recurrence Filter with Soft Score Decay & Update Tracking
+### ADR-12: Sliding-Window Recurrence Filter with Soft Score Decay & Update Tracking
 - **Decision**: Implement persistent cross-day story tracking in SQLite (`briefed_story_history`) with a configurable rolling lookback window (default 7 days) and soft score decay:
   1. **Canonical URL & Title Matching**:
      - Normalize URLs by stripping tracking parameters (`utm_*`, `ref`, `source`, `fbclid`, etc.) and normalizing fragments and trailing slashes.

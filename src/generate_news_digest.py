@@ -165,8 +165,8 @@ def main() -> None:
             laya_cfg = config.get("laya", {})
             if laya_cfg.get("enabled", True) and laya_cfg.get("enable_theme_routing", True):
                 try:
-                    from news_fetcher import sample_breaking_headlines
                     from laya_decision import get_laya_engine
+                    from news_fetcher import sample_breaking_headlines
 
                     logger.info("📡 Sampling breaking headlines for LAYA dynamic theme routing...")
                     samples = sample_breaking_headlines(config, max_items=12)

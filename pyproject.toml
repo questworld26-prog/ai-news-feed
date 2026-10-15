@@ -1,6 +1,6 @@
 [project]
 name = "ai-news-voice-feed"
-version = "0.1.0"
+version = "2.0.0"
 description = "Automated daily AI news briefing pipeline with theme curation, local TTS, anti-hallucination validation, and Telegram delivery"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -23,6 +23,7 @@ dev = [
     "google-genai>=2.25.0",
     "pytest>=9.0.0",
     "rouge-score>=0.1.2",
+    "ruff>=0.17.0",
 ]
 
 [tool.pytest.ini_options]

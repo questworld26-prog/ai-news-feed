@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Type, TypeVar
+from typing import Any, TypeVar
 
 import requests
 from pydantic import BaseModel
@@ -38,7 +38,7 @@ class ModelProvider(ABC):
     def generate_structured(
         self,
         prompt: str,
-        schema: Type[T],
+        schema: type[T],
         model: str | None = None,
         temperature: float = 0.1,
         num_ctx: int = 4096,
@@ -85,7 +85,7 @@ class OllamaProvider(ModelProvider):
     def generate_structured(
         self,
         prompt: str,
-        schema: Type[T],
+        schema: type[T],
         model: str | None = None,
         temperature: float = 0.1,
         num_ctx: int = 4096,

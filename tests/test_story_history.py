@@ -149,6 +149,7 @@ def test_soft_score_decay_application(tmp_path: Path):
     }
 
     decayed = manager.apply_soft_decay([cand_recurring, cand_fresh], config=config)
+    assert len(decayed) == 2
 
     # Recurring story gets decayed: 0.80 * 0.25 = 0.20
     assert cand_recurring.is_update is True

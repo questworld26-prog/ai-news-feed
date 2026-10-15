@@ -6,16 +6,14 @@ and LLM factual consistency.
 
 from __future__ import annotations
 
-import json
 import logging
 import re
 from typing import Any, NamedTuple
 
-import requests
 from pydantic import AliasChoices, BaseModel, Field
 
-from story import Story
 from model_provider import ModelProviderFactory
+from story import Story
 
 logger = logging.getLogger("ai_briefing")
 

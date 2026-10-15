@@ -90,7 +90,7 @@ def normalize_title(raw_title: str) -> str:
 
 def compute_story_hash(canonical_url: str, clean_title: str) -> str:
     """Compute deterministic SHA-256 hash for a canonical URL and title."""
-    composite = f"{canonical_url.strip()}|{clean_title.strip()}".encode("utf-8")
+    composite = f"{canonical_url.strip()}|{clean_title.strip()}".encode()
     return hashlib.sha256(composite).hexdigest()[:24]
 
 

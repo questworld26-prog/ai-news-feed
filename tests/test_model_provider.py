@@ -4,15 +4,13 @@ Unit tests for ModelProvider and ModelProviderFactory.
 
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
-import pytest
 from pydantic import BaseModel, Field
 
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root / "src"))
 
-from model_provider import ModelProvider, ModelProviderFactory, OllamaProvider
+from model_provider import ModelProviderFactory, OllamaProvider
 
 
 class DummySchema(BaseModel):

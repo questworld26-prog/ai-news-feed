@@ -131,7 +131,7 @@ def test_laya_route_theme_from_stories():
 
 def test_laya_disabled_fallback():
     """Test that when LAYA is disabled in config, fallback behaviors operate safely."""
-    engine = LayaDecisionEngine()
+    LayaDecisionEngine()
     dummy_config = {"laya": {"enabled": False}}
 
     assert not LayaDecisionEngine.is_enabled(dummy_config)
@@ -140,6 +140,7 @@ def test_laya_disabled_fallback():
 def test_get_recent_briefed_themes(tmp_path: Path):
     """Test extraction of recent briefed themes from SQLite database."""
     import sqlite3
+
     from laya_decision import get_recent_briefed_themes
 
     db_path = tmp_path / "test_runs.db"
