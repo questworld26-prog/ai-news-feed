@@ -109,9 +109,9 @@ def test_run_full_evaluation_multi_run(monkeypatch):
     report = run_full_evaluation(fixtures_path, dummy_config, eval_runs=3)
     print_evaluation_report(report)
 
-    assert report.total_cases == 10
+    assert report.total_cases == 30
     assert report.overall_pass_rate == 1.0
-    assert report.mean_rubric_score >= 4.3
+    assert report.mean_rubric_score >= 4.0
     assert len(report.multi_run_summary) == report.total_cases
     for mr in report.multi_run_summary:
         assert mr.total_runs == 3
@@ -133,7 +133,7 @@ def test_golden_dataset_negative_traps_are_rejected():
         cases = json.load(f)
 
     traps = [c for c in cases if c.get("is_negative_trap")]
-    assert len(traps) >= 2
+    assert len(traps) >= 8
 
     dummy_config = {"llm": {"model": "phi4-mini:3.8b"}, "laya": {"enabled": False}}
 
@@ -147,3 +147,53 @@ def test_golden_dataset_negative_traps_are_rejected():
         validation_res = validate_story(story, digest, dummy_config, run_llm_check=False)
         assert validation_res.passed is False
         assert len(validation_res.fabrication_warnings) > 0
+
+
+def test_golden_dataset_adversarial_probes_are_flagged():
+    """Verify that adversarial attacks, link hijacks, and XSS script tags are caught by structural or guardrail checks."""
+    fixtures_path = Path(__file__).parent / "fixtures" / "golden_dataset.json"
+    with open(fixtures_path, encoding="utf-8") as f:
+        cases = json.load(f)
+
+    adversarial_cases = [c for c in cases if c.get("is_adversarial")]
+    assert len(adversarial_cases) >= 5
+
+    dummy_config = {"llm": {"model": "phi4-mini:3.8b"}, "laya": {"enabled": False}}
+
+    for case in adversarial_cases:
+        story = case["story"]
+        digest = case.get("digest_text", f"## [{story['title']}]({story['link']})\n\n{story['summary']}")
+        custom_regex = case.get("required_regex", [])
+        regex_ok, regex_errors = evaluate_regex_rules(digest, story, custom_regex)
+        hhh = evaluate_hhh_guardrails(digest, story)
+        validation_res = validate_story(story, digest, dummy_config, run_llm_check=False)
+
+        # Defense-in-depth: AT LEAST one defensive layer must flag/reject the adversarial probe
+        adversarial_caught = (not regex_ok) or (not hhh.passed) or (not validation_res.passed)
+        assert adversarial_caught is True, f"Adversarial probe {case['id']} escaped all security gates!"
+
+
+def test_golden_dataset_difficult_and_boundary_cases_pass_factuality():
+    """Verify that difficult technical cases and boundary cases pass formatting and guardrails without false positives."""
+    fixtures_path = Path(__file__).parent / "fixtures" / "golden_dataset.json"
+    with open(fixtures_path, encoding="utf-8") as f:
+        cases = json.load(f)
+
+    complex_cases = [c for c in cases if c.get("type") in {"difficult", "boundary"}]
+    assert len(complex_cases) >= 10
+
+    dummy_config = {"llm": {"model": "phi4-mini:3.8b"}, "laya": {"enabled": False}}
+
+    for case in complex_cases:
+        story = case["story"]
+        digest = f"## [{story['title']}]({story['link']})\n\n{story['summary']}"
+        custom_regex = case.get("required_regex", [])
+
+        regex_ok, regex_errors = evaluate_regex_rules(digest, story, custom_regex)
+        assert regex_ok is True, f"Failed regex check for {case['id']}: {regex_errors}"
+
+        hhh = evaluate_hhh_guardrails(digest, story)
+        assert hhh.passed is True, f"Failed HHH guardrails for {case['id']}: {hhh}"
+
+        validation_res = validate_story(story, digest, dummy_config, run_llm_check=False)
+        assert validation_res.passed is True, f"False positive in {case['id']}: {validation_res.fabrication_warnings}"

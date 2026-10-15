@@ -77,7 +77,7 @@
       "lane": "lane_eval",
       "col": 2,
       "type": "database",
-      "label": "10-Item Benchmark",
+      "label": "30-Item Benchmark",
       "sublabel": "golden_dataset.json",
       "tag": "seeded scenarios",
       "width": 140
@@ -170,7 +170,7 @@
       "dot": "cyan",
       "title": "Seeded Benchmarks & HITL Flywheel (Tiers 2 & 4)",
       "items": [
-        "10-Item Golden Dataset tests canonical cases, negative hallucination traps, and fail-closed fallback",
+        "30-Item Golden Benchmark tests canonical cases, negative hallucination traps, and fail-closed fallback",
         "Daily runs stream telemetry to SQLite; downvoted stories are promoted directly into regression tests"
       ]
     }
