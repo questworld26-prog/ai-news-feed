@@ -63,6 +63,7 @@ class EvaluationReport(NamedTuple):
     mean_consistency_gap: float  # Mean consistency gap across cases
     details: list[dict[str, Any]]
     multi_run_summary: list[MultiRunResult]
+    execution_time_seconds: float = 0.0
 
 
 def evaluate_regex_rules(
@@ -233,9 +234,13 @@ def run_full_evaluation(
     Run evaluation across the full Golden Dataset over eval_runs (default 1).
     Calculates Pass Rate %, Pass@K, and Mean Rubric Scores across multi-run trials.
     """
+    import time
+
+    start_time = time.perf_counter()
+
     if not golden_dataset_path.exists():
         logger.error(f"Golden dataset file not found at {golden_dataset_path}")
-        return EvaluationReport(0, 0, 0, 0, 0.0, 0.0, [], [])
+        return EvaluationReport(0, 0, 0, 0, 0.0, 0.0, 0.0, 0.0, [], [], 0.0)
 
     with open(golden_dataset_path, encoding="utf-8") as f:
         cases = json.load(f)
@@ -367,6 +372,7 @@ def run_full_evaluation(
     mean_consistency_gap = (
         round(sum(mr.consistency_gap for mr in multi_run_summaries) / float(total), 3) if total > 0 else 0.0
     )
+    elapsed = round(time.perf_counter() - start_time, 2)
 
     return EvaluationReport(
         total_cases=total,
@@ -379,6 +385,7 @@ def run_full_evaluation(
         mean_consistency_gap=mean_consistency_gap,
         details=details,
         multi_run_summary=multi_run_summaries,
+        execution_time_seconds=elapsed,
     )
 
 
@@ -393,7 +400,9 @@ def print_evaluation_report(report: EvaluationReport) -> None:
     except ImportError:
         print("\n=== Multi-Layer Evaluation Report ===")
         print(f"Total Cases: {report.total_cases} | Pass Rate (Mean@K): {report.overall_pass_rate:.1%}")
-        print(f"Pass^K: {report.overall_pass_pow_k:.1%} | Consistency Gap: {report.mean_consistency_gap:.3f}")
+        print(
+            f"Pass^K: {report.overall_pass_pow_k:.1%} | Consistency Gap: {report.mean_consistency_gap:.3f} | Elapsed: {report.execution_time_seconds:.2f}s"
+        )
         return
 
     # 1. Summary Panel
@@ -406,7 +415,8 @@ def print_evaluation_report(report: EvaluationReport) -> None:
         f"[bold]Mean@K (Pass Rate):[/bold] {report.overall_pass_rate:.1%}    "
         f"[bold]Pass^K (All Passed):[/bold] {report.overall_pass_pow_k:.1%}    "
         f"[bold]Mean Consistency Gap:[/bold] [{gap_color}]{report.mean_consistency_gap:.3f}[/{gap_color}]    "
-        f"[bold]Mean Rubric:[/bold] {report.mean_rubric_score}/5.0"
+        f"[bold]Mean Rubric:[/bold] {report.mean_rubric_score}/5.0    "
+        f"[bold]Execution Time:[/bold] {report.execution_time_seconds:.2f}s"
     )
     console.print()
     console.print(Panel(summary_text, title="🎯 Multi-Layer AI Evaluation & Reliability Summary", border_style="cyan"))
