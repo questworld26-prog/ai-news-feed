@@ -8,7 +8,7 @@
 model = "gemini-2.5-flash"
 
 [ollama]
-url = "http://suktis-macbook-pro.local:11434"
+url = "http://localhost:11434"
 # Temperature for all candidate summary generation calls
 temperature = 0.1
 # Context window for generation

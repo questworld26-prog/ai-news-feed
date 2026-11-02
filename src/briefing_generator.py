@@ -283,7 +283,12 @@ def generate_story_summary_validated(
         if not result.llm_fact_check_passed:
             logger.warning(f"  └─ LLM Fact-Check Reasoning: {result.llm_reasoning}")
 
-        hint = result.llm_reasoning
+        hint_parts = []
+        if result.fabrication_warnings:
+            hint_parts.extend(result.fabrication_warnings)
+        if result.llm_reasoning and result.llm_reasoning not in hint_parts:
+            hint_parts.append(result.llm_reasoning)
+        hint = "; ".join(hint_parts)
         if attempt < _VALIDATION_MAX_RETRIES:
             logger.info(f"  ↻ Regenerating summary for story [{title[:30]}...] with correction hint...")
 
@@ -306,7 +311,7 @@ def validate_and_correct_audio_script(
     Validate audio script against verified stories using the Hierarchy of Truth:
     Source text is built from verified summaries and titles rather than raw noisy RSS text.
     """
-    from validator import llm_fact_check
+    from validator import detect_fabrications, llm_fact_check
 
     typed_stories = [s if isinstance(s, Story) else Story.from_dict(s) for s in stories]
 
@@ -314,6 +319,10 @@ def validate_and_correct_audio_script(
     source_text = "\n\n".join(
         [f"Title: {s.title}\nValidated Summary: {s.validated_summary or s.summary}" for s in typed_stories]
     )
+    fab_warnings = detect_fabrications(source_text, audio_script)
+    if fab_warnings:
+        return False, f"Deterministic gate failure in audio script: {'; '.join(fab_warnings)}"
+
     passed, reasoning = llm_fact_check(source_text, audio_script, config)
     return passed, reasoning
 

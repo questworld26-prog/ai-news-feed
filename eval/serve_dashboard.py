@@ -98,8 +98,14 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
             self._send_json(run_detail)
             return
 
-        # Fallback to standard static file server
-        super().do_GET()
+        # Security: Only allow static serving of safe HTML/report assets, never raw .db, .py, or .toml files
+        if path == "/quality_dashboard.html" or (
+            path.startswith("/reports/") and path.endswith((".html", ".md")) and ".." not in path
+        ):
+            super().do_GET()
+            return
+
+        self.send_error(HTTPStatus.NOT_FOUND, "Resource not found.")
 
     def do_POST(self) -> None:
         parsed = urlparse(self.path)

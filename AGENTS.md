@@ -8,7 +8,7 @@ This repository builds a 100% local, automated daily AI news voice briefing pipe
 
 - **Package & Environment Management**:
   - Exclusively use `uv` for all environment actions, dependencies, and script invocations.
-  - Run commands via `uv run` (e.g. `uv run pytest`, `uv run ruff check`, `uv run python main.py`).
+  - Run commands via `uv run` (e.g. `uv run pytest`, `uv run ruff check`, `uv run python src/generate_news_digest.py`).
   - Do **NOT** invoke `pip`, `pip3`, `virtualenv`, or `python -m venv` directly.
 - **Linting & Formatting**:
   - Target Python version: `3.11+` (configured in `pyproject.toml`).

@@ -107,8 +107,14 @@ def synthesize_audio(
     Offloads LLM models prior to synthesis and frees Metal tensor cache between chunks.
     Returns list of generated audio file paths (split if > max_file_size_mb).
     """
-    # Step 1: Offload LLM weights from unified memory before allocating TTS models
+    # Step 1: Offload LLM and LAYA weights from unified memory before allocating TTS models
     unload_ollama_models(config=config)
+    try:
+        from laya_decision import unload_laya_engine
+
+        unload_laya_engine()
+    except Exception as e:
+        logger.debug(f"LAYA memory offload skipped: {e}")
     clear_mlx_memory()
 
     tts_cfg = config.get("tts", {})
@@ -175,6 +181,13 @@ def synthesize_audio(
     return output_files
 
 
+def _redact_token(message: str, token: str) -> str:
+    """Redact bot token from exception messages to prevent credential leaks in logs."""
+    if not token or not message:
+        return message
+    return message.replace(token, "***REDACTED***")
+
+
 def send_to_telegram(
     text_digest: str,
     audio_files: list[Path],
@@ -212,12 +225,14 @@ def send_to_telegram(
         try:
             r = requests.post(text_endpoint, json=payload, timeout=30)
             if not r.ok:
-                logger.warning(f"Telegram sendMessage failed ({r.text}). Retrying with plain text...")
+                logger.warning(
+                    f"Telegram sendMessage failed ({_redact_token(r.text, bot_token)}). Retrying with plain text..."
+                )
                 payload.pop("parse_mode", None)
                 r = requests.post(text_endpoint, json=payload, timeout=30)
             r.raise_for_status()
         except Exception as e:
-            logger.error(f"Failed to send Telegram text message: {e}")
+            logger.error(f"Failed to send Telegram text message: {_redact_token(str(e), bot_token)}")
             overall_success = False
 
     audio_endpoint = f"{base_url}/sendAudio"
@@ -237,7 +252,7 @@ def send_to_telegram(
                 r.raise_for_status()
                 logger.info(f"Successfully uploaded {audio_path.name} to Telegram!")
         except Exception as e:
-            logger.error(f"Failed to upload audio {audio_path.name} to Telegram: {e}")
+            logger.error(f"Failed to upload audio {audio_path.name} to Telegram: {_redact_token(str(e), bot_token)}")
             overall_success = False
 
     return overall_success

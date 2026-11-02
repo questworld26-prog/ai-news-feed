@@ -6,7 +6,7 @@ An in-depth technical explanation of how the automated daily AI news briefing pi
 
 ## 🗺️ Interactive Workflow Diagram
 
-> **Interactive Visualization Available**: Open [docs/pipeline_workflow.html](file:///Users/prithis/QuestWorld/AI_news_voice_feed/docs/pipeline_workflow.html) in your browser for the full interactive diagram with theme switching, relationship tracing, and stage focus views.
+> **Interactive Visualization Available**: Open [docs/pipeline_workflow.html](pipeline_workflow.html) in your browser for the full interactive diagram with theme switching, relationship tracing, and stage focus views.
 
 ```
 +----------------------------------------------------------------------------------------------------+
@@ -54,7 +54,7 @@ The pipeline models human cognitive processing by decoupling fast, intuitive fil
 ## 🔄 End-to-End Stages: "Who Does What"
 
 ### Stage 1: Ingestion & Live Enrichment
-* **Actor**: [`src/news_fetcher.py`](file:///Users/prithis/QuestWorld/AI_news_voice_feed/src/news_fetcher.py)
+* **Actor**: [`src/news_fetcher.py`](../src/news_fetcher.py)
 * **What Happens**:
   1. Concurrently queries curated RSS feeds (Hacker News AI, PyTorch Blog, Hugging Face, arXiv, Google DeepMind, etc.) using `ThreadPoolExecutor`.
   2. Strips raw HTML and metadata lines (`clean_html_text`).
@@ -64,7 +64,7 @@ The pipeline models human cognitive processing by decoupling fast, intuitive fil
 ---
 
 ### Stage 2: System 1 Semantic Gating & Dynamic Theme Routing
-* **Actors**: [`src/laya_decision.py`](file:///Users/prithis/QuestWorld/AI_news_voice_feed/src/laya_decision.py) & [`src/generate_news_digest.py`](file:///Users/prithis/QuestWorld/AI_news_voice_feed/src/generate_news_digest.py)
+* **Actors**: [`src/laya_decision.py`](../src/laya_decision.py) & [`src/generate_news_digest.py`](../src/generate_news_digest.py)
 * **What Happens**:
   1. **Semantic Hype & PR Filter (Option 4)**: Incoming feed entries pass through LAYA's binary quality classifier. Stories classified as corporate marketing fluff, vague buzzwords, or fundraising rounds with $\ge 60\%$ confidence are rejected before expensive downstream processing.
   2. **Story-Driven Dynamic Theme Routing (Option 5)**: When executed in automatic mode, the orchestrator samples breaking headlines across feeds. LAYA evaluates the articles against the 4 configured themes (*Practitioner's Radar*, *Executive Lens*, *Builder's Digest*, *Innovation Scout*) and dynamically selects the theme with the highest story density for today's briefing.
@@ -72,7 +72,7 @@ The pipeline models human cognitive processing by decoupling fast, intuitive fil
 ---
 
 ### Stage 3: Theme-Based Curation & Pre-Ranking
-* **Actors**: [`src/laya_decision.py`](file:///Users/prithis/QuestWorld/AI_news_voice_feed/src/laya_decision.py) & [`src/briefing_generator.py`](file:///Users/prithis/QuestWorld/AI_news_voice_feed/src/briefing_generator.py)
+* **Actors**: [`src/laya_decision.py`](../src/laya_decision.py) & [`src/briefing_generator.py`](../src/briefing_generator.py)
 * **What Happens**:
   1. **LAYA Pre-Ranking (Option 1)**: From the 15 candidate stories, LAYA scores each headline and snippet against the active theme's description and tone, pruning the pool down to the top 7 highest-alignment stories in sub-second time.
   2. **SLM CoT Curation**: Ollama (`phi4-mini:3.8b`) receives the compact 7-story shortlist and executes structured Chain-of-Thought curation constrained by the `CurationResponse` Pydantic schema:
@@ -83,7 +83,7 @@ The pipeline models human cognitive processing by decoupling fast, intuitive fil
 ---
 
 ### Stage 4: Factual Synthesis via Extractive Anchoring
-* **Actor**: [`src/briefing_generator.py`](file:///Users/prithis/QuestWorld/AI_news_voice_feed/src/briefing_generator.py) (`generate_story_summary`)
+* **Actor**: [`src/briefing_generator.py`](../src/briefing_generator.py) (`generate_story_summary`)
 * **What Happens**:
   1. Each of the 5 stories is synthesized individually using `qwen2.5:3b`.
   2. **Extractive Anchoring**: The model is forced by Pydantic schema (`StorySummaryResponse`) to extract 2 to 3 verbatim sentences directly from the source text into `direct_quotes: list[str]` **before** writing the summary.
@@ -93,7 +93,7 @@ The pipeline models human cognitive processing by decoupling fast, intuitive fil
 ---
 
 ### Stage 5: Dual-Tier Verification & Anti-Hallucination Gate
-* **Actors**: [`src/validator.py`](file:///Users/prithis/QuestWorld/AI_news_voice_feed/src/validator.py) & [`src/laya_decision.py`](file:///Users/prithis/QuestWorld/AI_news_voice_feed/src/laya_decision.py)
+* **Actors**: [`src/validator.py`](../src/validator.py) & [`src/laya_decision.py`](../src/laya_decision.py)
 * **What Happens**:
   1. **Deterministic Regex Gates (< 1ms)**:
      - `detect_fabrications`: Extracts all numbers, floats, and percentages in the summary and verifies their existence in the source text.
@@ -102,9 +102,9 @@ The pipeline models human cognitive processing by decoupling fast, intuitive fil
      - *If any deterministic check fails, the summary fails immediately without calling any SLM.*
   2. **LAYA Semantic Pre-Gate (Option 2)**:
      - Evaluates semantic entailment between source and summary.
-     - **Grounded ($\ge 85\%$ confidence)**: **Fast PASS** (bypasses slow local SLM fact-checker).
+     - **Grounded ($\ge 78\%$ confidence)**: **Fast PASS** (bypasses slow local SLM fact-checker).
      - **Hallucinated ($\ge 85\%$ confidence)**: **Fast FAIL** (triggers immediate retry without waiting for SLM).
-     - **Ambiguous ($50\% - 85\%$)**: Escalates to the System 2 fact auditor.
+     - **Ambiguous ($< 78\%$ grounded / $< 85\%$ hallucinated)**: Escalates to the System 2 fact auditor.
   3. **System 2 Adversarial Fact-Checking**:
      - `qwen2.5:3b` at temperature 0.0 audits the claim against the source text with strict CoT verification.
   4. **The 3-Attempt Feedback & Retry Loop**:
@@ -118,7 +118,7 @@ The pipeline models human cognitive processing by decoupling fast, intuitive fil
 ---
 
 ### Stage 6: Podcast Scripting & Hierarchy of Truth Audio Audit
-* **Actors**: [`src/briefing_generator.py`](file:///Users/prithis/QuestWorld/AI_news_voice_feed/src/briefing_generator.py) & [`src/notifier.py`](file:///Users/prithis/QuestWorld/AI_news_voice_feed/src/notifier.py)
+* **Actors**: [`src/briefing_generator.py`](../src/briefing_generator.py) & [`src/notifier.py`](../src/notifier.py)
 * **What Happens**:
   1. **Monologue Generation**: The spoken podcast monologue (`phi4-mini:3.8b`) is generated using *only the already-validated story summaries* as ground truth context, completely isolating the scriptwriter from unvetted raw RSS feeds.
   2. **Audio Script Fact-Check Audit**: The candidate monologue is passed to `validate_and_correct_audio_script()`:

@@ -3,6 +3,24 @@
 All notable changes to this project are documented in this file under [Semantic Versioning](https://semver.org/).
 Major and minor releases require explicit human sign-off before version increments.
 
+## [2.1.0] - 2026-11-02
+
+### Added
+- **Public GitHub Security & Privacy Hardening**: Created `.env.example` template for Telegram and evaluation keys; sanitized all local absolute paths and personal hostnames across LaunchAgent and eval configs.
+- **LAYA CPU Memory Headroom Management**: Added `unload_laya_engine()` to reclaim System 1 PyTorch CPU memory (~400–800 MB) alongside Ollama VRAM before starting Metal TTS synthesis.
+- **Audio Script Deterministic Pre-Gate**: Integrated deterministic fabrication and number checks into `validate_and_correct_audio_script()` prior to LLM audits.
+- **Test Suite Auto-Isolation Fixture**: Added `tests/conftest.py` with an autouse fixture ensuring `ModelProviderFactory` singleton state is pristine across test runs.
+
+### Fixed & Hardened
+- **HITL Golden Benchmark Promotion**: Added missing `summary_text` column persistence to SQLite `story_scores` and verified promoted golden dataset entries contain full summary text.
+- **Token Redaction in Notifier Logs**: Redacted `TELEGRAM_BOT_TOKEN` in exception logs to prevent credential leakage in automated logs.
+- **Scraper Bounds & SSRF Protection**: Enforced strict `http://` / `https://` protocol schemes and capped HTTP response payload decoding at 512 KB in `fetch_article_excerpt()`.
+- **Dashboard Static Route Lockdown**: Restricted static file serving in `eval/serve_dashboard.py` to `quality_dashboard.html` and `/reports/`, preventing raw database or configuration downloads over HTTP.
+- **Documentation Parity**: Updated `README.md` and `docs/RELIABLE_NEWS_PIPELINE.md` with relative links, refreshed CLI options (`--theme`, `--clear-history`), and synced architecture diagrams.
+- **Dead Entrypoint Cleanup**: Removed unused root `main.py` stub in favor of direct execution via `src/generate_news_digest.py`.
+
+---
+
 ## [2.0.1] - 2026-10-15
 
 ### Fixed & Hardened
@@ -10,7 +28,7 @@ Major and minor releases require explicit human sign-off before version incremen
 - **Heavy Test Tagging**: Added `@pytest.mark.heavy` and default `-m 'not heavy'` filter to isolate live neural model loads.
 - **ADR-02 Safety Invariants Test Suite**: Created `tests/test_briefing_generator.py` testing retry loops, correction hint injection, fail-closed fallback, and Level 3 monologue verification.
 - **ALTK Consistency Analysis**: Implemented Pass^K and Consistency Gap metrics in `evaluator.py` to detect prompt instability.
-- **10-Item Golden Benchmark**: Upgraded test fixture with canonical cases, negative hallucination traps, boundary cases, and adversarial probes.
+- **30-Item Golden Benchmark**: Expanded test fixture (`tests/fixtures/golden_dataset.json`) across canonical cases, negative hallucination traps, boundary cases, and adversarial probes.
 - **HITL Continuous Promotion**: Added `/api/runs/<run_id>/stories/<story_idx>/promote` endpoint and helper to promote human-downvoted failures into golden dataset regression benchmarks.
 
 ---

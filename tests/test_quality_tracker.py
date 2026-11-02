@@ -205,5 +205,6 @@ def test_promote_story_to_golden(temp_tracker, tmp_path):
     case = promoted[0]
     assert case["id"] == f"hitl_{run_id}_0"
     assert case["is_poisoned"] is True
+    assert case["digest_summary"] == stories[0]["summary"]
     assert case["injected_hallucinations"] == ["Invented 100x speedup claim"]
     assert case["promoted_by"] == "human_reviewer"

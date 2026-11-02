@@ -355,3 +355,18 @@ def get_laya_engine(config: dict[str, Any] | None = None) -> LayaDecisionEngine:
         device = laya_cfg.get("device", "cpu")
         _engine_instance = LayaDecisionEngine(model_id=model_id, device=device)
     return _engine_instance
+
+
+def unload_laya_engine() -> None:
+    """Release cached LAYA System 1 model weights from CPU memory before TTS synthesis."""
+    import gc
+
+    global _laya_agent, _laya_initialized, _engine_instance
+    with _laya_lock:
+        if _laya_agent is not None:
+            logger.info("🧹 Offloading LAYA System 1 model from CPU memory for TTS headroom...")
+        _laya_agent = None
+        _laya_initialized = False
+        if _engine_instance is not None:
+            _engine_instance._agent = None
+    gc.collect()

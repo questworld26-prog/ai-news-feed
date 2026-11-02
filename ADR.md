@@ -41,11 +41,15 @@ Engineering teams and tech executives require daily briefings on AI developments
 ## 2. Decision Log & Architectural Choices
 
 ### ADR-01: Modular Single-Responsibility Pipeline Architecture
-- **Decision**: Modularize into four distinct components:
+- **Decision**: Modularize the pipeline into single-responsibility domain components:
   - `news_fetcher.py`: RSS aggregation, cleaning, scoring, and fuzzy title deduplication.
   - `briefing_generator.py`: Story curation, markdown digest generation, monologue script generation, and script sanitization.
+  - `laya_decision.py`: System 1 semantic pre-ranking, hype filtering, entailment pre-gating, and dynamic theme routing.
+  - `model_provider.py`: Centralized LLM abstraction, structured JSON schema decoding, and VRAM offloading.
+  - `story.py` & `story_history.py`: Typed data contracts (`Story`, `BriefingOutput`) and persistent cross-day recurrence suppression.
   - `notifier.py`: Local TTS audio synthesis (`kokoro-mlx`) and Telegram dispatch.
-  - `validator.py` & `evaluator.py`: Factual validation, HHH guardrails, and evaluation harness.
+  - `validator.py` & `evaluator.py`: Factual validation, HHH guardrails, and multi-layer evaluation harness.
+  - `quality_tracker.py` & `telemetry.py`: SQLite run metrics, human review promotion, and stage memory/latency profiling.
 - **Rationale**: Isolates domain logic, enabling independent testing and swapping of models or notification channels without touching core pipeline logic.
 
 ---
@@ -65,7 +69,7 @@ Engineering teams and tech executives require daily briefings on AI developments
 - **Decision**: Build a 3-layer evaluation harness (`src/evaluator.py`) operating over a benchmark **Golden Dataset** (`tests/fixtures/golden_dataset.json`):
   - **Layer 1 (Regex & Structure)**: Enforces markdown link syntax `## [Title](URL)` and detects bare URL leaks.
   - **Layer 2 (HHH Guardrails & 1–5 Rubrics)**: Audits outputs on a 1.0–5.0 scale across **Honest** (factual fidelity), **Helpful** (technical depth), and **Harmless** (objective engineering tone).
-  - **Layer 3 (LLM-as-a-Judge & Multi-Run Metrics)**: Runs multi-trial evaluations (`eval_runs=N`) measuring **Pass Rate %** ($\frac{\text{Passed Runs}}{\text{Total Runs}}$) and **Pass@K** metrics.
+  - **Layer 3 (LLM-as-a-Judge & Multi-Run Metrics)**: Runs multi-trial evaluations (`eval_runs=N`) measuring **Pass Rate %** ($\text{Mean@K}$), **$\text{Pass@K}$**, **$\text{Pass}^K$** (consecutive pass reliability), and **ALTK Consistency Gap** ($\text{Mean@K} - \text{Pass}^K$).
 - **Rationale**: Single-point LLM checks are non-deterministic. Combining deterministic Regex, rule-based HHH guardrails, and multi-run LLM-as-a-Judge provides reproducible, enterprise-grade QA.
 
 ---
@@ -120,7 +124,7 @@ Engineering teams and tech executives require daily briefings on AI developments
   1. **`Story` Dataclass**: Single source of truth for story lifecycle across fetching, score ranking, curation selection, validated summary storage, and prompt rendering (`to_prompt_context()`, `to_structured_prompt_dict()`).
   2. **`BriefingOutput` Dataclass**: Standardized container for briefing artifacts guaranteeing uniform Markdown document hierarchy (`to_markdown()`) with backward-compatible dict access.
   3. **JSON Schema-Constrained Decoding**: Ollama requests pass native JSON schemas (`format=Model.model_json_schema()`) for `CurationResponse`, `StorySummaryResponse`, and `FactCheckResponse`, eliminating JSON parsing errors and hallucinated keys.
-- **Rationale**: Loose dictionary dictionaries throughout pipeline stages caused subtle key mismatch bugs and inconsistent Markdown outputs. Structured types provide strict compile/test-time guarantees and consistent file formats across runs.
+- **Rationale**: Loose untyped dictionaries throughout pipeline stages caused subtle key mismatch bugs and inconsistent Markdown outputs. Structured types provide strict compile/test-time guarantees and consistent file formats across runs.
 
 ---
 

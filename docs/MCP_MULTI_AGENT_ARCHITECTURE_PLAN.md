@@ -247,4 +247,4 @@ tests/
 | **Phase 2: Orchestration & Replay** | Implement typed async graph with `BriefingState` checkpoints and replay gateway. | Parity with baseline on replay suite |
 | **Phase 3: Incremental Agent Migration** | Migrate agents one by one: **Auditor $\rightarrow$ Writer $\rightarrow$ Curator $\rightarrow$ Scriptwriter**. | Each agent beats baseline gate before next begins |
 | **Phase 4: Process Lifecycle Hardening** | Enforce OS-level process termination for `verify-mcp` before Phase 5; configure launchd plist. | 5 consecutive clean scheduled runs, peak RSS $< 7.2\text{ GB}$ |
-| **Phase 5: Online Telemetry & ADR-12** | Wire runtime eval scores to `eval/quality.db` dashboard; commit **ADR-12** officially accepting the architecture. | 2 weeks zero-regression production run |
+| **Phase 5: Online Telemetry & ADR-13** | Wire runtime eval scores to `eval/quality.db` dashboard; commit **ADR-13** officially accepting the architecture. | 2 weeks zero-regression production run |

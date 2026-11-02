@@ -521,4 +521,3 @@ if __name__ == "__main__":
     }
     rep = run_full_evaluation(dataset_path, cfg, eval_runs=args.runs)
     print_evaluation_report(rep)
-

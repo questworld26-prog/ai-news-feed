@@ -116,6 +116,7 @@ class QualityTracker:
                     story_domain        TEXT,
                     position            INTEGER,
                     summary_status      TEXT NOT NULL, -- 'success', 'fallback', 'failed'
+                    summary_text        TEXT DEFAULT '',
                     summary_word_count  INTEGER DEFAULT 0,
                     retry_count         INTEGER DEFAULT 1,
                     keyword_overlap     REAL DEFAULT 0.0,
@@ -129,6 +130,10 @@ class QualityTracker:
                 CREATE INDEX IF NOT EXISTS idx_story_run ON story_scores(run_id);
                 """
             )
+            try:
+                conn.execute("ALTER TABLE story_scores ADD COLUMN summary_text TEXT DEFAULT '';")
+            except sqlite3.OperationalError:
+                pass
 
     def log_run(
         self,
@@ -203,6 +208,7 @@ class QualityTracker:
                     "story_domain": domain,
                     "position": idx,
                     "summary_status": status,
+                    "summary_text": summary,
                     "summary_word_count": words,
                     "retry_count": retries,
                     "keyword_overlap": round(overlap, 3),
@@ -254,9 +260,9 @@ class QualityTracker:
                     """
                     INSERT INTO story_scores (
                         run_id, story_title, story_url, story_domain, position,
-                        summary_status, summary_word_count, retry_count,
+                        summary_status, summary_text, summary_word_count, retry_count,
                         keyword_overlap, theme_relevant
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
                     """,
                     (
                         rec["run_id"],
@@ -265,6 +271,7 @@ class QualityTracker:
                         rec["story_domain"],
                         rec["position"],
                         rec["summary_status"],
+                        rec["summary_text"],
                         rec["summary_word_count"],
                         rec["retry_count"],
                         rec["keyword_overlap"],

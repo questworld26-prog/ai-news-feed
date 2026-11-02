@@ -36,7 +36,7 @@ def fetch_article_excerpt(url: str, max_chars: int = _ARTICLE_EXCERPT_CHARS) -> 
     common cookie consent notices and navigation headers. Supports OpenGraph
     meta description fallback when article bodies are dynamic or paywalled.
     """
-    if not url or url.lower().endswith(".pdf"):
+    if not url or not url.lower().startswith(("http://", "https://")) or url.lower().endswith(".pdf"):
         return ""
     try:
         resp = requests.get(
@@ -52,10 +52,14 @@ def fetch_article_excerpt(url: str, max_chars: int = _ARTICLE_EXCERPT_CHARS) -> 
         resp.raise_for_status()
         resp_headers = getattr(resp, "headers", {})
         content_type = resp_headers.get("content-type", "").lower() if hasattr(resp_headers, "get") else ""
-        if "application/pdf" in content_type:
+        if "application/pdf" in content_type or "application/octet-stream" in content_type:
             return ""
 
-        html = resp.text
+        raw_content = getattr(resp, "content", None)
+        if isinstance(raw_content, (bytes, bytearray)):
+            html = raw_content[:512_000].decode("utf-8", errors="replace")
+        else:
+            html = str(getattr(resp, "text", ""))[:512_000]
 
         # Extract OpenGraph or meta description before stripping head tags
         meta_desc = ""
