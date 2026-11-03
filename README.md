@@ -16,6 +16,7 @@ Key lessons learned:
 4. **Multi-Layer Evaluation Harness**: Moving beyond "vibe checks" by implementing an enterprise-grade evaluation pipeline: structural regex verification, 1–5 HHH (Helpful, Honest, Harmless) rubrics, ALTK consistency-gap metrics ($\text{Pass}^K$ vs $\text{Mean@K}$), and regression testing against a curated 30-item golden benchmark dataset.
 5. **Local Voice Synthesis**: Generating high-fidelity podcast monologues locally using `kokoro-mlx` on Apple Silicon Metal, along with spoken monologue sanitization (stripping markdown syntax and bare URLs before synthesis).
 6. **Automated Telegram Delivery**: Packaging the pipeline end-to-end to dispatch daily markdown briefings and audio notes directly via the Telegram Bot API.
+7. **Empirical Model Benchmarking & Continuous Quality Flywheel**: Public LLM leaderboards fail to predict how small models perform on bespoke agentic pipelines. Building a dedicated offline evaluation suite (`eval/`) with role-specialized benchmarks (Summarization, Curation, Scriptwriting, Auditing), TTFT/throughput profiling, offline LLM-as-a-judge scoring, and a persistent telemetrics dashboard (`quality.db`) proved vital for matching each sub-4B model to its ideal pipeline role within an 8 GB unified memory budget.
 
 ---
 
