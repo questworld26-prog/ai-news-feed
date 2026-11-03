@@ -37,7 +37,6 @@ def golden_stories():
 
 
 # [verifies: VALID-003/AC-VALID-003.1]
-# [verifies: VALID-003/AC-VALID-003.2]
 def test_keyword_overlap_accurate():
     source = "Datasette auth github 1.0 released by Simon Willison fixing session cookie expiration."
     digest = "Simon Willison released datasette auth github 1.0 to fix session cookie expiration issues."
@@ -49,12 +48,18 @@ def test_keyword_overlap_accurate():
 
 
 # [verifies: VALID-001/AC-VALID-001.1]
-# [verifies: VALID-001/AC-VALID-001.2]
 def test_detect_fabrications_catches_fake_numbers():
     source = "Datasette auth github 1.0 released by Simon Willison."
     digest = "Datasette auth github 1.0 was released with a 99.9% accuracy score and 5000 stars."
     warnings = detect_fabrications(source, digest)
     assert len(warnings) == 2
+
+
+# [verifies: VALID-001/AC-VALID-001.2]
+def test_detect_fabrications_returns_explicit_warning_strings():
+    source = "Datasette auth github 1.0 released by Simon Willison."
+    digest = "Datasette auth github 1.0 was released with a 99.9% accuracy score and 5000 stars."
+    warnings = detect_fabrications(source, digest)
     assert any("99.9" in w for w in warnings)
     assert any("5000" in w for w in warnings)
 

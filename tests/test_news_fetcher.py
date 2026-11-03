@@ -50,12 +50,20 @@ def test_parse_feed_entry_rejects_stories_beyond_max_age():
 
 
 # [verifies: INGEST-001/AC-INGEST-001.1]
-# [verifies: INGEST-001/AC-INGEST-001.2]
-def test_fetch_entries_from_source_retries_transient_502(monkeypatch):
-    """Verify that transient 502/504 errors trigger retries with backoff and succeed when recovered."""
+def test_sanitize_feed_xml_escapes_bare_ampersands():
+    """Verify unescaped ampersands in raw RSS XML bytes are converted to &amp;."""
     from news_fetcher import sanitize_feed_xml
 
     assert sanitize_feed_xml(b"<title>R&D &amp; AI</title>") == b"<title>R&amp;D &amp; AI</title>"
+    assert (
+        sanitize_feed_xml(b"<title>&#x27;Claude &amp; Cursor&#x27;</title>")
+        == b"<title>&#x27;Claude &amp; Cursor&#x27;</title>"
+    )
+
+
+# [verifies: INGEST-001/AC-INGEST-001.2]
+def test_fetch_entries_from_source_retries_transient_502(monkeypatch):
+    """Verify that transient 502/504 errors trigger retries with backoff and succeed when recovered."""
     call_count = 0
 
     class MockResponse:
@@ -101,7 +109,6 @@ def test_fetch_entries_from_source_retries_transient_502(monkeypatch):
 
 
 # [verifies: INGEST-003/AC-INGEST-003.1]
-# [verifies: INGEST-003/AC-INGEST-003.2]
 def test_build_candidate_pool_caps_evaluation():
     """Verify build_candidate_pool enforces candidate_pool_size and per-source caps."""
     from news_fetcher import build_candidate_pool
@@ -143,7 +150,6 @@ def test_build_candidate_pool_caps_evaluation():
 
 
 # [verifies: INGEST-004/AC-INGEST-004.1]
-# [verifies: INGEST-004/AC-INGEST-004.2]
 def test_check_all_sources_health(monkeypatch):
     """Verify check_all_sources_health diagnostics across configured themes."""
     from news_fetcher import check_all_sources_health
@@ -197,3 +203,35 @@ def test_check_all_sources_health(monkeypatch):
     assert report["failed_sources"] == 1
     assert "theme_a" in report["themes"]
     assert len(report["themes"]["theme_a"]) == 2
+
+
+# [verifies: INGEST-004/AC-INGEST-004.2]
+def test_check_all_sources_health_marks_failing_feeds_failed(monkeypatch):
+    """Verify sources returning HTTP 4xx/5xx are marked FAILED with stories_count == 0."""
+    from news_fetcher import check_all_sources_health
+
+    class MockResp:
+        def __init__(self, status_code: int, content: bytes):
+            self.status_code = status_code
+            self.content = content
+
+        def raise_for_status(self):
+            if self.status_code >= 400:
+                raise Exception(f"HTTP {self.status_code}")
+
+    monkeypatch.setattr("requests.get", lambda url, headers, timeout: MockResp(503, b"Service Unavailable"))
+    monkeypatch.setattr("time.sleep", lambda s: None)
+
+    cfg = {
+        "feeds": {"request_timeout": 5, "max_retries": 1, "max_age_hours": 96.0},
+        "themes": {
+            "theme_a": {
+                "name": "Theme A",
+                "sources": [{"name": "Broken Feed", "url": "https://example.com/broken.xml"}],
+            }
+        },
+    }
+    report = check_all_sources_health(cfg)
+    item = report["themes"]["theme_a"][0]
+    assert item["status"] == "FAILED"
+    assert item["stories_count"] == 0

@@ -154,7 +154,6 @@ def test_laya_rank_candidates_for_theme():
 
 
 # [verifies: THEME-002/AC-THEME-002.1]
-# [verifies: THEME-002/AC-THEME-002.2]
 def test_laya_route_theme_from_stories():
     """Option 5: Test that LAYA dynamically routes breaking news to the appropriate theme."""
     engine = get_laya_engine()
@@ -187,9 +186,39 @@ def test_laya_route_theme_from_stories():
         ),
     ]
 
-    selected_theme, distribution = engine.route_theme_from_stories(stories, themes)
-    assert selected_theme == "practitioner_radar"
+    _, distribution = engine.route_theme_from_stories(stories, themes)
     assert distribution["practitioner_radar"] > distribution["builders_digest"]
+
+
+# [verifies: THEME-002/AC-THEME-002.2]
+def test_laya_route_theme_selects_highest_density_theme():
+    """Verify that route_theme_from_stories selects the theme key with the highest momentum density score."""
+    engine = get_laya_engine()
+
+    themes = {
+        "practitioner_radar": {
+            "name": "Practitioner's Radar",
+            "description": "Production deployment patterns, MLOps, inference optimization, and engineering architecture",
+            "tone": "collegial, sharp, focused on production systems",
+        },
+        "builders_digest": {
+            "name": "Builder's Digest",
+            "description": "Concrete techniques, tools, developer libraries, and weekend hacking",
+            "tone": "hands-on, practical developer workflows",
+        },
+    }
+
+    stories = [
+        Story(
+            title="vLLM Inference Engine: Architecture and Kubernetes Production Serving",
+            link="https://example.com/vllm",
+            summary="Scaling LLM inference with chunked prefill, paged attention, and continuous batching in production.",
+            source="Test Feed",
+        ),
+    ]
+
+    selected_theme, _ = engine.route_theme_from_stories(stories, themes)
+    assert selected_theme == "practitioner_radar"
 
 
 # [verifies: VALID-004/AC-VALID-004.1]

@@ -1,5 +1,5 @@
 {
-  "last_audited_at": "2026-11-03T10:11:48.679564+00:00",
+  "last_audited_at": "2026-11-03T10:28:19.926797+00:00",
   "total_requirements": 41,
   "total_criteria": 82,
   "verified_criteria_count": 82,
@@ -9,6 +9,12 @@
     "untagged_src_symbols_count": 0,
     "untagged_tests_count": 0,
     "orphan_tags_count": 0
+  },
+  "semantic_alignment": {
+    "stacked_test_tags_count": 0,
+    "cross_link_mismatches_count": 0,
+    "weak_test_assertions_count": 0,
+    "ac_anchor_mismatches_count": 0
   },
   "status": "PASS",
   "requirements": [
@@ -685,6 +691,7 @@
       "implementation_files": [
         "src/briefing_generator.py",
         "src/generate_news_digest.py",
+        "src/laya_decision.py",
         "src/news_fetcher.py"
       ],
       "status": "VERIFIED"

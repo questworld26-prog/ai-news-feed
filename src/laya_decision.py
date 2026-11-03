@@ -57,6 +57,7 @@ def get_recent_briefed_themes(db_path: Path | str | None = None, limit: int = 2)
     return []
 
 
+# [spec: THEME-001]
 # [spec: THEME-002]
 # [spec: THEME-003]
 # [spec: VALID-004]
@@ -351,6 +352,7 @@ class LayaDecisionEngine:
 _engine_instance: LayaDecisionEngine | None = None
 
 
+# [spec: THEME-001]
 # [spec: THEME-002]
 # [spec: VALID-004]
 def get_laya_engine(config: dict[str, Any] | None = None) -> LayaDecisionEngine:

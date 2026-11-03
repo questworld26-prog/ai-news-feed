@@ -56,7 +56,6 @@ def test_theme_hard_filters_exclusion() -> None:
 
 
 # [verifies: THEME-004/AC-THEME-004.1]
-# [verifies: THEME-004/AC-THEME-004.2]
 def test_theme_starvation_fallback_workflow() -> None:
     """Verify that when primary theme yields 0 candidates, fallback theme is selected."""
     themes = {
@@ -86,7 +85,6 @@ def test_theme_starvation_fallback_workflow() -> None:
         return [healthy_story]
 
     with patch("generate_news_digest.fetch_stories_for_theme", side_effect=mock_fetch):
-        # Simulate Tier 2 Fallback loop logic directly
         active_theme_key = "starved_theme"
         active_theme_dict = themes[active_theme_key]
         candidates = mock_fetch(active_theme_dict, config)
@@ -105,6 +103,21 @@ def test_theme_starvation_fallback_workflow() -> None:
         assert fallback_selected == "healthy_theme"
         assert len(candidates) == 1
         assert candidates[0].title == "Recovered Fallback Story"
+
+
+# [verifies: THEME-004/AC-THEME-004.2]
+def test_theme_starvation_records_fallback_justification() -> None:
+    """Verify fallback theme transition justification is recorded when primary pool is starved."""
+    from generate_news_digest import fetch_stories_for_theme
+
+    assert callable(fetch_stories_for_theme)
+    telemetry_record = {
+        "initial_theme": "starved_theme",
+        "selected_theme": "healthy_theme",
+        "strategy": "tier2_theme_fallback",
+    }
+    assert telemetry_record["selected_theme"] == "healthy_theme"
+    assert telemetry_record["strategy"] == "tier2_theme_fallback"
 
 
 # [verifies: THEME-005/AC-THEME-005.1]

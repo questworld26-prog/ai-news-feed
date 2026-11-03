@@ -14,7 +14,6 @@ from story import Story
 
 
 # [verifies: CGAP-001/AC-CGAP-001.1]
-# [verifies: CGAP-001/AC-CGAP-001.2]
 def test_compile_story_predicates_extracts_metrics_and_entities():
     stories = [
         Story(
@@ -54,8 +53,24 @@ def test_compile_story_predicates_extracts_metrics_and_entities():
     assert "0.7" in p2.metrics
 
 
+# [verifies: CGAP-001/AC-CGAP-001.2]
+def test_compile_story_predicates_incorporates_article_context():
+    stories = [
+        Story(
+            source="AWS Blog",
+            title="SageMaker SeqKD Architecture",
+            link="https://aws.amazon.com/sagemaker",
+            summary="SageMaker AI introduces sequence-level knowledge distillation with 2.4x lower cost on Llama-3.",
+            validated_summary="SageMaker AI introduces sequence-level knowledge distillation.",
+        )
+    ]
+    predicates = compile_story_predicates(stories)
+    assert len(predicates) == 1
+    assert "2.4x" in predicates[0].metrics or "2.4" in predicates[0].metrics
+    assert "sequence-level knowledge distillation" in predicates[0].source_context
+
+
 # [verifies: CGAP-002/AC-CGAP-002.1]
-# [verifies: CGAP-002/AC-CGAP-002.2]
 def test_build_cgap_script_plan_formats_steps():
     predicates = [
         StoryFactPredicate(
@@ -80,11 +95,29 @@ def test_build_cgap_script_plan_formats_steps():
 
     plan = build_cgap_script_plan(predicates, "Innovation Scout")
     assert "=== CGAP SYMBOLIC MONOLOGUE PLAN (Innovation Scout) ===" in plan
+    assert "Step 0: [Intro]" in plan
     assert "Step 1: [CoverStory #1] 'Story Alpha'" in plan
-    assert "Allowed Metrics: 42%" in plan
     assert "Step 2: [CoverStory #2] [Follow-up Update] 'Story Beta'" in plan
-    assert "Allowed Metrics: 99%" in plan
     assert "Step 3: [SignOff]" in plan
+
+
+# [verifies: CGAP-002/AC-CGAP-002.2]
+def test_build_cgap_script_plan_guarantees_all_verified_stories_included():
+    predicates = [
+        StoryFactPredicate(
+            story_id=i,
+            title=f"Verified Story {i}",
+            source=f"Feed {i}",
+            summary=f"Summary {i} with {i * 10}% improvement.",
+            metrics={f"{i * 10}%"},
+            key_entities={f"entity{i}"},
+        )
+        for i in range(1, 5)
+    ]
+    plan = build_cgap_script_plan(predicates, "Practitioner's Radar")
+    for i in range(1, 5):
+        assert f"[CoverStory #{i}] 'Verified Story {i}'" in plan
+        assert f"Allowed Metrics: {i * 10}%" in plan
 
 
 # [verifies: CGAP-004/AC-CGAP-004.1]
@@ -249,7 +282,6 @@ def test_format_cgap_feedback_hint():
 
 
 # [verifies: CGAP-003/AC-CGAP-003.1]
-# [verifies: CGAP-003/AC-CGAP-003.2]
 def test_build_cgap_script_plan_dual_grounding_formats_context():
     """Verify Dual-Grounding formats both Core Takeaway and Article Context in plan."""
     predicates = [
@@ -262,8 +294,19 @@ def test_build_cgap_script_plan_dual_grounding_formats_context():
             metrics={"SeqKD"},
             key_entities={"sagemaker", "aws"},
         ),
+    ]
+
+    plan = build_cgap_script_plan(predicates, "Practitioner's Radar")
+    assert "Core Takeaway: Sequence-level distillation transfers teacher behavior" in plan
+    assert "Article Context: Frontier models running multi-step agent tool loops are expensive at scale." in plan
+
+
+# [verifies: CGAP-003/AC-CGAP-003.2]
+def test_build_cgap_script_plan_dual_grounding_preserves_unverified_notice():
+    """Verify Dual-Grounding directs presenter to preserve core facts and guard unverified stories."""
+    predicates = [
         StoryFactPredicate(
-            story_id=2,
+            story_id=1,
             title="Failed Story Example",
             source="Test Feed",
             summary="⚠️ Failed to generate a reliable summary. Read the original article.",
@@ -272,6 +315,4 @@ def test_build_cgap_script_plan_dual_grounding_formats_context():
     ]
 
     plan = build_cgap_script_plan(predicates, "Practitioner's Radar")
-    assert "Core Takeaway: Sequence-level distillation transfers teacher behavior" in plan
-    assert "Article Context: Frontier models running multi-step agent tool loops are expensive at scale." in plan
     assert "Notice: Summary unverified. Briefly state the title and headline only" in plan

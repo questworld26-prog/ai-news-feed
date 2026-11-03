@@ -42,7 +42,6 @@ def test_get_current_git_commit():
 
 
 # [verifies: TRACK-001/AC-TRACK-001.1]
-# [verifies: TRACK-001/AC-TRACK-001.2]
 def test_log_run_and_get_detail(temp_tracker):
     stories = [
         {
@@ -109,7 +108,6 @@ def test_log_run_and_get_detail(temp_tracker):
 
 
 # [verifies: TRACK-002/AC-TRACK-002.1]
-# [verifies: TRACK-002/AC-TRACK-002.2]
 def test_human_review_update(temp_tracker):
     stories = [{"title": "Test Story", "link": "https://test.com", "summary": "Valid summary", "extra_metadata": {}}]
     run_id = temp_tracker.log_run(
@@ -140,7 +138,26 @@ def test_human_review_update(temp_tracker):
     assert detail_after["human_comment"] == "Spot-on summary, loved the tone!"
     assert len(detail_after["reviewed_at"]) >= 19
 
-    # Verify summary aggregate
+
+# [verifies: TRACK-002/AC-TRACK-002.2]
+def test_human_review_summary_aggregation(temp_tracker):
+    stories = [{"title": "Test Story", "link": "https://test.com", "summary": "Valid summary", "extra_metadata": {}}]
+    run_id = temp_tracker.log_run(
+        run_id="run_review_agg_test",
+        run_date="2026-10-02",
+        git_commit="test_sha",
+        models_used={},
+        theme="builders_digest",
+        strategy="random",
+        total_duration_s=60.0,
+        phase3_duration_s=30.0,
+        phase3_mem_delta_mb=0.0,
+        phase3_mem_rss_mb=100.0,
+        stories=stories,
+        audio_script="Test script monologue",
+    )
+    temp_tracker.update_review(run_id, rating=5, comment="Spot-on summary!")
+
     summary = temp_tracker.get_summary()
     assert summary["total_runs"] == 1
     assert summary["avg_human_rating"] == 5.0
@@ -171,7 +188,6 @@ Welcome back. Today we look through our practitioner lens at distributed nodes a
 
 
 # [verifies: TRACK-003/AC-TRACK-003.1]
-# [verifies: TRACK-003/AC-TRACK-003.2]
 def test_promote_story_to_golden(temp_tracker, tmp_path):
     """Tier 4 HITL Promotion: Verify promoting a flagged story into a golden benchmark file."""
     import json
@@ -225,7 +241,43 @@ def test_promote_story_to_golden(temp_tracker, tmp_path):
     assert case["injected_hallucinations"] == ["Invented 100x speedup claim"]
     assert case["promoted_by"] == "human_reviewer"
 
-    # Re-promote same case to verify deduplication
+
+# [verifies: TRACK-003/AC-TRACK-003.2]
+def test_promote_story_to_golden_deduplicates_repeat_promotions(temp_tracker, tmp_path):
+    """Verify promoting the same story twice updates in-place without creating duplicate entries."""
+    stories = [
+        {
+            "title": "Poisoned Benchmark Claim",
+            "link": "https://example.com/poisoned",
+            "summary": "⚠️ Failed to generate a reliable summary. Read the original article.",
+            "extra_metadata": {"summary_status": "failed", "retry_count": 3},
+        }
+    ]
+    run_id = temp_tracker.log_run(
+        run_id="run_promote_dedup_test",
+        run_date="2026-10-15",
+        git_commit="git123",
+        models_used={},
+        theme="practitioner_radar",
+        strategy="auto",
+        total_duration_s=40.0,
+        phase3_duration_s=20.0,
+        phase3_mem_delta_mb=0.0,
+        phase3_mem_rss_mb=50.0,
+        stories=stories,
+        audio_script="Short script",
+    )
+
+    golden_file = tmp_path / "test_golden_dedup.json"
+    golden_file.write_text("[]", encoding="utf-8")
+
+    temp_tracker.promote_story_to_golden(
+        run_id=run_id,
+        story_idx=0,
+        correction="Initial correction",
+        notes="Initial notes",
+        golden_path=golden_file,
+    )
     result_repromoted = temp_tracker.promote_story_to_golden(
         run_id=run_id,
         story_idx=0,
@@ -234,4 +286,4 @@ def test_promote_story_to_golden(temp_tracker, tmp_path):
         golden_path=golden_file,
     )
     assert result_repromoted["status"] == "ok"
-    assert result_repromoted["total_cases"] == 1  # Deduplicated: updated in-place
+    assert result_repromoted["total_cases"] == 1

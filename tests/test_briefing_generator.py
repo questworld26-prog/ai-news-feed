@@ -52,14 +52,14 @@ def test_config() -> dict:
     }
 
 
-# [verifies: SUMM-001/AC-SUMM-001.1]
 # [verifies: SUMM-001/AC-SUMM-001.2]
-# [verifies: SUMM-002/AC-SUMM-002.1]
-# [verifies: SUMM-002/AC-SUMM-002.2]
 def test_generate_story_summary_validated_success_first_attempt(sample_story, sample_theme, test_config, monkeypatch):
     """ADR-02: Validated summary passes on attempt 1 with grounded quotes."""
     mock_summary = StorySummaryResponse(
-        direct_quotes=["vLLM 0.7.0 introduces chunked prefill by default, reducing TTFT by 3x on Llama 3 70B"],
+        direct_quotes=[
+            "vLLM 0.7.0 introduces chunked prefill by default",
+            "reducing TTFT by 3x on Llama 3 70B workloads",
+        ],
         summary="vLLM 0.7.0 enables chunked prefill by default. This reduces TTFT by 3x on Llama 3 70B.",
     )
 
@@ -78,18 +78,69 @@ def test_generate_story_summary_validated_success_first_attempt(sample_story, sa
     assert summary == mock_summary.summary
     assert sample_story.validated_summary == mock_summary.summary
     assert sample_story.extra_metadata["summary_status"] == "success"
-    assert sample_story.extra_metadata["retry_count"] == 1
-    assert sample_story.extra_metadata["keyword_overlap"] > 0.40
-    # Two sentence constraint verification
+    assert 2 <= len(mock_summary.direct_quotes) <= 3
+
+
+# [verifies: SUMM-002/AC-SUMM-002.1]
+def test_generate_story_summary_validated_enforces_two_sentence_constraint(
+    sample_story, sample_theme, test_config, monkeypatch
+):
+    """Verify that the generated summary consists of exactly two sentences."""
     import re
 
+    mock_summary = StorySummaryResponse(
+        direct_quotes=[
+            "vLLM 0.7.0 introduces chunked prefill by default",
+            "reducing TTFT by 3x on Llama 3 70B workloads",
+        ],
+        summary="vLLM 0.7.0 enables chunked prefill by default. This reduces TTFT by 3x on Llama 3 70B.",
+    )
+
+    class MockProvider:
+        def generate_structured(self, **kwargs):
+            schema = kwargs.get("schema")
+            if schema == StorySummaryResponse:
+                return mock_summary
+            elif schema == FactCheckResponse:
+                return FactCheckResponse(passed=True, reasoning="Grounded in source.")
+            return None
+
+    monkeypatch.setattr(ModelProviderFactory, "get_provider", lambda cfg: MockProvider())
+
+    summary = generate_story_summary_validated(sample_story, sample_theme, test_config)
     sentences = [s for s in re.split(r"(?<=[.!?])\s+", summary) if s.strip()]
     assert len(sentences) == 2
-    assert len(mock_summary.direct_quotes) >= 1
+
+
+# [verifies: SUMM-002/AC-SUMM-002.2]
+def test_generate_story_summary_validated_restricts_vocabulary_to_quotes(
+    sample_story, sample_theme, test_config, monkeypatch
+):
+    """Verify that summary vocabulary is restricted to facts, benchmarks, and entities in extracted quotes."""
+    mock_summary = StorySummaryResponse(
+        direct_quotes=[
+            "vLLM 0.7.0 introduces chunked prefill by default",
+            "reducing TTFT by 3x on Llama 3 70B workloads",
+        ],
+        summary="vLLM 0.7.0 enables chunked prefill by default. This reduces TTFT by 3x on Llama 3 70B.",
+    )
+
+    class MockProvider:
+        def generate_structured(self, **kwargs):
+            schema = kwargs.get("schema")
+            if schema == StorySummaryResponse:
+                return mock_summary
+            elif schema == FactCheckResponse:
+                return FactCheckResponse(passed=True, reasoning="Grounded in source.")
+            return None
+
+    monkeypatch.setattr(ModelProviderFactory, "get_provider", lambda cfg: MockProvider())
+
+    generate_story_summary_validated(sample_story, sample_theme, test_config)
+    assert sample_story.extra_metadata["keyword_overlap"] > 0.40
 
 
 # [verifies: SUMM-003/AC-SUMM-003.1]
-# [verifies: SUMM-003/AC-SUMM-003.2]
 def test_generate_story_summary_validated_retries_with_hint_then_passes(
     sample_story, sample_theme, test_config, monkeypatch
 ):
@@ -125,16 +176,39 @@ def test_generate_story_summary_validated_retries_with_hint_then_passes(
 
     summary = generate_story_summary_validated(sample_story, sample_theme, test_config)
     assert summary == grounded_resp.summary
-    assert summary_calls == 2
-    assert sample_story.extra_metadata["retry_count"] == 2
-    assert sample_story.extra_metadata["summary_status"] == "success"
-
-    # Assert that attempt 2 received correction feedback in prompt
     assert "CORRECTION REQUIRED FOR PREVIOUS ATTEMPT" in prompts_received[1]
 
 
+# [verifies: SUMM-003/AC-SUMM-003.2]
+def test_generate_story_summary_validated_caps_retries_at_three_attempts(
+    sample_story, sample_theme, test_config, monkeypatch
+):
+    """Verify that regeneration re-executes up to a maximum of three total attempts."""
+    hallucinated_resp = StorySummaryResponse(
+        direct_quotes=["vLLM 0.7.0 introduces chunked prefill"],
+        summary="vLLM 0.7.0 partnered with OpenAI on a $100 billion quantum supercomputer cluster.",
+    )
+    summary_calls = 0
+
+    class MockProvider:
+        def generate_structured(self, **kwargs):
+            nonlocal summary_calls
+            schema = kwargs.get("schema")
+            if schema == StorySummaryResponse:
+                summary_calls += 1
+                return hallucinated_resp
+            elif schema == FactCheckResponse:
+                return FactCheckResponse(passed=False, reasoning="Unanchored entity")
+            return None
+
+    monkeypatch.setattr(ModelProviderFactory, "get_provider", lambda cfg: MockProvider())
+
+    generate_story_summary_validated(sample_story, sample_theme, test_config)
+    assert summary_calls == 3
+    assert sample_story.extra_metadata["retry_count"] == 3
+
+
 # [verifies: SUMM-004/AC-SUMM-004.1]
-# [verifies: SUMM-004/AC-SUMM-004.2]
 def test_generate_story_summary_validated_fails_closed_to_fallback(
     sample_story, sample_theme, test_config, monkeypatch
 ):
@@ -159,7 +233,32 @@ def test_generate_story_summary_validated_fails_closed_to_fallback(
     assert summary == STORY_FALLBACK_SUMMARY
     assert sample_story.validated_summary == STORY_FALLBACK_SUMMARY
     assert sample_story.extra_metadata["summary_status"] == "failed"
-    assert sample_story.extra_metadata["retry_count"] == 3
+
+
+# [verifies: SUMM-004/AC-SUMM-004.2]
+def test_generate_story_summary_validated_suppresses_unverified_text(
+    sample_story, sample_theme, test_config, monkeypatch
+):
+    """Verify that unverified or hallucinated LLM text is completely suppressed from output."""
+    hallucinated_resp = StorySummaryResponse(
+        direct_quotes=["vLLM 0.7.0 introduces chunked prefill"],
+        summary="vLLM 0.7.0 partnered with OpenAI on a $100 billion quantum supercomputer cluster.",
+    )
+
+    class MockProvider:
+        def generate_structured(self, **kwargs):
+            schema = kwargs.get("schema")
+            if schema == StorySummaryResponse:
+                return hallucinated_resp
+            elif schema == FactCheckResponse:
+                return FactCheckResponse(passed=False, reasoning="Unanchored entity")
+            return None
+
+    monkeypatch.setattr(ModelProviderFactory, "get_provider", lambda cfg: MockProvider())
+
+    summary = generate_story_summary_validated(sample_story, sample_theme, test_config)
+    assert "quantum supercomputer" not in summary
+    assert "$100 billion" not in summary
     assert sample_story.extra_metadata["keyword_overlap"] == 0.0
 
 
@@ -201,8 +300,6 @@ def test_validate_and_correct_audio_script_hierarchy_of_truth_detects_unsupporte
     assert "OpenAI acquired Google" in reasoning or "absent" in reasoning
 
 
-# [verifies: AIM-003/AC-AIM-003.1]
-# [verifies: AIM-003/AC-AIM-003.2]
 # [verifies: AUDIO-004/AC-AUDIO-004.2]
 def test_synthesize_audio_memory_headroom_lifecycle(tmp_path, test_config, monkeypatch):
     """M1 8GB Hardware Invariant: synthesize_audio unloads LLMs and clears Metal cache."""
@@ -258,7 +355,6 @@ def test_synthesize_audio_memory_headroom_lifecycle(tmp_path, test_config, monke
 
 
 # [verifies: AUDIO-002/AC-AUDIO-002.1]
-# [verifies: AUDIO-002/AC-AUDIO-002.2]
 def test_extract_clean_sentence_excerpt():
     """Verify clean sentence-boundary truncation without trailing fragments or broken words."""
     from briefing_generator import extract_clean_sentence_excerpt
@@ -271,6 +367,12 @@ def test_extract_clean_sentence_excerpt():
     result = extract_clean_sentence_excerpt(raw, max_chars=120)
     assert result == "On Friday, Andy Yen, the CEO of Proton, cancelled a series of company wide re-interviews."
 
+
+# [verifies: AUDIO-002/AC-AUDIO-002.2]
+def test_extract_clean_sentence_excerpt_no_punctuation_fallback():
+    """Verify fallback truncation when no sentence boundary exists within character limit."""
+    from briefing_generator import extract_clean_sentence_excerpt
+
     # Text without punctuation should truncate cleanly at word boundary and append period
     raw_no_punct = "AWS announced new knowledge distillation support for multi-step agent tools on SageMaker AI"
     res_no_punct = extract_clean_sentence_excerpt(raw_no_punct, max_chars=60)
@@ -279,7 +381,6 @@ def test_extract_clean_sentence_excerpt():
 
 
 # [verifies: AUDIO-001/AC-AUDIO-001.1]
-# [verifies: AUDIO-001/AC-AUDIO-001.2]
 def test_generate_briefing_llm_excludes_failed_stories_from_audio(sample_theme, test_config, monkeypatch):
     """Verify Recommendation 1: Stories with failed summaries are excluded from spoken audio planning."""
     from briefing_generator import generate_briefing_llm
@@ -345,12 +446,64 @@ def test_generate_briefing_llm_excludes_failed_stories_from_audio(sample_theme, 
 
     output = generate_briefing_llm([valid_story, failed_story], sample_theme, test_config)
 
-    # Markdown text digest includes both stories (with warning on failed story)
-    assert "Valid Breakthrough System" in output.text_digest
-    assert "Failed Summary Item" in output.text_digest
-    assert "⚠️ Failed to generate a reliable summary" in output.text_digest
-
     # Audio plan was restricted exclusively to the 1 verified story (excluding the failed story)
     assert planned_stories_count == 1
     assert "Valid Breakthrough System" in output.audio_script
     assert "Failed Summary Item" not in output.audio_script
+
+
+# [verifies: AUDIO-001/AC-AUDIO-001.2]
+def test_generate_briefing_llm_preserves_failed_story_link_in_digest(sample_theme, test_config, monkeypatch):
+    """Verify failed stories are excluded from audio monologue while preserving the written story link."""
+    from briefing_generator import generate_briefing_llm
+    from story import Story
+
+    valid_story = Story(
+        source="ArXiv",
+        title="Valid Breakthrough System",
+        link="https://example.com/1",
+        summary="A major technical breakthrough was verified.",
+        validated_summary="A major technical breakthrough was verified.",
+    )
+    failed_story = Story(
+        source="Blog",
+        title="Failed Summary Item",
+        link="https://example.com/2",
+        summary="Unverified rambling blog post text.",
+        validated_summary="⚠️ Failed to generate a reliable summary. Read the original article.",
+    )
+
+    monkeypatch.setattr(
+        "cgap_planner.build_cgap_script_plan",
+        lambda predicates, theme_name: "=== CGAP PLAN ===\nStep 1: [CoverStory #1] 'Valid Breakthrough System'",
+    )
+
+    class MockProvider:
+        def generate(self, **kwargs):
+            return (
+                "Today in Practitioner's Radar: first up, Valid Breakthrough System. That is your briefing for today."
+            )
+
+        def generate_structured(self, schema=None, **kwargs):
+            class MockFactCheck:
+                passed = True
+                reasoning = "Script verified."
+
+            return MockFactCheck()
+
+    def mock_generate_story_summary_validated(s, theme_dict, config):
+        if "Failed" in s.title:
+            s.validated_summary = "⚠️ Failed to generate a reliable summary. Read the original article."
+            return s.validated_summary
+        s.validated_summary = "A major technical breakthrough was verified."
+        return s.validated_summary
+
+    monkeypatch.setattr(ModelProviderFactory, "get_provider", lambda cfg: MockProvider())
+    monkeypatch.setattr("briefing_generator.generate_story_summary_validated", mock_generate_story_summary_validated)
+
+    output = generate_briefing_llm([valid_story, failed_story], sample_theme, test_config)
+
+    assert "Valid Breakthrough System" in output.text_digest
+    assert "Failed Summary Item" in output.text_digest
+    assert "https://example.com/2" in output.text_digest
+    assert "⚠️ Failed to generate a reliable summary" in output.text_digest
