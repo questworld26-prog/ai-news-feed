@@ -1,6 +1,6 @@
 [project]
 name = "ai-news-voice-feed"
-version = "2.2.0"
+version = "2.3.0"
 description = "Automated daily AI news briefing pipeline with theme curation, local TTS, anti-hallucination validation, and Telegram delivery"
 readme = "README.md"
 requires-python = ">=3.11"

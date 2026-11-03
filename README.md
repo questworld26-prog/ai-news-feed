@@ -17,6 +17,7 @@ Key lessons learned:
 5. **Local Voice Synthesis**: Generating high-fidelity podcast monologues locally using `kokoro-mlx` on Apple Silicon Metal, along with spoken monologue sanitization (stripping markdown syntax and bare URLs before synthesis).
 6. **Automated Telegram Delivery**: Packaging the pipeline end-to-end to dispatch daily markdown briefings and audio notes directly via the Telegram Bot API.
 7. **Empirical Model Benchmarking & Continuous Quality Flywheel**: Public LLM leaderboards fail to predict how small models perform on bespoke agentic pipelines. Building a dedicated offline evaluation suite (`eval/`) with role-specialized benchmarks (Summarization, Curation, Scriptwriting, Auditing), TTFT/throughput profiling, offline LLM-as-a-judge scoring, and a persistent telemetrics dashboard (`quality.db`) proved vital for matching each sub-4B model to its ideal pipeline role within an 8 GB unified memory budget.
+8. **Capability-Grounded Agentic Planning (CGAP)**: Unconstrained script generation from small models ($\le 4\text{B}$) frequently leads to dropped stories, shuffled narratives, and ungrounded entity claims. Implementing the CGAP framework ([Shrestha et al., 2026, WashU - arXiv:2610.41040](https://arxiv.org/abs/2610.41040)) compiles verified Level 2 summaries into atomic ground predicates (`StoryFactPredicate`) and enforces a symbolic execution plan with deterministic pre-gates before TTS synthesis, mathematically guaranteeing 100% story coverage and sequence adherence.
 
 ---
 
@@ -43,7 +44,7 @@ options:
 
 ### Testing & Quality Verification
 
-Run the fast-path test suite (73 tests in $< 1\text{s}$ with decoupled mock providers):
+Run the fast-path test suite (81 tests in $< 1\text{s}$ with decoupled mock providers):
 ```bash
 uv run pytest
 ```
@@ -114,8 +115,8 @@ flowchart TD
         H -->|"Passes Regex Gate"| J{"LAYA Entailment Pre-Gate +<br/>SLM Fact-Check (qwen2.5:3b @ T=0.0)"}
         J -->|"Fails Fact-Check"| I
         J -->|"Passes Fact-Check"| K["Validated Story Summaries"]
-        K --> L["Podcast Monologue Generation<br/>(phi4-mini:3.8b)"]
-        L --> M{"Hierarchy of Truth Fact-Check<br/>(Audited against Validated Summaries)"}
+        K --> L["CGAP Predicate Planner &<br/>Monologue Generation (phi4-mini:3.8b)"]
+        L --> M{"Hierarchy of Truth & CGAP Pre-Gate<br/>(Deterministic Ordering & Fact Grounding)"}
         M -->|"Passes"| N["BriefingOutput (Standard Markdown + Audio Script)"]
     end
 
@@ -171,7 +172,7 @@ flowchart TD
 AI_news_voice_feed/
 ├── config.toml                   # Central configuration (themes, RSS sources, LAYA, voice, LLM)
 ├── pyproject.toml                # Project metadata, dependencies & pytest/ruff config
-├── ADR.md                        # Architectural Decision Records (ADR-01 through ADR-13)
+├── ADR.md                        # Architectural Decision Records (ADR-01 through ADR-14)
 ├── RELEASE.md                    # Semantic Versioning release changelog
 ├── AGENTS.md                     # Workspace engineering standards & hardware invariants
 ├── .env.example                  # Environment template for Telegram & offline eval credentials
@@ -180,6 +181,7 @@ AI_news_voice_feed/
 │   ├── pipeline_workflow.html    # Interactive System 1 / System 2 pipeline visualizer
 │   └── testing_strategy.html     # Interactive 4-tier testing & evaluation visualizer
 ├── eval/                         # Quality tracker DB, model comparator & web dashboard
+│   ├── README.md                 # Evaluation subsystem documentation & benchmark guides
 │   ├── eval_config.toml          # Model comparator benchmark configuration
 │   ├── golden_dataset.json       # Multi-role benchmark dataset for model comparison
 │   ├── model_comparator.py       # Multi-role LLM benchmark harness
@@ -192,6 +194,7 @@ AI_news_voice_feed/
 │   ├── generate_news_digest.py   # Main CLI entrypoint & phase orchestrator
 │   ├── news_fetcher.py           # Concurrent RSS aggregation, scraping, scoring & filtering
 │   ├── laya_decision.py          # LAYA System 1 router, pre-ranker, hype filter & entailment gate
+│   ├── cgap_planner.py           # CGAP capability compilation, symbolic planning & grounding gate
 │   ├── briefing_generator.py     # LLM story curation, markdown digest & monologue generator
 │   ├── model_provider.py         # Centralized LLM provider factory & VRAM manager
 │   ├── story.py                  # Structured Story and BriefingOutput data contracts
@@ -201,7 +204,7 @@ AI_news_voice_feed/
 │   ├── quality_tracker.py        # SQLite telemetry, quality scoring & HITL benchmark promotion
 │   ├── telemetry.py              # Stage latency & RSS memory profiler
 │   └── notifier.py               # Local TTS synthesis (kokoro-mlx) & Telegram dispatch
-└── tests/                        # 73 fast-path unit tests + 30-case golden benchmark suite
+└── tests/                        # 81 fast-path unit tests + 30-case golden benchmark suite
 ```
 
 ---

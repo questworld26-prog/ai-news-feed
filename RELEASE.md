@@ -3,6 +3,26 @@
 All notable changes to this project are documented in this file under [Semantic Versioning](https://semver.org/).
 Major and minor releases require explicit human sign-off before version increments.
 
+## [2.3.0] - 2026-11-03
+
+### Added
+- **Capability-Grounded Agentic Planning (CGAP) for Level 3 Monologues (ADR-14)**:
+  - Implemented the CGAP framework (`src/cgap_planner.py`) inspired by Shrestha et al., 2026 (Washington University in St. Louis, [arXiv:2610.41040](https://arxiv.org/abs/2610.41040)).
+  - Compiles verified Level 2 stories into atomic ground capability predicates (`StoryFactPredicate`), extracting authorized metrics, entities, and extractive quotes.
+  - Generates symbolic step-by-step execution plans (`build_cgap_script_plan`) passed directly to `phi4-mini:3.8b` to eliminate narrative wandering and dropped stories.
+- **Deterministic CGAP Grounding Pre-Gate (`verify_cgap_grounding`)**:
+  - Validates complete plan story coverage and monotonic chronological sequence in $< 2\text{ms}$ on CPU.
+  - Enforces strict entity and metric grounding against the predicate domain, flagging unanchored numbers or outside hallucinations before expensive neural audits or TTS synthesis.
+- **Empirical A/B Benchmark Harness (`eval/benchmark_cgap.py`)**:
+  - Repeatable empirical benchmark comparing Baseline (unconstrained) vs CGAP-grounded monologue generation on local hardware.
+  - Demonstrates a **45% reduction in generation latency** (56.55s down to 31.08s), **100% elimination of conversational throat-clearing** (3.00 down to 0.00), and **zero ungrounded entity hallucinations**.
+- **Evaluation Subsystem Documentation (`eval/README.md`)**:
+  - Full architectural documentation of the offline evaluation suite, model comparator, golden benchmark datasets, and interactive telemetrics dashboard server.
+- **Unit Test Suite Expansion**:
+  - Added 8 dedicated unit tests in `tests/test_cgap_planner.py` covering predicate compilation, plan formatting, sequence verification, and failure feedback hint formatting (bringing the test suite to 81 unit tests passing in $< 1\text{s}$).
+
+---
+
 ## [2.2.0] - 2026-11-03
 
 ### Added

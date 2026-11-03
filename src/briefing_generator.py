@@ -250,6 +250,8 @@ def generate_story_summary(
             num_ctx=2048,
             timeout=60,
         )
+        if hasattr(res_obj, "direct_quotes") and res_obj.direct_quotes:
+            s_obj.extra_metadata["direct_quotes"] = res_obj.direct_quotes
         return res_obj.summary.strip()
     except Exception as exc:
         logger.warning(f"generate_story_summary failed for '{s_obj.title[:50]}': {exc}")
@@ -333,12 +335,21 @@ def validate_and_correct_audio_script(
     """
     Validate audio script against verified stories using the Hierarchy of Truth:
     Source text is built from verified summaries and titles rather than raw noisy RSS text.
+    Enforces CGAP (Capability-Grounded Agentic Planning) deterministic grounding and plan coverage.
     """
+    from cgap_planner import compile_story_predicates, format_cgap_feedback_hint, verify_cgap_grounding
     from validator import detect_fabrications, llm_fact_check
 
     typed_stories = [s if isinstance(s, Story) else Story.from_dict(s) for s in stories]
 
-    # Ground truth for audio script is the already-validated story summaries
+    # 1. Deterministic CGAP Grounding and Plan Coverage Pre-Gate
+    predicates = compile_story_predicates(typed_stories)
+    cgap_result = verify_cgap_grounding(audio_script, predicates, config)
+    if not cgap_result.passed:
+        hint = format_cgap_feedback_hint(cgap_result)
+        return False, f"CGAP Grounding failure: {hint}"
+
+    # 2. Ground truth for audio script is the already-validated story summaries
     source_text = "\n\n".join(
         [f"Title: {s.title}\nValidated Summary: {s.validated_summary or s.summary}" for s in typed_stories]
     )
@@ -438,12 +449,16 @@ def generate_briefing_llm(
     text_digest = "\n\n".join(digest_sections)
     full_text_digest = f"{theme_badge}\n{text_digest.strip()}"
 
-    stories_block = "\n".join(stories_context)
     audio_script = ""
     audio_passed = False
     audio_attempts = 0
 
     if not text_only:
+        from cgap_planner import build_cgap_script_plan, compile_story_predicates
+
+        story_predicates = compile_story_predicates(typed_stories)
+        cgap_plan = build_cgap_script_plan(story_predicates, theme_dict.get("name", "Daily Briefing"))
+
         logger.info(f"Generating spoken audio script (~{word_target} words) for theme '{theme_dict.get('name')}'...")
 
         audio_hint = ""
@@ -460,15 +475,17 @@ def generate_briefing_llm(
             script_prompt = (
                 f"You are a concise, sharp technical news presenter briefing a software engineer or CTO. "
                 f"Today's thematic lens is: '{theme_dict.get('name')}'. Editorial tone: {theme_dict.get('tone')}.\n\n"
-                f"Here are the stories to cover:\n{stories_block}\n\n"
+                f"{cgap_plan}\n\n"
                 f"Task:\n"
-                f"Write a spoken briefing monologue script of approximately {word_target} words covering these {len(typed_stories)} stories.\n\n"
+                f"Write a spoken briefing monologue script of approximately {word_target} words following the exact CGAP Execution Steps above.\n\n"
                 f"STRICT EDITORIAL RULES:\n"
                 f"- ZERO FLATTERY & ZERO PREAMBLE: Absolutely NO conversational preamble, throat-clearing, flattery, or grandiose phrases. "
                 f"Never say things like 'Welcome back', 'our journey through the realms', 'intellectual voyage', 'let us embark on this mission', or 'pushing the boundaries of what is possible'.\n"
                 f"- DIRECT OPENING: Start immediately with a single brief sentence identifying the theme and first story. For example: "
                 f"'Today in {theme_dict.get('name')}: first up, ...' or 'Here is today's {theme_dict.get('name')} briefing. First, ...'. Jump straight into the facts with no agenda previews.\n"
                 f"- TECHNICAL DEPTH: Walk through all {len(typed_stories)} stories focusing on concrete mechanics, benchmarks, systemic implications, and facts from the source text. Keep transitions natural, collegiate, and direct.\n"
+                f"- SEQUENCE ADHERENCE: You MUST cover every story in the exact numerical order specified in the CGAP plan (Story #1, then Story #2, up to Story #{len(typed_stories)}). Do not omit or reorder any story.\n"
+                f"- STRICT GROUNDING: Confine all claims, metrics, and entities strictly to the Allowed Facts specified in each step. Do not invent benchmark numbers, tool versions, or ungrounded organizations.\n"
                 f"- UPDATES: If a story has 'Status: UPDATE / Follow-up', frame it conversationally as a follow-up or update to earlier coverage (e.g. 'Following up on our earlier coverage...', 'An update to the story we tracked earlier...'), highlighting what is new.\n"
                 f"- ZERO THEATRICAL CONCLUSION: Do NOT summarize the briefing, do NOT say 'In conclusion', do NOT give philosophical send-offs, and do NOT thank the listener for an 'intellectual voyage'. End cleanly immediately after the final story with a single simple sign-off: 'That is your briefing for today.'\n"
                 f"- CLEAN SPEECH: Write phonetically clean spoken English: absolutely NO markdown asterisks, hashes, bullets, brackets, or code symbols.\n"
