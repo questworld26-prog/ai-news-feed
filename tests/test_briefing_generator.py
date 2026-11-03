@@ -236,3 +236,98 @@ def test_synthesize_audio_memory_headroom_lifecycle(tmp_path, test_config, monke
     # Assert output files were generated
     assert len(output_files) == 1
     assert write_called is True
+
+
+def test_extract_clean_sentence_excerpt():
+    """Verify clean sentence-boundary truncation without trailing fragments or broken words."""
+    from briefing_generator import extract_clean_sentence_excerpt
+
+    # Text with complete sentence followed by dangling fragment
+    raw = (
+        "On Friday, Andy Yen, the CEO of Proton, cancelled a series of company wide re-interviews. "
+        "Employees were asked to explain how they use AI, with the clear intention that they ."
+    )
+    result = extract_clean_sentence_excerpt(raw, max_chars=120)
+    assert result == "On Friday, Andy Yen, the CEO of Proton, cancelled a series of company wide re-interviews."
+
+    # Text without punctuation should truncate cleanly at word boundary and append period
+    raw_no_punct = "AWS announced new knowledge distillation support for multi-step agent tools on SageMaker AI"
+    res_no_punct = extract_clean_sentence_excerpt(raw_no_punct, max_chars=60)
+    assert not res_no_punct.endswith(" on.")
+    assert res_no_punct.endswith(".")
+
+
+def test_generate_briefing_llm_excludes_failed_stories_from_audio(sample_theme, test_config, monkeypatch):
+    """Verify Recommendation 1: Stories with failed summaries are excluded from spoken audio planning."""
+    from briefing_generator import generate_briefing_llm
+    from story import Story
+
+    valid_story = Story(
+        source="ArXiv",
+        title="Valid Breakthrough System",
+        link="https://example.com/1",
+        summary="A major technical breakthrough was verified.",
+        validated_summary="A major technical breakthrough was verified.",
+    )
+    failed_story = Story(
+        source="Blog",
+        title="Failed Summary Item",
+        link="https://example.com/2",
+        summary="Unverified rambling blog post text.",
+        validated_summary="⚠️ Failed to generate a reliable summary. Read the original article.",
+    )
+
+    planned_stories_count = 0
+
+    def mock_build_plan(predicates, theme_name):
+        nonlocal planned_stories_count
+        planned_stories_count = len(predicates)
+        return "=== CGAP PLAN ===\nStep 1: [CoverStory #1] 'Valid Breakthrough System'\nStep 2: [SignOff]"
+
+    monkeypatch.setattr("cgap_planner.build_cgap_script_plan", mock_build_plan)
+
+    class MockProvider:
+        def generate(self, **kwargs):
+            return (
+                "Today in Practitioner's Radar: first up, Valid Breakthrough System. That is your briefing for today."
+            )
+
+        def generate_structured(self, schema=None, **kwargs):
+            schema_name = getattr(schema, "__name__", "")
+            if "FactCheck" in schema_name:
+
+                class MockFactCheck:
+                    passed = True
+                    reasoning = "Script verified."
+
+                return MockFactCheck()
+            else:
+
+                class MockSummary:
+                    direct_quotes = ["A major technical breakthrough was verified."]
+                    summary = "A major technical breakthrough was verified."
+
+                return MockSummary()
+
+    # Make failed_story consistently fail summary generation
+    def mock_generate_story_summary_validated(s, theme_dict, config):
+        if "Failed" in s.title:
+            s.validated_summary = "⚠️ Failed to generate a reliable summary. Read the original article."
+            return s.validated_summary
+        s.validated_summary = "A major technical breakthrough was verified."
+        return s.validated_summary
+
+    monkeypatch.setattr(ModelProviderFactory, "get_provider", lambda cfg: MockProvider())
+    monkeypatch.setattr("briefing_generator.generate_story_summary_validated", mock_generate_story_summary_validated)
+
+    output = generate_briefing_llm([valid_story, failed_story], sample_theme, test_config)
+
+    # Markdown text digest includes both stories (with warning on failed story)
+    assert "Valid Breakthrough System" in output.text_digest
+    assert "Failed Summary Item" in output.text_digest
+    assert "⚠️ Failed to generate a reliable summary" in output.text_digest
+
+    # Audio plan was restricted exclusively to the 1 verified story (excluding the failed story)
+    assert planned_stories_count == 1
+    assert "Valid Breakthrough System" in output.audio_script
+    assert "Failed Summary Item" not in output.audio_script

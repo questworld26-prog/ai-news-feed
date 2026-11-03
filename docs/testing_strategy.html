@@ -5216,8 +5216,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <text data-detail="context" x="114" y="137" class="t-muted" font-size="8" text-anchor="middle">git commit / PR</text>
         </g>
 
-        <g id="node-fast_gate" data-node-id="fast_gate" data-node-label="Fast CI Gate" tabindex="0" role="button" aria-label="Focus Fast CI Gate, uv run pytest (0.5s), Tier 1: Fast-Path CI (&lt;1s) › Fast path checks › 1. Fast CI Gate" aria-pressed="false" data-node-kind="security" data-node-sublabel="uv run pytest (0.5s)" data-node-tag="mocked LAYA / Ollama" data-node-context="Tier 1: Fast-Path CI (&lt;1s) › Fast path checks › 1. Fast CI Gate">
-          <title>Fast CI Gate · uv run pytest (0.5s) · Tier 1: Fast-Path CI (&lt;1s) › Fast path checks › 1. Fast CI Gate · mocked LAYA / Ollama</title>
+        <g id="node-fast_gate" data-node-id="fast_gate" data-node-label="Fast CI Gate" tabindex="0" role="button" aria-label="Focus Fast CI Gate, 84 unit tests (&lt;0.5s), Tier 1: Fast-Path CI (&lt;1s) › Fast path checks › 1. Fast CI Gate" aria-pressed="false" data-node-kind="security" data-node-sublabel="84 unit tests (&lt;0.5s)" data-node-tag="mocked + &lt;2ms CGAP" data-node-context="Tier 1: Fast-Path CI (&lt;1s) › Fast path checks › 1. Fast CI Gate">
+          <title>Fast CI Gate · 84 unit tests (&lt;0.5s) · Tier 1: Fast-Path CI (&lt;1s) › Fast path checks › 1. Fast CI Gate · mocked + &lt;2ms CGAP</title>
           <rect x="218" y="91" width="140" height="68" rx="6" class="c-mask"/>
           <rect x="218" y="91" width="140" height="68" rx="6" class="c-security" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(224 97) scale(0.6875)">
@@ -5225,8 +5225,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
             <path d="m5.8 8 1.5 1.5 3-3"/>
           </g>
           <text data-node-label="" data-detail-anchor="" x="288" y="112" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Fast CI Gate</text>
-          <text data-detail="context" x="288" y="129" class="t-muted" font-size="8" text-anchor="middle">uv run pytest (0.5s)</text>
-        <text data-detail="fine" x="288" y="147" class="t-security" font-size="7" text-anchor="middle">mocked LAYA / Ollama</text>
+          <text data-detail="context" x="288" y="129" class="t-muted" font-size="8" text-anchor="middle">84 unit tests (&lt;0.5s)</text>
+        <text data-detail="fine" x="288" y="147" class="t-security" font-size="7" text-anchor="middle">mocked + &lt;2ms CGAP</text>
         </g>
 
         <g id="node-golden_dataset" data-node-id="golden_dataset" data-node-label="30-Item Benchmark" tabindex="0" role="button" aria-label="Focus 30-Item Benchmark, golden_dataset.json, Tier 2: Golden Benchmark &amp; Guardrails › Seed evaluation › 2. Benchmark &amp; Stability" aria-pressed="false" data-node-kind="database" data-node-sublabel="golden_dataset.json" data-node-tag="seeded scenarios" data-node-context="Tier 2: Golden Benchmark &amp; Guardrails › Seed evaluation › 2. Benchmark &amp; Stability">
@@ -5583,7 +5583,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <h3>Decoupled Fast CI &amp; ALTK Stability (Tiers 1 &amp; 3)</h3>
         </div>
         <ul>
-          <li>&bull; Default test suite runs in ~0.5s via mocked weights; live neural models run conditionally via -m heavy</li>
+          <li>&bull; Default test suite runs 84 unit tests in &lt;0.5s via mocked weights; live neural models run conditionally via -m heavy</li>
           <li>&bull; K=3 repeated evaluations track Pass^K vs Mean@K to detect non-deterministic drift (Gap &lt;= 0.15)</li>
         </ul>
       </div>

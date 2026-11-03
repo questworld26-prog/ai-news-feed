@@ -35,6 +35,57 @@ class CurationResponse(BaseModel):
     )
 
 
+def extract_clean_sentence_excerpt(text: str, max_chars: int = 220) -> str:
+    """
+    Extract up to max_chars from text, truncating strictly at the last complete sentence.
+    Avoids trailing fragments, dangling conjunctions, or broken punctuation like 'intention that they .'.
+    """
+    if not text:
+        return ""
+    clean = re.sub(r"\s+", " ", text).strip()
+    clean = re.sub(r"\s+they\s*\.$", ".", clean)
+    clean = re.sub(r"\s+that\s*\.$", ".", clean)
+
+    # 1. Look for a complete sentence within max_chars
+    match = re.search(r"([.!?])(?:\s+|$)", clean[:max_chars])
+    if match and match.start() >= 35:
+        return clean[: match.start() + 1].strip()
+
+    # 2. Otherwise truncate at last clean word boundary and strip dangling conjunctions/prepositions
+    snippet = clean[:max_chars]
+    truncated_word = snippet.rsplit(" ", 1)[0].rstrip(",;:- ")
+    dangling = {
+        "and",
+        "but",
+        "or",
+        "that",
+        "with",
+        "as",
+        "they",
+        "to",
+        "of",
+        "in",
+        "for",
+        "on",
+        "the",
+        "a",
+        "an",
+        "is",
+        "are",
+        "was",
+        "were",
+        "it",
+        "its",
+    }
+    words = truncated_word.split()
+    while words and words[-1].lower() in dangling:
+        words.pop()
+    result = " ".join(words).strip()
+    if result and result[-1] not in {".", "!", "?"}:
+        result += "."
+    return result
+
+
 def clean_script_for_audio(raw_script: str) -> str:
     """Remove URLs, bracketed paths, markdown formatting, and theatrical flattery from spoken scripts."""
     if not raw_script:
@@ -456,10 +507,34 @@ def generate_briefing_llm(
     if not text_only:
         from cgap_planner import build_cgap_script_plan, compile_story_predicates
 
-        story_predicates = compile_story_predicates(typed_stories)
+        # Recommendation 1: Exclude stories whose Level 2 summary failed fact-checking
+        # A spoken podcast should only present stories with 100% verified factual summaries
+        verified_audio_stories = [
+            s
+            for s in typed_stories
+            if s.validated_summary
+            and not s.validated_summary.startswith("⚠️")
+            and "failed to generate" not in s.validated_summary.lower()
+        ]
+
+        if not verified_audio_stories:
+            logger.warning("⚠️ No stories passed Level 2 validation. Using headline notices for all stories.")
+            target_audio_stories = typed_stories
+        elif len(verified_audio_stories) < len(typed_stories):
+            excluded_count = len(typed_stories) - len(verified_audio_stories)
+            logger.info(
+                f"🎙️ Audio Script Curation: {len(verified_audio_stories)}/{len(typed_stories)} stories verified for spoken monologue (excluding {excluded_count} unverified story)."
+            )
+            target_audio_stories = verified_audio_stories
+        else:
+            target_audio_stories = typed_stories
+
+        story_predicates = compile_story_predicates(target_audio_stories)
         cgap_plan = build_cgap_script_plan(story_predicates, theme_dict.get("name", "Daily Briefing"))
 
-        logger.info(f"Generating spoken audio script (~{word_target} words) for theme '{theme_dict.get('name')}'...")
+        logger.info(
+            f"Generating spoken audio script (~{word_target} words) across {len(target_audio_stories)} stories for theme '{theme_dict.get('name')}'..."
+        )
 
         audio_hint = ""
         for attempt in range(1, _VALIDATION_MAX_RETRIES + 1):
@@ -477,14 +552,15 @@ def generate_briefing_llm(
                 f"Today's thematic lens is: '{theme_dict.get('name')}'. Editorial tone: {theme_dict.get('tone')}.\n\n"
                 f"{cgap_plan}\n\n"
                 f"Task:\n"
-                f"Write a spoken briefing monologue script of approximately {word_target} words following the exact CGAP Execution Steps above.\n\n"
+                f"Write a spoken briefing monologue script of approximately {word_target} words following the exact CGAP Execution Steps above covering these {len(target_audio_stories)} stories.\n\n"
                 f"STRICT EDITORIAL RULES:\n"
                 f"- ZERO FLATTERY & ZERO PREAMBLE: Absolutely NO conversational preamble, throat-clearing, flattery, or grandiose phrases. "
                 f"Never say things like 'Welcome back', 'our journey through the realms', 'intellectual voyage', 'let us embark on this mission', or 'pushing the boundaries of what is possible'.\n"
                 f"- DIRECT OPENING: Start immediately with a single brief sentence identifying the theme and first story. For example: "
                 f"'Today in {theme_dict.get('name')}: first up, ...' or 'Here is today's {theme_dict.get('name')} briefing. First, ...'. Jump straight into the facts with no agenda previews.\n"
-                f"- TECHNICAL DEPTH: Walk through all {len(typed_stories)} stories focusing on concrete mechanics, benchmarks, systemic implications, and facts from the source text. Keep transitions natural, collegiate, and direct.\n"
-                f"- SEQUENCE ADHERENCE: You MUST cover every story in the exact numerical order specified in the CGAP plan (Story #1, then Story #2, up to Story #{len(typed_stories)}). Do not omit or reorder any story.\n"
+                f"- TECHNICAL DEPTH: Walk through all {len(target_audio_stories)} stories focusing on concrete mechanics, benchmarks, systemic implications, and facts from the source text. Keep transitions natural, collegiate, and direct.\n"
+                f"- DUAL-GROUNDING: Use each story's 'Article Context' to explain the engineering problem, mechanics, and why it matters conversationally. Anchor strictly to the 'Core Takeaway' without merely reading it word-for-word.\n"
+                f"- SEQUENCE ADHERENCE: You MUST cover every story in the exact numerical order specified in the CGAP plan (Story #1, then Story #2, up to Story #{len(target_audio_stories)}). Do not omit or reorder any story.\n"
                 f"- STRICT GROUNDING: Confine all claims, metrics, and entities strictly to the Allowed Facts specified in each step. Do not invent benchmark numbers, tool versions, or ungrounded organizations.\n"
                 f"- UPDATES: If a story has 'Status: UPDATE / Follow-up', frame it conversationally as a follow-up or update to earlier coverage (e.g. 'Following up on our earlier coverage...', 'An update to the story we tracked earlier...'), highlighting what is new.\n"
                 f"- ZERO THEATRICAL CONCLUSION: Do NOT summarize the briefing, do NOT say 'In conclusion', do NOT give philosophical send-offs, and do NOT thank the listener for an 'intellectual voyage'. End cleanly immediately after the final story with a single simple sign-off: 'That is your briefing for today.'\n"
@@ -509,7 +585,9 @@ def generate_briefing_llm(
                 logger.error(f"Error generating audio script attempt {attempt}: {e}")
 
             if candidate_script and len(candidate_script.split()) >= 40:
-                script_passed, reasoning = validate_and_correct_audio_script(typed_stories, candidate_script, config)
+                script_passed, reasoning = validate_and_correct_audio_script(
+                    target_audio_stories, candidate_script, config
+                )
                 status_str = "✅ PASSED" if script_passed else "FAILED / WARN"
                 logger.info(f"Audio Script Attempt {attempt}/{_VALIDATION_MAX_RETRIES} Fact-Check: {status_str}")
 
@@ -524,12 +602,24 @@ def generate_briefing_llm(
                         logger.info("  ↻ Regenerating audio script with correction hint...")
 
         if not audio_script:
-            logger.warning("❌ Using fallback audio script from stories after validation failures.")
+            logger.warning(
+                f"❌ Using emergency fallback audio script after {audio_attempts} validation failures. "
+                f"Last error feedback: {audio_hint}"
+            )
             script_parts = [f"Here is today's {theme_dict.get('name')} briefing. "]
-            for idx, s in enumerate(typed_stories, 1):
+            for idx, s in enumerate(target_audio_stories, 1):
                 clean_t = clean_script_for_audio(s.title)
-                clean_s = clean_script_for_audio(s.summary)
-                script_parts.append(f"Story number {idx}. From {s.source}. {clean_t}. {clean_s}. ")
+                if (
+                    s.validated_summary
+                    and not s.validated_summary.startswith("⚠️")
+                    and "failed to generate" not in s.validated_summary.lower()
+                ):
+                    clean_s = clean_script_for_audio(s.validated_summary)
+                elif s.summary and not s.summary.startswith("⚠️"):
+                    clean_s = extract_clean_sentence_excerpt(clean_script_for_audio(s.summary))
+                else:
+                    clean_s = "Full details and technical coverage are available in the written digest."
+                script_parts.append(f"Story number {idx}. From {s.source}. {clean_t}. {clean_s} ")
             script_parts.append("That is your briefing for today.")
             audio_script = clean_script_for_audio(" ".join(script_parts))
 

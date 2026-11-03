@@ -68,8 +68,8 @@
       "col": 1,
       "type": "security",
       "label": "Fast CI Gate",
-      "sublabel": "uv run pytest (0.5s)",
-      "tag": "mocked LAYA / Ollama",
+      "sublabel": "84 unit tests (<0.5s)",
+      "tag": "mocked + <2ms CGAP",
       "width": 140
     },
     {
@@ -162,7 +162,7 @@
       "dot": "emerald",
       "title": "Decoupled Fast CI & ALTK Stability (Tiers 1 & 3)",
       "items": [
-        "Default test suite runs in ~0.5s via mocked weights; live neural models run conditionally via -m heavy",
+        "Default test suite runs 84 unit tests in <0.5s via mocked weights; live neural models run conditionally via -m heavy",
         "K=3 repeated evaluations track Pass^K vs Mean@K to detect non-deterministic drift (Gap <= 0.15)"
       ]
     },

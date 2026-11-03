@@ -24,6 +24,7 @@
   - [ADR-12: Sliding-Window Recurrence Filter with Soft Score Decay & Update Tracking](#adr-12-sliding-window-recurrence-filter-with-soft-score-decay--update-tracking)
   - [ADR-13: Ingestion Window Resiliency, Exponential Network Backoff & Multi-Tier Theme Fallback](#adr-13-ingestion-window-resiliency-exponential-network-backoff--multi-tier-theme-fallback)
   - [ADR-14: Capability-Grounded Agentic Planning (CGAP) for Monologue Script Generation](#adr-14-capability-grounded-agentic-planning-cgap-for-monologue-script-generation)
+  - [ADR-15: Dual-Grounding (Core Takeaway Anchor + Article Context Canvas) for Spoken Monologue Synthesis](#adr-15-dual-grounding-core-takeaway-anchor--article-context-canvas-for-spoken-monologue-synthesis)
 - [3. Testing & QA Strategy Summary](#3-testing--qa-strategy-summary)
 - [4. Consequences & Trade-offs](#4-consequences--trade-offs)
 
@@ -231,6 +232,25 @@ Engineering teams and tech executives require daily briefings on AI developments
     - **Entity Grounding**: Dropped from **21 unanchored entity violations** in baseline (e.g. hallucinated "Microsoft", conversational commentary) to **0 violations**.
     - **Plan Coverage & Sequence Order**: Maintained 100% story coverage and strictly monotonic chronological sequence.
     - **Deterministic Pre-Gate Check**: Executes in **$< 2\text{ms}$** on CPU, intercepting structural faults prior to neural fact-checking or TTS.
+
+---
+
+### ADR-15: Dual-Grounding (Core Takeaway Anchor + Article Context Canvas) for Spoken Monologue Synthesis
+- **Context**:
+  - While CGAP (`ADR-14`) successfully eliminated narrative wandering, out-of-order sequencing, and fabricated metrics, restricting each story step exclusively to the 1–2 sentence Level 2 bullet summary starved the presenter LLM of technical depth.
+  - This starvation caused small models ($\le 4\text{B}$) to mechanically recite the bullet summaries word-for-word, creating a robotic and repetitive audio listening experience. Conversely, feeding only raw unsummarized article excerpts caused small models to wander, lose the primary takeaway, and hallucinate outside claims.
+- **Decision**:
+  - Implement the **Dual-Grounding** architectural pattern across `src/cgap_planner.py` and `src/briefing_generator.py`:
+    1. **Core Takeaway Anchor (Level 2)**: The verified, factual claim acts as an immutable factual anchor that the monologue cannot contradict or wander away from.
+    2. **Article Context Canvas (Level 1)**: A clean, capped plain-text excerpt of the original article body (up to 300 characters) provides engineering mechanisms, problem context, and technical vocabulary for natural conversational flow.
+    3. **Combined Grounding Scope**: Allowed metrics and key entities in `StoryFactPredicate` are compiled from both Level 1 and Level 2, ensuring that any detail mentioned from the article body is deterministically approved by `verify_cgap_grounding`.
+    4. **Graceful Handling of Unverified Summaries**: Stories whose summaries failed Level 2 validation are explicitly flagged with a notice to state only the headline/title without speculation, while the emergency audio fallback is protected against reading raw broken truncated sentences or error notices.
+- **Rationale**:
+  - Solves the "Parrot vs. Hallucinator" dilemma: avoids monotone recitation while preventing unconstrained hallucination.
+  - Keeps spoken podcast audio engaging, collegiate, and rich in engineering depth while maintaining 100% deterministic factual verification.
+- **Consequences**:
+  - Eliminates robotic "reading of summaries" in spoken audio notes.
+  - Preserves $< 2\text{ms}$ CPU pre-gate verification.
 
 ---
 

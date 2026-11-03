@@ -236,3 +236,30 @@ def test_format_cgap_feedback_hint():
     res = verify_cgap_grounding(script, predicates)
     hint = format_cgap_feedback_hint(res)
     assert "Include missing stories: [2]" in hint
+
+
+def test_build_cgap_script_plan_dual_grounding_formats_context():
+    """Verify Dual-Grounding formats both Core Takeaway and Article Context in plan."""
+    predicates = [
+        StoryFactPredicate(
+            story_id=1,
+            title="SageMaker Knowledge Distillation",
+            source="AWS Blog",
+            summary="Sequence-level distillation transfers teacher behavior to low-cost student.",
+            source_context="Frontier models running multi-step agent tool loops are expensive at scale. SageMaker AI introduces SeqKD.",
+            metrics={"SeqKD"},
+            key_entities={"sagemaker", "aws"},
+        ),
+        StoryFactPredicate(
+            story_id=2,
+            title="Failed Story Example",
+            source="Test Feed",
+            summary="⚠️ Failed to generate a reliable summary. Read the original article.",
+            source_context="Raw unparsed content here.",
+        ),
+    ]
+
+    plan = build_cgap_script_plan(predicates, "Practitioner's Radar")
+    assert "Core Takeaway: Sequence-level distillation transfers teacher behavior" in plan
+    assert "Article Context: Frontier models running multi-step agent tool loops are expensive at scale." in plan
+    assert "Notice: Summary unverified. Briefly state the title and headline only" in plan

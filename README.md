@@ -44,7 +44,7 @@ options:
 
 ### Testing & Quality Verification
 
-Run the fast-path test suite (81 tests in $< 1\text{s}$ with decoupled mock providers):
+Run the fast-path test suite (84 tests in $< 1\text{s}$ with decoupled mock providers):
 ```bash
 uv run pytest
 ```
@@ -87,47 +87,19 @@ Once launched, open your browser at:
 
 ## 🏛️ System Architecture
 
-The pipeline is built as a modular, local-first, factual-guaranteed system designed to execute with zero paid cloud API dependencies on local hardware (Apple Silicon / Metal), augmented with a **System 1 (LAYA) / System 2 (Ollama)** cognitive architecture.
+The pipeline is built as a modular, local-first, factual-guaranteed system designed to execute with zero paid cloud API dependencies on local hardware (Apple Silicon / Metal), augmented with a **System 1 (LAYA) / System 2 (Ollama)** cognitive architecture and **Capability-Grounded Agentic Planning (CGAP)**.
 
 > 📖 **Full Engineering Guide**: See [docs/RELIABLE_NEWS_PIPELINE.md](docs/RELIABLE_NEWS_PIPELINE.md) for a comprehensive breakdown of each pipeline stage and reliability guarantee.  
 > 🗺️ **Interactive Pipeline Diagram**: Open [docs/pipeline_workflow.html](docs/pipeline_workflow.html) in your browser for the full interactive architecture diagram with stage focus views and theme switching.  
 > 🧪 **Interactive Testing Diagram**: Open [docs/testing_strategy.html](docs/testing_strategy.html) for the 4-tier testing and evaluation visual architecture.
 
-```mermaid
-flowchart TD
-    subgraph Ingestion["1. Ingestion, Routing & Pre-Filtering"]
-        A["Curated RSS Feeds (HN, Blogs, arXiv)"] --> B["news_fetcher.py + laya_decision.py"]
-        B -->|"LAYA Dynamic Theme Routing<br/>7-Day Recurrence Soft Decay<br/>LAYA Hype Filter + 96h Cutoff"| C["Candidate Pool (15 Stories)"]
-    end
-
-    subgraph Curation["2. Two-Stage Theme Curation"]
-        C --> D["laya_decision.py (System 1 Pre-Rank)"]
-        D -->|"Top 7 Shortlist (<500ms)"| D2["briefing_generator.py (llm_curate_stories)"]
-        D2 -->|"Ollama (phi4-mini:3.8b)<br/>CoT Justifications + Pydantic Schema"| E["Selected Stories (Top 5)"]
-    end
-
-    subgraph Synthesis["3. Factual Synthesis & Validation Loop"]
-        E --> F["Per-Story Summary Generation"]
-        F -->|"Ollama (qwen2.5:3b)<br/>Extractive Anchoring (direct_quotes)"| G["Candidate Summary"]
-        G --> H{"Deterministic Entity & Metric Pre-Gate<br/>(validator.py)"}
-        H -->|"Unanchored Entity/Number"| I["Retry Prompt + Error Feedback<br/>(Max 3 Attempts)"]
-        I --> F
-        H -->|"Passes Regex Gate"| J{"LAYA Entailment Pre-Gate +<br/>SLM Fact-Check (qwen2.5:3b @ T=0.0)"}
-        J -->|"Fails Fact-Check"| I
-        J -->|"Passes Fact-Check"| K["Validated Story Summaries"]
-        K --> L["CGAP Predicate Planner &<br/>Monologue Generation (phi4-mini:3.8b)"]
-        L --> M{"Hierarchy of Truth & CGAP Pre-Gate<br/>(Deterministic Ordering & Fact Grounding)"}
-        M -->|"Passes"| N["BriefingOutput (Standard Markdown + Audio Script)"]
-    end
-
-    subgraph Output["4. Local Voice & Distribution"]
-        N --> O["notifier.py (VRAM Offload + kokoro-mlx TTS)"]
-        O --> P["Local Apple Silicon Audio Synthesis (.wav)"]
-        N --> Q["Local Markdown Storage (output/YYYY-MM-DD.md)"]
-        P --> R["Telegram Bot API Dispatch (Markdown + Voice WAV)"]
-        Q --> R
-    end
-```
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/pipeline_architecture.dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="docs/pipeline_architecture.png">
+    <img alt="Reliable AI News Briefing Pipeline Architecture (System 1 / System 2 & CGAP)" src="docs/pipeline_architecture.png" width="100%">
+  </picture>
+</p>
 
 ### Core Architectural Pillars
 
@@ -172,7 +144,7 @@ flowchart TD
 AI_news_voice_feed/
 ├── config.toml                   # Central configuration (themes, RSS sources, LAYA, voice, LLM)
 ├── pyproject.toml                # Project metadata, dependencies & pytest/ruff config
-├── ADR.md                        # Architectural Decision Records (ADR-01 through ADR-14)
+├── ADR.md                        # Architectural Decision Records (ADR-01 through ADR-15)
 ├── RELEASE.md                    # Semantic Versioning release changelog
 ├── AGENTS.md                     # Workspace engineering standards & hardware invariants
 ├── .env.example                  # Environment template for Telegram & offline eval credentials
@@ -204,7 +176,7 @@ AI_news_voice_feed/
 │   ├── quality_tracker.py        # SQLite telemetry, quality scoring & HITL benchmark promotion
 │   ├── telemetry.py              # Stage latency & RSS memory profiler
 │   └── notifier.py               # Local TTS synthesis (kokoro-mlx) & Telegram dispatch
-└── tests/                        # 81 fast-path unit tests + 30-case golden benchmark suite
+└── tests/                        # 82 fast-path unit tests + 30-case golden benchmark suite
 ```
 
 ---

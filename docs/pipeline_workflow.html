@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="generator" content="archify 2.17.0-dev.1">
-  <title>Reliable AI News Briefing Pipeline: System 1 / System 2 Architecture Diagram</title>
+  <title>Reliable AI News Briefing Pipeline: System 1 / System 2 &amp; CGAP Architecture Diagram</title>
   <script>
     // Resolve the theme before first paint so light-preference users don't
     // see a dark flash. The toolbar script below re-applies with UI state.
@@ -5081,11 +5081,11 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
            data-preset-badge-blueprint="BLUEPRINT / REV 01"
            data-preset-badge-editorial="EDITORIAL / FIELD NOTE">
         <div class="pulse-dot"></div>
-        <h1>Reliable AI News Briefing Pipeline: System 1 / System 2 Architecture</h1>
+        <h1>Reliable AI News Briefing Pipeline: System 1 / System 2 &amp; CGAP Architecture</h1>
       </div>
     </div>
 
-    <script id="archify-guided-views-data" type="application/json">[{"id":"full-pipeline","label":"End-to-end pipeline","focus":["rss_sources","fetcher","laya_router","laya_prerank","ollama_curator","ollama_summary","validator_gate","monologue_gen","script_gate","tts_dispatch"],"note":"Follow the primary path from RSS feed ingestion to verified spoken monologue and Telegram voice delivery."},{"id":"laya-triage","label":"System 1 fast triage","focus":["fetcher","laya_router","laya_prerank","ollama_curator"],"note":"Inspect how LAYA eliminates hype, routes themes dynamically, and shortlists stories in \u003c500ms."},{"id":"verification-loop","label":"Dual fact-checking loops","focus":["ollama_summary","validator_gate","ollama_auditor","monologue_gen","script_gate","fallback_node"],"note":"Examine both anti-hallucination gates: story summary fact-checks AND the final spoken script Hierarchy of Truth audit."}]</script>
+    <script id="archify-guided-views-data" type="application/json">[{"id":"full-pipeline","label":"End-to-end pipeline","focus":["rss_sources","fetcher","laya_router","laya_prerank","ollama_curator","ollama_summary","validator_gate","ollama_auditor","cgap_planner","script_gate","tts_dispatch"],"note":"Follow the end-to-end path from resilient RSS ingestion through System 1 triage, SLM curation, CGAP planning, and Telegram delivery."},{"id":"laya-triage","label":"System 1 fast triage","focus":["fetcher","laya_router","laya_prerank","ollama_curator"],"note":"Inspect how LAYA eliminates hype, routes themes dynamically, and shortlists stories in \u003c500ms on CPU."},{"id":"cgap-planning","label":"Dual-Grounding \u0026 CGAP","focus":["ollama_summary","cgap_planner","script_gate","tts_dispatch"],"note":"Examine the ADR-14/15 CGAP planner: Level 2 Core Takeaways anchor Level 1 Article Context with deterministic \u003c2ms predicate pre-gating."},{"id":"verification-loop","label":"Dual fact-checking loops","focus":["ollama_summary","validator_gate","ollama_auditor","fallback_node","cgap_planner","script_gate"],"note":"Examine both anti-hallucination gates: story summary fact-checks AND the final spoken script Hierarchy of Truth audit."}]</script>
 
     <script id="archify-i18n-data" type="application/json">{"locale":"en","messages":{"viewer.kind.frontend":"Frontend","viewer.kind.backend":"Backend","viewer.kind.database":"Database","viewer.kind.cloud":"Cloud","viewer.kind.security":"Security","viewer.kind.messagebus":"Message bus","viewer.kind.external":"External","viewer.kind.neutral":"Neutral","viewer.kind.node":"Node","viewer.kind.start":"Start","viewer.kind.active":"Active","viewer.kind.waiting":"Waiting","viewer.kind.decision":"Decision","viewer.kind.success":"Success","viewer.kind.failure":"Failure","viewer.toolbar.actions":"Diagram actions","viewer.theme.toggle.title":"Toggle theme (T)","viewer.theme.toggle":"Toggle color theme","viewer.theme.dark":"Dark","viewer.theme.light":"Light","viewer.preset.choose.title":"Choose visual style (S cycles)","viewer.preset.choose":"Choose visual style","viewer.preset.style":"Style","viewer.preset.menu":"Visual style","viewer.preset.identity":"Visual identity","viewer.preset.cycles":"S cycles","viewer.preset.classic":"Classic","viewer.preset.classic.short":"Classic","viewer.preset.classic.hint":"Stable technical default","viewer.preset.flow":"Signal Flow","viewer.preset.flow.short":"Flow","viewer.preset.flow.hint":"Motion-forward presentation","viewer.preset.blueprint":"Blueprint","viewer.preset.blueprint.hint":"Engineering review","viewer.preset.editorial":"Editorial","viewer.preset.editorial.hint":"Publication and launch notes","viewer.preset.badge.signalFlow":"SIGNAL FLOW","viewer.preset.badge.blueprint":"BLUEPRINT / REV 01","viewer.preset.badge.editorial":"EDITORIAL / FIELD NOTE","viewer.preset.badge.editorialPlate":"ARCHIFY / PLATE 04","viewer.preset.current":"Visual style: {style}. Choose visual style","viewer.motion.live":"Live","viewer.motion.still":"Still","viewer.motion.pause":"Pause motion","viewer.motion.resume":"Resume motion","viewer.motion.reduced":"Motion paused by reduced-motion preference","viewer.motion.hidden":"Motion paused while this page is hidden","viewer.motion.yielding":"Pause motion; currently yielding to {owner}","viewer.motion.yielding.title":"Live preview enabled · yielding to {owner}","viewer.owner.story":"the guided story","viewer.owner.chapter":"the active chapter","viewer.owner.chapterPreview":"the chapter delta preview","viewer.owner.handoff":"the chapter handoff","viewer.owner.route":"Route Probe","viewer.owner.lens":"Semantic Lens","viewer.owner.relationship":"Relationship Preview","viewer.owner.intent":"Intent Trace","viewer.owner.focus":"semantic focus","viewer.owner.legend":"legend preview","viewer.owner.reader":"reader interaction","viewer.present.enter":"Enter presentation stage","viewer.present.enter.title":"Presentation stage (F)","viewer.present.exit":"Exit presentation stage","viewer.present.exit.title":"Exit presentation stage (F or Escape)","viewer.present.present":"Present","viewer.present.exit.label":"Exit","viewer.export.button":"Export","viewer.export.button.title":"Export diagram (E)","viewer.export.diagram":"Export diagram","viewer.export.menu":"Export","viewer.export.subtitle":"Portable, clean outputs","viewer.export.share":"Share","viewer.export.shareCard":"Share Card","viewer.export.routeShareCard":"Route Share Card","viewer.export.reachShareCard":"Reach Share Card","viewer.export.copyShareCard":"Copy Share Card","viewer.export.copyDiagram":"Copy diagram","viewer.export.clipboardPng":"PNG to clipboard","viewer.export.raster":"Raster images","viewer.export.image":"Image","viewer.export.lossless":"Lossless image","viewer.export.compact":"Compact image","viewer.export.modern":"Modern image","viewer.export.vectorMotion":"Vector and motion","viewer.export.vectorMotion.heading":"Vector \u0026 motion","viewer.export.editable":"Editable vector","viewer.export.motion6s":"6s motion","viewer.export.unsupported":"Not supported by this browser","viewer.export.clipboardUnsupported":"Clipboard image write not supported by this browser","viewer.export.clipboardUnsupported.period":"Clipboard image write not supported by this browser.","viewer.export.clipboardUnsupported.short":"Clipboard image write not supported in this browser.","viewer.export.motionUnavailable":"Motion capture unavailable in this browser","viewer.export.webmUnavailable":"WebM unavailable in this browser","viewer.export.failed":"Export failed: {message}","viewer.export.unknownVariant":"Unknown Share Card variant: {variant}","viewer.export.routeRequired":"Trace a route before exporting a Route Share Card","viewer.export.reachRequired":"Trace authored reach before exporting a Reach Share Card","viewer.export.unknown":"unknown","viewer.export.routeFailed":"Route Share Card export failed: {message}","viewer.export.reachFailed":"Reach Share Card export failed: {message}","viewer.export.copyFailed":"Copy failed: {message}","viewer.export.copiedPng":"Copied PNG to clipboard","viewer.export.copiedShare":"Copied Share Card","viewer.export.downloadedShare":"Downloaded Share Card","viewer.export.downloadedRoute":"Downloaded Route Share Card","viewer.export.downloadedReach":"Downloaded Reach Share Card","viewer.export.downloadedWebm":"Downloaded WebM","viewer.export.recording":"Recording 6 seconds of motion…","viewer.export.card.routeSummary.one":"Route: {source} → {target} · {count} directed hop","viewer.export.card.routeSummary.other":"Route: {source} → {target} · {count} directed hops","viewer.export.card.reachSummary":"Authored {direction} from {origin} · {nodes} · {links} · max {hops}","viewer.export.card.node.one":"{count} node","viewer.export.card.node.other":"{count} nodes","viewer.export.card.link.one":"{count} link","viewer.export.card.link.other":"{count} links","viewer.export.card.hop.one":"{count} hop","viewer.export.card.hop.other":"{count} hops","viewer.export.card.routeBadge":"ARCHIFY · ROUTE · {hops}","viewer.export.card.reachBadge":"ARCHIFY · {direction} REACH","viewer.export.card.defaultBadge":"ARCHIFY · {preset} · {theme}","viewer.export.direction.upstream":"Upstream","viewer.export.direction.downstream":"Downstream","viewer.export.error.canvasUnavailable":"Canvas unavailable for {label}","viewer.export.error.contextUnavailable":"2D canvas context unavailable for {label}","viewer.export.error.toBlobUnavailable":"canvas.toBlob unavailable for {label}","viewer.export.error.toBlobNull":"canvas.toBlob returned no data for {label}","viewer.export.error.variantsCombined":"Share Card variants cannot be combined","viewer.export.error.viewerState":"Share Card export could not remove temporary viewer state","viewer.export.error.routeState":"Route Card export could not preserve the resolved route safely","viewer.export.error.reachState":"Reach Card export could not preserve authored reach safely","viewer.export.error.webmRequirements":"WebM motion export requires a trace animation and browser MediaRecorder support","viewer.export.error.mediaRecorder":"MediaRecorder failed","viewer.export.error.emptyWebm":"MediaRecorder produced an empty WebM","viewer.export.error.webmBackground":"SVG background could not be loaded for WebM export","viewer.guided.region":"Guided diagram views","viewer.guided.previous":"Previous guided view","viewer.guided.previous.title":"Previous guided view ([)","viewer.guided.next":"Next guided view","viewer.guided.next.title":"Next guided view (])","viewer.guided.views":"Guided views","viewer.guided.explore":"Explore this system","viewer.guided.intro":"Step through curated paths without changing the source diagram.","viewer.guided.trail":"Story trail","viewer.guided.beat":"Beat","viewer.guided.nextBeat":"Next","viewer.guided.play":"Play guided story","viewer.guided.play.title":"Play guided story (P)","viewer.guided.pause":"Pause guided story","viewer.guided.pause.title":"Pause guided story (P)","viewer.guided.replay":"Replay guided story","viewer.guided.replay.title":"Replay guided story (P)","viewer.guided.playStory":"Play story","viewer.guided.pauseStory":"Pause","viewer.guided.replayStory":"Replay story","viewer.guided.motionUnavailable":"Story playback unavailable while motion is Still","viewer.guided.enableMotion":"Switch motion to Live to play the guided story","viewer.guided.selectBeatLink":"Select a Story Beat to copy its exact link","viewer.guided.copyMoment":"Copy moment","viewer.guided.momentCopied":"Moment link copied","viewer.guided.momentCopyFailed":"Could not copy story moment link","viewer.guided.copied":"Copied","viewer.guided.copyFailed":"Copy failed","viewer.guided.showAll":"Show all","viewer.guided.showAll.aria":"Show entire diagram","viewer.guided.chapters":"Story chapters","viewer.guided.storyTrail":"Story trail for {label}: {count} beats","viewer.guided.chapter.open":"Open chapter {index} of {total}: {label}, {count} stops","viewer.guided.chapter.current":"Current chapter {index} of {total}: {label}, {count} stops","viewer.guided.chapter.selectedNodes":"{count} selected nodes","viewer.guided.chapter.stops":"{count} stops","viewer.guided.chapter.stop.one":"{count} stop","viewer.guided.chapter.stop.other":"{count} stops","viewer.guided.chapter.current.title":"{label} — current chapter, {count} stops","viewer.guided.chapter.delta.expanded":"{stay} stay, {enter} enter, {leave} leave","viewer.guided.chapter.delta.aria":"Open chapter {index} of {total}: {label}. Chapter focus delta: {delta}","viewer.guided.chapter.delta.title":"{label} — {delta} chapter focus","viewer.guided.handoff":"{from} → {to} · via {label}","viewer.guided.share.chapter":"Chapter {index} / {total}","viewer.guided.share.initial":"Chapter 01 / 01","viewer.guided.share.default":"Guided chapter","viewer.guided.state.ready":"Ready","viewer.guided.state.playing":"Playing","viewer.guided.state.settled":"Settled","viewer.guided.state.paused":"Paused","viewer.guided.state.pinned":"Pinned","viewer.guided.state.still":"Still","viewer.guided.share.step":"Step {index} / {total} · {label}","viewer.guided.share.staticMoment":"{step} · Static moment","viewer.guided.share.complete":"{count} steps complete · {note}","viewer.guided.share.settled":"Path settled for reading.","viewer.guided.share.staticPath":"{count} steps · Static path","viewer.guided.share.ready":"{count} steps · Ready","viewer.guided.share.aria":"{state} chapter {index} of {total}: {label}. {beat}. {route}","viewer.guided.beat.start":"Beat {index} / {total} · {label} · starting point","viewer.guided.beat.forward":"Beat {index} / {total} · {from} → {to}","viewer.guided.beat.reverse":"Beat {index} / {total} · {from} → {to} · reverse authored link","viewer.guided.beat.multiple":"Beat {index} / {total} · {from} ⇄ {to} · {count} authored links","viewer.guided.beat.group":"Beat {index} / {total} · {from} · {to} · grouped · no direct link","viewer.guided.beat.aria.prefix":"Story beat {index} of {total}: {label}. ","viewer.guided.beat.aria.start":"Starting point.","viewer.guided.beat.aria.forward":"From {from} through one authored forward relationship.","viewer.guided.beat.aria.reverse":"From {from}; the authored relationship points from {to} to {from}.","viewer.guided.beat.aria.multiple":"From {from} through {count} authored relationships; shown without arbitrary motion.","viewer.guided.beat.aria.group":"Grouped from {from} with no direct authored relationship.","viewer.guided.caption.start":"Starting point","viewer.guided.caption.grouped":"Grouped transition · no direct authored link","viewer.guided.caption.more":" +{count} more","viewer.guided.caption.reverse":"Reverse authored relationship","viewer.guided.caption.relationships":"{count} authored relationships","viewer.guided.caption.relationship":"Authored relationship","viewer.guided.caption.direction":"authored direction: {from} → {to}","viewer.guided.caption.starting":"Authored starting point","viewer.guided.beatLink":"Copy link to current story moment: Beat {index} of {total}: {label}","viewer.guided.noStory":"This diagram has no authored guided story.","viewer.guide.eyebrow":"Diagram guide","viewer.guide.close":"Close diagram guide","viewer.guide.inspecting":"Inspecting compiled semantics","viewer.guide.actions":"Diagram exploration actions","viewer.guide.find":"Find any node","viewer.guide.find.hint":"Search labels, responsibilities, kinds, and stable IDs.","viewer.guide.route":"Trace a route","viewer.guide.route.aria":"Trace a directed route","viewer.guide.route.hint":"Ask how two semantic nodes connect in authored direction.","viewer.guide.map":"See the whole system","viewer.guide.map.hint":"Open Semantic Radar with a live viewport and stable nodes.","viewer.guide.lens":"Compare semantic kinds","viewer.guide.lens.hint":"Count roles, reveal their traffic, and compare direct authored links.","viewer.guide.story":"Play the guided story","viewer.guide.story.hint":"Walk the authored chapters and real relationships.","viewer.guide.present":"Enter Presentation Stage","viewer.guide.present.hint":"Give the live diagram the viewport without changing export.","viewer.guide.shortcuts":"Additional keyboard shortcuts","viewer.guide.shortcut.export":"Export","viewer.guide.shortcut.theme":"Theme","viewer.guide.shortcut.style":"Style","viewer.guide.shortcut.reset":"Reset","viewer.guide.shortcut.zoomIn":"Zoom in","viewer.guide.shortcut.zoomOut":"Zoom out","viewer.guide.shortcut.close":"Close","viewer.guide.facts":"{nodes} · {relationships} · {views}","viewer.guide.fact.node.one":"{count} semantic node","viewer.guide.fact.node.other":"{count} semantic nodes","viewer.guide.fact.relationship.one":"{count} relationship","viewer.guide.fact.relationship.other":"{count} relationships","viewer.guide.fact.view.one":"{count} guided view","viewer.guide.fact.view.other":"{count} guided views","viewer.guide.story.available.one":"Walk {count} authored chapter and its real relationships.","viewer.guide.story.available.other":"Walk {count} authored chapters and their real relationships.","viewer.guide.story.unavailable":"No authored guided story in this diagram.","viewer.guide.open":"Open diagram guide","viewer.guide.noStory":"This diagram has no authored guided story.","viewer.finder.title":"Find a node","viewer.finder.close":"Close node finder","viewer.finder.placeholder":"Search labels or IDs","viewer.finder.search":"Search diagram nodes","viewer.finder.results":"Diagram nodes","viewer.finder.empty":"No matching nodes","viewer.finder.result.focus":"Focus {label}","viewer.finder.result.routeStart":"Choose {label} as route start","viewer.finder.result.routeTarget":"Choose {label} as route destination, {links}","viewer.finder.status.empty":"No matching nodes","viewer.finder.status.count.one":"{count} matching node","viewer.finder.status.count.other":"{count} matching nodes","viewer.finder.noun.nodes":"nodes","viewer.finder.link.one":"{count} link","viewer.finder.link.other":"{count} links","viewer.finder.result.focus.one":"Focus {label}, {count} related connection","viewer.finder.result.focus.other":"Focus {label}, {count} related connections","viewer.finder.status.filtered":"{visible} of {available} {noun}","viewer.finder.status.all":"{available} {noun}","viewer.passport.eyebrow":"Semantic passport","viewer.passport.metadata":"Node metadata","viewer.passport.evidence":"Verified source evidence","viewer.passport.verified":"Verified source","viewer.passport.verificationScope":"Verified against local Git at the pinned revision. Remote access has not been checked.","viewer.passport.reach":"Authored reach","viewer.passport.reach.trace":"Trace authored reachability","viewer.passport.upstream":"Upstream","viewer.passport.downstream":"Downstream","viewer.passport.upstream.trace":"Trace upstream authored reachability","viewer.passport.downstream.trace":"Trace downstream authored reachability","viewer.passport.close":"Close semantic passport","viewer.passport.copy":"Copy link","viewer.passport.copy.focus":"Copy link to focused node","viewer.passport.relations":"Relations","viewer.passport.relations.show":"Show connected relationships","viewer.passport.relations.hide":"Hide connected relationships","viewer.passport.relations.list":"Connected relationships","viewer.passport.copyRelation":"Copy relation","viewer.passport.copyNode":"Copy node","viewer.passport.copyPinned":"Copy link to pinned relationship","viewer.passport.copySource":"Copy link to source node","viewer.passport.copy.focused.success":"Focused node link copied","viewer.passport.copy.pinned.success":"Pinned relationship link copied","viewer.passport.copy.focused.failed":"Could not copy focused node link","viewer.passport.copy.pinned.failed":"Could not copy pinned relationship link","viewer.passport.relationship.none":"No connected relationships","viewer.passport.relationship.count.one":"{count} relation","viewer.passport.relationship.count.other":"{count} relations","viewer.passport.relationship.show.one":"Show {count} connected relationship","viewer.passport.relationship.show.other":"Show {count} connected relationships","viewer.passport.relationship.summary":"{out} outgoing · {in} incoming{loops}","viewer.passport.relationship.loops":" · {count} loop","viewer.passport.relationship.explorer":"Direct relationship explorer","viewer.passport.relationship.help":"Use arrow keys to explore relationships. Press Enter or Space to pin details; Escape clears.","viewer.passport.relationship.loopsBack":"loops back","viewer.passport.relationship.connectsTo":"connects to","viewer.passport.relationship.connectsFrom":"connects from","viewer.passport.relationship.pinned":"Pinned relationship · {from} → {to} · {label}","viewer.passport.relationship.inspect":"Inspect relationship {index} of {total}: {from} to {to}, {label}. Press Enter for details.","viewer.passport.relationship.group.out":"Outgoing","viewer.passport.relationship.group.in":"Incoming","viewer.passport.relationship.group.loop":"Self loops","viewer.passport.relationship.row":"{group}: {relationship}, {neighbor}","viewer.passport.relationship.direction.out":"OUT →","viewer.passport.relationship.direction.in":"← IN","viewer.passport.relationship.direction.loop":"LOOP","viewer.passport.sourceCount.one":"{count} verified source reference","viewer.passport.sourceCount.other":"{count} verified source references","viewer.passport.sourceMarker":"SRC","viewer.passport.beacon.one":"{count} verified source; focus this node to inspect","viewer.passport.beacon.other":"{count} verified sources; focus this node to inspect","viewer.passport.repository.open":"Open verified repository revision {revision}","viewer.passport.source.open":"Open verified source {path} at revision {revision}","viewer.passport.source.openLink":"Open ↗","viewer.passport.reach.upstream.one":"Trace {count} upstream authored node","viewer.passport.reach.upstream.other":"Trace {count} upstream authored nodes","viewer.passport.reach.downstream.one":"Trace {count} downstream authored node","viewer.passport.reach.downstream.other":"Trace {count} downstream authored nodes","viewer.passport.reach.noUpstream":"No upstream authored nodes","viewer.passport.reach.noDownstream":"No downstream authored nodes","viewer.passport.reach.status":"{direction} · {nodes} nodes · {links} links · max {hops} hops","viewer.route.eyebrow":"Route probe","viewer.route.start":"Choose a start node","viewer.route.start.find":"Find start","viewer.route.start.find.aria":"Find a route start","viewer.route.copy":"Copy link","viewer.route.copy.aria":"Copy link to traced route","viewer.route.clear":"Clear","viewer.route.clear.aria":"Clear route probe","viewer.route.traced":"Traced route","viewer.route.pickTwo":"Pick two semantic nodes on the diagram","viewer.route.pickOne":"Pick a semantic node on the diagram","viewer.route.controls":"Route journey controls","viewer.route.previous":"Previous route position","viewer.route.play":"Play route journey","viewer.route.pause":"Pause route journey","viewer.route.replay":"Replay route journey","viewer.route.next":"Next route position","viewer.route.journey":"Journey","viewer.route.pause.label":"Pause","viewer.route.replay.label":"Replay","viewer.route.overview":"Overview","viewer.route.overview.aria":"Show complete route overview","viewer.route.instructions":"Choose the source, then the destination. Direction matters.","viewer.route.destination":"Choose a destination from {label}","viewer.route.destination.find":"Find target","viewer.route.destination.find.aria":"Find a reachable route destination","viewer.route.differentDestination":"Choose a different destination","viewer.route.distinct":"A route needs two distinct semantic nodes.","viewer.route.unreachable":"No directed route to {label}","viewer.route.unreachable.detail":"{target} is not reachable from {source}. Pick a highlighted destination.","viewer.route.start.instructions":"Select the source. The next step will reveal only directed destinations.","viewer.route.copy.success":"Traced route link copied","viewer.route.copy.failed":"Could not copy traced route link","viewer.route.position":"Route position {index} of {total}: {label}","viewer.route.step":"Step {index} of {total} · {phase} · {label}","viewer.route.motionRequired":"Automatic journey requires Live motion","viewer.route.trigger.clear":"Clear traced route","viewer.route.overview.status":"{nodes} · {hops} · shortest authored route","viewer.route.overview.node.one":"{count} node","viewer.route.overview.node.other":"{count} nodes","viewer.route.overview.hop.one":"{count} directed hop","viewer.route.overview.hop.other":"{count} directed hops","viewer.route.phase.playing":"Playing","viewer.route.phase.complete":"Complete","viewer.route.phase.inspecting":"Inspecting","viewer.route.destination.count.one":"{count} directed destination available. Pick a highlighted node.","viewer.route.destination.count.other":"{count} directed destinations available. Pick a highlighted node.","viewer.route.noOutgoing":"No outgoing route starts here. Clear and choose another source.","viewer.route.result.title":"{source} to {target}","viewer.route.finder.source.title":"Choose route start","viewer.route.finder.source.placeholder":"Search route sources","viewer.route.finder.source.empty":"No matching route sources","viewer.route.finder.source.results":"Nodes that can start a route","viewer.route.finder.source.noun":"route sources","viewer.route.finder.source.badge":"start","viewer.route.finder.target.title":"Destination from {label}","viewer.route.finder.target.placeholder":"Search reachable destinations","viewer.route.finder.target.empty":"No matching reachable destinations","viewer.route.finder.target.results":"Reachable route destinations","viewer.route.finder.target.noun":"reachable destinations","viewer.route.hop.one":"{count} hop","viewer.route.hop.other":"{count} hops","viewer.lens.eyebrow":"Semantic lens","viewer.lens.title":"Compare system roles","viewer.lens.close":"Close semantic lens","viewer.lens.instruction":"Choose up to two semantic kinds. One reveals its real traffic; two compare only direct authored relationships.","viewer.lens.kinds":"Semantic kinds","viewer.lens.choose":"Choose a kind to inspect its nodes and touching relationships.","viewer.lens.copy":"Copy link to semantic lens","viewer.lens.clear":"Clear semantic lens","viewer.lens.open":"Open semantic lens","viewer.lens.openActive":"Open active semantic lens","viewer.lens.legend":"Semantic legend","viewer.lens.legend.inspect.one":"Inspect {label}, {count} node","viewer.lens.legend.inspect.other":"Inspect {label}, {count} nodes","viewer.lens.kind.count.one":"{label}, {count} node","viewer.lens.kind.count.other":"{label}, {count} nodes","viewer.lens.compare.one":"{first} → {second}: {forward} · {second} → {first}: {reverse} · {count} direct relationship","viewer.lens.compare.other":"{first} → {second}: {forward} · {second} → {first}: {reverse} · {count} direct relationships","viewer.lens.single":"{nodes} · {relationships} · connected peers remain visible","viewer.lens.node.one":"{count} {label} node","viewer.lens.node.other":"{count} {label} nodes","viewer.lens.relationship.one":"{count} touching relationship","viewer.lens.relationship.other":"{count} touching relationships","viewer.radar.title":"Semantic radar","viewer.radar.building":"Building overview","viewer.radar.openFull":"Open full semantic radar","viewer.radar.open":"Open radar","viewer.radar.close":"Close semantic radar","viewer.radar.surface":"Diagram overview. Click a node to focus it, or use arrow keys to pan.","viewer.radar.click":"Click node","viewer.radar.drag":"Drag to pan","viewer.radar.space":"Semantic radar needs more MAP space.","viewer.radar.nodes":"Semantic diagram radar nodes","viewer.radar.focus":"Focus {label} from Semantic Radar","viewer.radar.status":"{count} nodes · {viewport}","viewer.radar.fullMap":"{count} nodes · full map","viewer.radar.compacted":"Radar compacted to avoid covering the Semantic Passport or MAP controls.","viewer.radar.cancelWaiting":"Cancel semantic radar waiting for more MAP space","viewer.radar.needsSpace":"Semantic radar needs more visible MAP space","viewer.radar.viewport.full":"full map","viewer.radar.viewport.width":"{percent}% width","viewer.radar.viewport.scale":"{percent}% viewport","viewer.nav.controls":"Diagram view controls","viewer.nav.route":"Trace a directed route","viewer.nav.route.title":"Trace route (R)","viewer.nav.route.short":"PATH","viewer.nav.radar":"Open semantic radar","viewer.nav.radar.title":"Semantic radar (M)","viewer.nav.radar.short":"MAP","viewer.nav.lens":"Open semantic lens","viewer.nav.lens.title":"Semantic lens (L)","viewer.nav.lens.short":"LENS","viewer.nav.find":"Find a node","viewer.nav.find.title":"Find a node (/)","viewer.nav.guide":"Open diagram guide","viewer.nav.guide.title":"Diagram guide (?)","viewer.nav.zoomOut":"Zoom out","viewer.nav.zoomOut.title":"Zoom out (-)","viewer.nav.reset":"Reset diagram view","viewer.nav.reset.title":"Reset view (0)","viewer.nav.read":"READ","viewer.nav.zoomIn":"Zoom in","viewer.nav.zoomIn.title":"Zoom in (+)","viewer.nav.camera":"{hint}. Reset diagram view","viewer.nav.camera.title":"{semantic}{hint} · reset view (0)","viewer.nav.camera.semantic":"Semantic camera active · ","viewer.nav.level.map":"MAP","viewer.nav.level.read":"READ","viewer.nav.level.full":"FULL","viewer.nav.level.auto":"AUTO","viewer.nav.detail.map":"Zoom in to reveal relationship labels and node context","viewer.nav.detail.read":"Zoom in again to reveal tags and annotations","viewer.nav.detail.full":"Full diagram detail","viewer.intent.summary":"{label}. {out} outgoing, {in} incoming{loops}. {total} connections. Press Enter for details.","viewer.intent.loops":", {count} self loop","viewer.common.copied":"Copied","viewer.common.copyFailed":"Copy failed","viewer.common.copyLink":"Copy link","viewer.common.clear":"Clear","viewer.common.close":"Close"}}</script>
     <div class="guided-views no-print" id="guided-views" hidden aria-label="Guided diagram views">
@@ -5130,8 +5130,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
     <!-- Main Diagram -->
     <div class="diagram-container" data-detail-level="read"
          data-preset-badge-editorial-plate="ARCHIFY / PLATE 04">
-      <svg viewBox="0 0 1208 824" role="img" lang="en" aria-labelledby="archify-diagram-title archify-diagram-description" data-preset="classic" data-quality-profile="showcase">
-        <title id="archify-diagram-title">Reliable AI News Briefing Pipeline: System 1 / System 2 Architecture</title>
+      <svg viewBox="0 0 1223 826" role="img" lang="en" aria-labelledby="archify-diagram-title archify-diagram-description" data-preset="classic" data-quality-profile="showcase">
+        <title id="archify-diagram-title">Reliable AI News Briefing Pipeline: System 1 / System 2 &amp; CGAP Architecture</title>
         <desc id="archify-diagram-description">A workflow diagram generated by Archify.</desc>
         <!-- Definitions -->
         <defs>
@@ -5156,21 +5156,21 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         <rect width="100%" height="100%" fill="url(#grid)" />
 
         <!-- Swimlanes -->
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-0" x="40" y="52" width="1084" height="112" rx="10" class="c-lane" stroke-width="1"/>
-        <text x="54" y="74" class="t-dim" font-size="10" font-weight="600">01 / Ingestion &amp; Sources</text>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-0" x="40" y="52" width="1084" height="114" rx="10" class="c-lane" stroke-width="1"/>
+        <text x="54" y="74" class="t-dim" font-size="10" font-weight="600">01 / Ingestion &amp; Window Resiliency</text>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-1" x="40" y="184" width="1084" height="114" rx="10" class="c-lane" stroke-width="1"/>
-        <text x="54" y="206" class="t-dim" font-size="10" font-weight="600">02 / System 1 Triage (LAYA)</text>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-1" x="40" y="186" width="1084" height="114" rx="10" class="c-lane" stroke-width="1"/>
+        <text x="54" y="208" class="t-dim" font-size="10" font-weight="600">02 / System 1 Triage (LAYA)</text>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-2" x="40" y="318" width="1084" height="114" rx="10" class="c-lane" stroke-width="1"/>
-        <text x="54" y="340" class="t-dim" font-size="10" font-weight="600">03 / System 2 Deliberation (Ollama SLMs)</text>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-2" x="40" y="320" width="1084" height="114" rx="10" class="c-lane" stroke-width="1"/>
+        <text x="54" y="342" class="t-dim" font-size="10" font-weight="600">03 / System 2 Deliberation (Ollama SLMs)</text>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-3" x="40" y="452" width="1084" height="114" rx="10" class="c-lane" stroke-width="1"/>
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="exception-lane" data-composition-frame-id="lane-3-exception" x="46" y="458" width="1072" height="102" rx="8" class="c-security-group" stroke-width="1"/>
-        <text x="54" y="474" class="t-security" font-size="10" font-weight="600">EX / Verification &amp; Guardrails</text>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-3" x="40" y="454" width="1084" height="114" rx="10" class="c-lane" stroke-width="1"/>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="exception-lane" data-composition-frame-id="lane-3-exception" x="46" y="460" width="1072" height="102" rx="8" class="c-security-group" stroke-width="1"/>
+        <text x="54" y="476" class="t-security" font-size="10" font-weight="600">EX / Verification &amp; Guardrails</text>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-4" x="40" y="586" width="1084" height="114" rx="10" class="c-lane" stroke-width="1"/>
-        <text x="54" y="608" class="t-dim" font-size="10" font-weight="600">05 / Voice Synthesis &amp; Delivery</text>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-4" x="40" y="588" width="1084" height="114" rx="10" class="c-lane" stroke-width="1"/>
+        <text x="54" y="610" class="t-dim" font-size="10" font-weight="600">05 / Voice Synthesis &amp; Delivery</text>
 
         <!-- Phase headers -->
         <line x1="64" y1="35" x2="360.4" y2="35" class="a-default" stroke-width="1.1"/>
@@ -5182,258 +5182,259 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         <line x1="672.4" y1="35" x2="896.4" y2="35" class="a-default" stroke-width="1.1"/>
         <rect x="672.4" y="27" width="224" height="16" rx="4" class="c-mask"/>
         <text x="784.4" y="39" class="t-muted" font-size="8" font-weight="600" text-anchor="middle">3. Factual Verification</text>
-        <line x1="1004" y1="35" x2="1174.4" y2="35" class="a-dashed" stroke-width="1.1"/>
-        <rect x="1004" y="27" width="170.39999999999998" height="16" rx="4" class="c-mask"/>
-        <text x="1089.2" y="39" class="t-messagebus" font-size="8" font-weight="600" text-anchor="middle">4. Monologue Audit &amp; Dispatch</text>
+        <line x1="1004" y1="35" x2="1168.8" y2="35" class="a-dashed" stroke-width="1.1"/>
+        <rect x="1004" y="27" width="164.79999999999998" height="16" rx="4" class="c-mask"/>
+        <text x="1086.4" y="39" class="t-messagebus" font-size="8" font-weight="600" text-anchor="middle">4. CGAP Monologue &amp; Dispatch</text>
 
         <!-- Workflow groups -->
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="group" data-composition-frame-id="group-0" x="44" y="90" width="336.4" height="70" rx="9" class="c-lane" stroke-width="1"/>
-        <text x="54" y="88" class="t-muted" font-size="7" font-weight="600">Feed aggregation</text>
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="group" data-composition-frame-id="group-1" x="248.39999999999998" y="222" width="331.6" height="72" rx="9" class="c-security-group" stroke-width="1"/>
-        <text x="258.4" y="220" class="t-security" font-size="7" font-weight="600">Sub-second triage</text>
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="group" data-composition-frame-id="group-2" x="448" y="356" width="668" height="72" rx="9" class="c-lane" stroke-width="1"/>
-        <text x="458" y="354" class="t-backend" font-size="7" font-weight="600">Deliberate reasoning</text>
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="group" data-composition-frame-id="group-3" x="652.4" y="490" width="463.6" height="72" rx="9" class="c-security-group" stroke-width="1"/>
-        <text x="662.4" y="488" class="t-security" font-size="7" font-weight="600">Anti-hallucination gates</text>
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="group" data-composition-frame-id="group-4" x="984" y="624" width="132" height="72" rx="9" class="c-lane" stroke-width="1"/>
-        <text x="994" y="622" class="t-messagebus" font-size="7" font-weight="600">Distribution</text>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="group" data-composition-frame-id="group-0" x="44" y="90" width="336.4" height="72" rx="9" class="c-lane" stroke-width="1"/>
+        <text x="54" y="88" class="t-muted" font-size="7" font-weight="600">Feed aggregation &amp; backoff</text>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="group" data-composition-frame-id="group-1" x="248.39999999999998" y="224" width="331.6" height="72" rx="9" class="c-security-group" stroke-width="1"/>
+        <text x="258.4" y="222" class="t-security" font-size="7" font-weight="600">Sub-second triage</text>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="group" data-composition-frame-id="group-2" x="448" y="358" width="668" height="72" rx="9" class="c-lane" stroke-width="1"/>
+        <text x="458" y="356" class="t-backend" font-size="7" font-weight="600">Deliberate reasoning</text>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="group" data-composition-frame-id="group-3" x="652.4" y="492" width="463.6" height="72" rx="9" class="c-security-group" stroke-width="1"/>
+        <text x="662.4" y="490" class="t-security" font-size="7" font-weight="600">Anti-hallucination gates</text>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="group" data-composition-frame-id="group-4" x="984" y="626" width="132" height="72" rx="9" class="c-lane" stroke-width="1"/>
+        <text x="994" y="624" class="t-messagebus" font-size="7" font-weight="600">Distribution</text>
 
         <!-- Edge paths -->
-        <path data-edge-from="ollama_auditor" data-edge-to="fallback_node" data-edge-label="failed 3x" data-edge-key="0" data-edge-id="e_auditor_fail" data-composition-points="912.4,393;928.4,393;928.4,582;850.4,582;850.4,561" d="M 912.4 393 L 928.4 393 L 928.4 582 L 850.4 582 L 850.4 561" class="a-dashed" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="ollama_auditor" data-edge-to="monologue_gen" data-edge-label="audit passed" data-edge-key="1" data-edge-id="e_auditor_pass" data-composition-points="850.4,359;850.4,343;1050,343;1050,359" d="M 850.4 359 L 850.4 343 L 1050 343 L 1050 359" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="ollama_curator" data-edge-to="ollama_summary" data-edge-label="curated top 5" data-edge-key="2" data-edge-id="e_curator_summary" data-composition-points="514,427;514,443;718.4,443;718.4,427" d="M 514 427 L 514 443 L 718.4 443 L 718.4 427" class="a-default" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="fetcher" data-edge-to="laya_router" data-edge-label="breaking pool" data-edge-key="3" data-edge-id="e_fetch_router" data-composition-points="376.4,125;392.4,125;392.4,314;314.4,314;314.4,293" d="M 376.4 125 L 392.4 125 L 392.4 314 L 314.4 314 L 314.4 293" class="a-default" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="validator_gate" data-edge-to="ollama_auditor" data-edge-label="pre-gate pass" data-edge-key="4" data-edge-id="e_gate_auditor" data-composition-points="656.4,527;640.4,527;640.4,582;928.4,582;928.4,393;912.4,393" d="M 656.4 527 L 640.4 527 L 640.4 582 L 928.4 582 L 928.4 393 L 912.4 393" class="a-security" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
-        <path data-edge-from="laya_prerank" data-edge-to="ollama_curator" data-edge-label="top 7 stories" data-edge-key="5" data-edge-id="e_prerank_curator" data-composition-points="514,225;514,168;592,168;592,393;576,393" d="M 514 225 L 514 168 L 592 168 L 592 393 L 576 393" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="laya_router" data-edge-to="laya_prerank" data-edge-label="active theme" data-edge-key="6" data-edge-id="e_router_prerank" data-composition-points="376.4,259;392.4,259;392.4,168;514,168;514,225" d="M 376.4 259 L 392.4 259 L 392.4 168 L 514 168 L 514 225" class="a-security" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
-        <path data-edge-from="rss_sources" data-edge-to="fetcher" data-edge-label="pull XML/Atom" data-edge-key="7" data-edge-id="e_rss_fetch" data-composition-points="172,125;252.39999999999998,125" d="M 172 125 L 252.39999999999998 125" class="a-default" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="monologue_gen" data-edge-to="script_gate" data-edge-label="monologue check" data-edge-key="8" data-edge-id="e_script_audit" data-composition-points="1112,393;1190,393;1190,527;1112,527" d="M 1112 393 L 1190 393 L 1190 527 L 1112 527" class="a-security" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
-        <path data-edge-from="script_gate" data-edge-to="tts_dispatch" data-edge-label="verified voice" data-edge-key="9" data-edge-id="e_script_dispatch" data-composition-points="1112,527;1128,527;1128,716;1050,716;1050,695" d="M 1112 527 L 1128 527 L 1128 716 L 1050 716 L 1050 695" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="ollama_summary" data-edge-to="validator_gate" data-edge-label="draft summary" data-edge-key="10" data-edge-id="e_summary_gate" data-composition-points="718.4,427;718.4,443;20,443;20,527;656.4,527" d="M 718.4 427 L 718.4 443 L 20 443 L 20 527 L 656.4 527" class="a-default" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="ollama_auditor" data-edge-to="fallback_node" data-edge-label="failed 3x" data-edge-key="0" data-edge-id="e_auditor_fail" data-composition-points="912.4,395;928.4,395;928.4,584;850.4,584;850.4,563" d="M 912.4 395 L 928.4 395 L 928.4 584 L 850.4 584 L 850.4 563" class="a-dashed" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="ollama_auditor" data-edge-to="cgap_planner" data-edge-label="audit passed" data-edge-key="1" data-edge-id="e_auditor_pass" data-composition-points="850.4,361;850.4,345;1050,345;1050,361" d="M 850.4 361 L 850.4 345 L 1050 345 L 1050 361" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="ollama_curator" data-edge-to="ollama_summary" data-edge-label="curated top 5" data-edge-key="2" data-edge-id="e_curator_summary" data-composition-points="514,429;514,445;718.4,445;718.4,429" d="M 514 429 L 514 445 L 718.4 445 L 718.4 429" class="a-default" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="fetcher" data-edge-to="laya_router" data-edge-label="breaking pool" data-edge-key="3" data-edge-id="e_fetch_router" data-composition-points="376.4,127;392.4,127;392.4,316;314.4,316;314.4,295" d="M 376.4 127 L 392.4 127 L 392.4 316 L 314.4 316 L 314.4 295" class="a-default" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="validator_gate" data-edge-to="ollama_auditor" data-edge-label="pre-gate pass" data-edge-key="4" data-edge-id="e_gate_auditor" data-composition-points="656.4,529;640.4,529;640.4,584;928.4,584;928.4,395;912.4,395" d="M 656.4 529 L 640.4 529 L 640.4 584 L 928.4 584 L 928.4 395 L 912.4 395" class="a-security" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
+        <path data-edge-from="laya_prerank" data-edge-to="ollama_curator" data-edge-label="top 7 stories" data-edge-key="5" data-edge-id="e_prerank_curator" data-composition-points="514,227;514,170;592,170;592,395;576,395" d="M 514 227 L 514 170 L 592 170 L 592 395 L 576 395" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="laya_router" data-edge-to="laya_prerank" data-edge-label="active theme" data-edge-key="6" data-edge-id="e_router_prerank" data-composition-points="376.4,261;392.4,261;392.4,170;514,170;514,227" d="M 376.4 261 L 392.4 261 L 392.4 170 L 514 170 L 514 227" class="a-security" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
+        <path data-edge-from="rss_sources" data-edge-to="fetcher" data-edge-label="pull XML/Atom" data-edge-key="7" data-edge-id="e_rss_fetch" data-composition-points="172,127;252.39999999999998,127" d="M 172 127 L 252.39999999999998 127" class="a-default" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="cgap_planner" data-edge-to="script_gate" data-edge-label="plan &amp; audio audit" data-edge-key="8" data-edge-id="e_script_audit" data-composition-points="1112,395;1204.4,395;1204.4,529;1112,529" d="M 1112 395 L 1204.4 395 L 1204.4 529 L 1112 529" class="a-security" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
+        <path data-edge-from="script_gate" data-edge-to="tts_dispatch" data-edge-label="verified voice" data-edge-key="9" data-edge-id="e_script_dispatch" data-composition-points="1112,529;1128,529;1128,718;1050,718;1050,697" d="M 1112 529 L 1128 529 L 1128 718 L 1050 718 L 1050 697" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="ollama_summary" data-edge-to="validator_gate" data-edge-label="draft summary" data-edge-key="10" data-edge-id="e_summary_gate" data-composition-points="718.4,429;718.4,445;20,445;20,529;656.4,529" d="M 718.4 429 L 718.4 445 L 20 445 L 20 529 L 656.4 529" class="a-default" stroke-width="1.4" marker-end="url(#arrowhead)"/>
 
         <!-- Nodes -->
-        <g id="node-rss_sources" data-node-id="rss_sources" data-node-label="Curated Feeds" tabindex="0" role="button" aria-label="Focus Curated Feeds, HN, Blogs, arXiv, Ingestion &amp; Sources › Feed aggregation › 1. Ingest &amp; Theme Route" aria-pressed="false" data-node-kind="cloud" data-node-sublabel="HN, Blogs, arXiv" data-node-context="Ingestion &amp; Sources › Feed aggregation › 1. Ingest &amp; Theme Route">
-          <title>Curated Feeds · HN, Blogs, arXiv · Ingestion &amp; Sources › Feed aggregation › 1. Ingest &amp; Theme Route</title>
-          <rect x="48" y="99" width="124" height="52" rx="6" class="c-mask"/>
-          <rect x="48" y="99" width="124" height="52" rx="6" class="c-cloud" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="cloud" class="semantic-sigil s-cloud" transform="translate(54 105) scale(0.6875)">
+        <g id="node-rss_sources" data-node-id="rss_sources" data-node-label="Curated Feeds" tabindex="0" role="button" aria-label="Focus Curated Feeds, HN, Blogs, arXiv, Ingestion &amp; Window Resiliency › Feed aggregation &amp; backoff › 1. Ingest &amp; Theme Route" aria-pressed="false" data-node-kind="cloud" data-node-sublabel="HN, Blogs, arXiv" data-node-tag="96h window / 168h backoff" data-node-context="Ingestion &amp; Window Resiliency › Feed aggregation &amp; backoff › 1. Ingest &amp; Theme Route">
+          <title>Curated Feeds · HN, Blogs, arXiv · Ingestion &amp; Window Resiliency › Feed aggregation &amp; backoff › 1. Ingest &amp; Theme Route · 96h window / 168h backoff</title>
+          <rect x="48" y="93" width="124" height="68" rx="6" class="c-mask"/>
+          <rect x="48" y="93" width="124" height="68" rx="6" class="c-cloud" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="cloud" class="semantic-sigil s-cloud" transform="translate(54 99) scale(0.6875)">
             <path d="M4.3 12.5h7.3a2.4 2.4 0 0 0 .2-4.8 4 4 0 0 0-7.5-1.3A3.1 3.1 0 0 0 4.3 12.5Z"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="110" y="120" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Curated Feeds</text>
-          <text data-detail="context" x="110" y="137" class="t-muted" font-size="8" text-anchor="middle">HN, Blogs, arXiv</text>
+          <text data-node-label="" data-detail-anchor="" x="110" y="114" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Curated Feeds</text>
+          <text data-detail="context" x="110" y="131" class="t-muted" font-size="8" text-anchor="middle">HN, Blogs, arXiv</text>
+        <text data-detail="fine" x="110" y="149" class="t-cloud" font-size="7" text-anchor="middle">96h window / 168h backoff</text>
         </g>
 
-        <g id="node-fetcher" data-node-id="fetcher" data-node-label="News Fetcher" tabindex="0" role="button" aria-label="Focus News Fetcher, parse + dedupe, Ingestion &amp; Sources › Feed aggregation › 1. Ingest &amp; Theme Route" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="parse + dedupe" data-node-tag="news_fetcher.py" data-node-context="Ingestion &amp; Sources › Feed aggregation › 1. Ingest &amp; Theme Route">
-          <title>News Fetcher · parse + dedupe · Ingestion &amp; Sources › Feed aggregation › 1. Ingest &amp; Theme Route · news_fetcher.py</title>
-          <rect x="252.39999999999998" y="91" width="124" height="68" rx="6" class="c-mask"/>
-          <rect x="252.39999999999998" y="91" width="124" height="68" rx="6" class="c-frontend" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(258.4 97) scale(0.6875)">
+        <g id="node-fetcher" data-node-id="fetcher" data-node-label="News Fetcher" tabindex="0" role="button" aria-label="Focus News Fetcher, dedupe + scrape, Ingestion &amp; Window Resiliency › Feed aggregation &amp; backoff › 1. Ingest &amp; Theme Route" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="dedupe + scrape" data-node-tag="ADR-12 SQLite 7d" data-node-context="Ingestion &amp; Window Resiliency › Feed aggregation &amp; backoff › 1. Ingest &amp; Theme Route">
+          <title>News Fetcher · dedupe + scrape · Ingestion &amp; Window Resiliency › Feed aggregation &amp; backoff › 1. Ingest &amp; Theme Route · ADR-12 SQLite 7d</title>
+          <rect x="252.39999999999998" y="93" width="124" height="68" rx="6" class="c-mask"/>
+          <rect x="252.39999999999998" y="93" width="124" height="68" rx="6" class="c-frontend" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(258.4 99) scale(0.6875)">
             <rect x="2" y="3" width="12" height="10" rx="2"/>
             <path d="M2 6.5h12"/>
             <circle cx="4.1" cy="4.8" r=".7" class="sigil-fill"/>
             <circle cx="6.3" cy="4.8" r=".7" class="sigil-fill"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="314.4" y="112" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">News Fetcher</text>
-          <text data-detail="context" x="314.4" y="129" class="t-muted" font-size="8" text-anchor="middle">parse + dedupe</text>
-        <text data-detail="fine" x="314.4" y="147" class="t-frontend" font-size="7" text-anchor="middle">news_fetcher.py</text>
+          <text data-node-label="" data-detail-anchor="" x="314.4" y="114" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">News Fetcher</text>
+          <text data-detail="context" x="314.4" y="131" class="t-muted" font-size="8" text-anchor="middle">dedupe + scrape</text>
+        <text data-detail="fine" x="314.4" y="149" class="t-frontend" font-size="7" text-anchor="middle">ADR-12 SQLite 7d</text>
         </g>
 
         <g id="node-laya_router" data-node-id="laya_router" data-node-label="LAYA Router" tabindex="0" role="button" aria-label="Focus LAYA Router, theme + hype drop, System 1 Triage (LAYA) › Sub-second triage › 1. Ingest &amp; Theme Route" aria-pressed="false" data-node-kind="security" data-node-sublabel="theme + hype drop" data-node-tag="Option 4 &amp; 5" data-node-context="System 1 Triage (LAYA) › Sub-second triage › 1. Ingest &amp; Theme Route">
           <title>LAYA Router · theme + hype drop · System 1 Triage (LAYA) › Sub-second triage › 1. Ingest &amp; Theme Route · Option 4 &amp; 5</title>
-          <rect x="252.39999999999998" y="225" width="124" height="68" rx="6" class="c-mask"/>
-          <rect x="252.39999999999998" y="225" width="124" height="68" rx="6" class="c-security" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(258.4 231) scale(0.6875)">
+          <rect x="252.39999999999998" y="227" width="124" height="68" rx="6" class="c-mask"/>
+          <rect x="252.39999999999998" y="227" width="124" height="68" rx="6" class="c-security" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(258.4 233) scale(0.6875)">
             <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
             <path d="m5.8 8 1.5 1.5 3-3"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="314.4" y="246" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">LAYA Router</text>
-          <text data-detail="context" x="314.4" y="263" class="t-muted" font-size="8" text-anchor="middle">theme + hype drop</text>
-        <text data-detail="fine" x="314.4" y="281" class="t-security" font-size="7" text-anchor="middle">Option 4 &amp; 5</text>
+          <text data-node-label="" data-detail-anchor="" x="314.4" y="248" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">LAYA Router</text>
+          <text data-detail="context" x="314.4" y="265" class="t-muted" font-size="8" text-anchor="middle">theme + hype drop</text>
+        <text data-detail="fine" x="314.4" y="283" class="t-security" font-size="7" text-anchor="middle">Option 4 &amp; 5</text>
         </g>
 
         <g id="node-laya_prerank" data-node-id="laya_prerank" data-node-label="LAYA Pre-Rank" tabindex="0" role="button" aria-label="Focus LAYA Pre-Rank, top-7 shortlist, System 1 Triage (LAYA) › Sub-second triage › 2. Pre-Rank &amp; Curate" aria-pressed="false" data-node-kind="security" data-node-sublabel="top-7 shortlist" data-node-tag="Option 1 (&lt;500ms)" data-node-context="System 1 Triage (LAYA) › Sub-second triage › 2. Pre-Rank &amp; Curate">
           <title>LAYA Pre-Rank · top-7 shortlist · System 1 Triage (LAYA) › Sub-second triage › 2. Pre-Rank &amp; Curate · Option 1 (&lt;500ms)</title>
-          <rect x="452" y="225" width="124" height="68" rx="6" class="c-mask"/>
-          <rect x="452" y="225" width="124" height="68" rx="6" class="c-security" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(458 231) scale(0.6875)">
+          <rect x="452" y="227" width="124" height="68" rx="6" class="c-mask"/>
+          <rect x="452" y="227" width="124" height="68" rx="6" class="c-security" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(458 233) scale(0.6875)">
             <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
             <path d="m5.8 8 1.5 1.5 3-3"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="514" y="246" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">LAYA Pre-Rank</text>
-          <text data-detail="context" x="514" y="263" class="t-muted" font-size="8" text-anchor="middle">top-7 shortlist</text>
-        <text data-detail="fine" x="514" y="281" class="t-security" font-size="7" text-anchor="middle">Option 1 (&lt;500ms)</text>
+          <text data-node-label="" data-detail-anchor="" x="514" y="248" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">LAYA Pre-Rank</text>
+          <text data-detail="context" x="514" y="265" class="t-muted" font-size="8" text-anchor="middle">top-7 shortlist</text>
+        <text data-detail="fine" x="514" y="283" class="t-security" font-size="7" text-anchor="middle">Option 1 (&lt;500ms)</text>
         </g>
 
         <g id="node-ollama_curator" data-node-id="ollama_curator" data-node-label="SLM Curator" tabindex="0" role="button" aria-label="Focus SLM Curator, CoT top-5 stories, System 2 Deliberation (Ollama SLMs) › Deliberate reasoning › 2. Pre-Rank &amp; Curate" aria-pressed="false" data-node-kind="backend" data-node-sublabel="CoT top-5 stories" data-node-tag="phi4-mini:3.8b" data-node-context="System 2 Deliberation (Ollama SLMs) › Deliberate reasoning › 2. Pre-Rank &amp; Curate">
           <title>SLM Curator · CoT top-5 stories · System 2 Deliberation (Ollama SLMs) › Deliberate reasoning › 2. Pre-Rank &amp; Curate · phi4-mini:3.8b</title>
-          <rect x="452" y="359" width="124" height="68" rx="6" class="c-mask"/>
-          <rect x="452" y="359" width="124" height="68" rx="6" class="c-backend" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(458 365) scale(0.6875)">
+          <rect x="452" y="361" width="124" height="68" rx="6" class="c-mask"/>
+          <rect x="452" y="361" width="124" height="68" rx="6" class="c-backend" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(458 367) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="514" y="380" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">SLM Curator</text>
-          <text data-detail="context" x="514" y="397" class="t-muted" font-size="8" text-anchor="middle">CoT top-5 stories</text>
-        <text data-detail="fine" x="514" y="415" class="t-backend" font-size="7" text-anchor="middle">phi4-mini:3.8b</text>
+          <text data-node-label="" data-detail-anchor="" x="514" y="382" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">SLM Curator</text>
+          <text data-detail="context" x="514" y="399" class="t-muted" font-size="8" text-anchor="middle">CoT top-5 stories</text>
+        <text data-detail="fine" x="514" y="417" class="t-backend" font-size="7" text-anchor="middle">phi4-mini:3.8b</text>
         </g>
 
         <g id="node-ollama_summary" data-node-id="ollama_summary" data-node-label="Extractive Writer" tabindex="0" role="button" aria-label="Focus Extractive Writer, quotes + sentences, System 2 Deliberation (Ollama SLMs) › Deliberate reasoning › 3. Factual Verification" aria-pressed="false" data-node-kind="backend" data-node-sublabel="quotes + sentences" data-node-tag="qwen2.5:3b" data-node-context="System 2 Deliberation (Ollama SLMs) › Deliberate reasoning › 3. Factual Verification">
           <title>Extractive Writer · quotes + sentences · System 2 Deliberation (Ollama SLMs) › Deliberate reasoning › 3. Factual Verification · qwen2.5:3b</title>
-          <rect x="656.4" y="359" width="124" height="68" rx="6" class="c-mask"/>
-          <rect x="656.4" y="359" width="124" height="68" rx="6" class="c-backend" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(662.4 365) scale(0.6875)">
+          <rect x="656.4" y="361" width="124" height="68" rx="6" class="c-mask"/>
+          <rect x="656.4" y="361" width="124" height="68" rx="6" class="c-backend" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(662.4 367) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="718.4" y="380" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Extractive Writer</text>
-          <text data-detail="context" x="718.4" y="397" class="t-muted" font-size="8" text-anchor="middle">quotes + sentences</text>
-        <text data-detail="fine" x="718.4" y="415" class="t-backend" font-size="7" text-anchor="middle">qwen2.5:3b</text>
+          <text data-node-label="" data-detail-anchor="" x="718.4" y="382" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Extractive Writer</text>
+          <text data-detail="context" x="718.4" y="399" class="t-muted" font-size="8" text-anchor="middle">quotes + sentences</text>
+        <text data-detail="fine" x="718.4" y="417" class="t-backend" font-size="7" text-anchor="middle">qwen2.5:3b</text>
         </g>
 
         <g id="node-ollama_auditor" data-node-id="ollama_auditor" data-node-label="SLM Fact Auditor" tabindex="0" role="button" aria-label="Focus SLM Fact Auditor, audit @ temp 0, System 2 Deliberation (Ollama SLMs) › Deliberate reasoning › 3. Factual Verification" aria-pressed="false" data-node-kind="backend" data-node-sublabel="audit @ temp 0" data-node-tag="qwen2.5:3b" data-node-context="System 2 Deliberation (Ollama SLMs) › Deliberate reasoning › 3. Factual Verification">
           <title>SLM Fact Auditor · audit @ temp 0 · System 2 Deliberation (Ollama SLMs) › Deliberate reasoning › 3. Factual Verification · qwen2.5:3b</title>
-          <rect x="788.4" y="359" width="124" height="68" rx="6" class="c-mask"/>
-          <rect x="788.4" y="359" width="124" height="68" rx="6" class="c-backend" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(794.4 365) scale(0.6875)">
+          <rect x="788.4" y="361" width="124" height="68" rx="6" class="c-mask"/>
+          <rect x="788.4" y="361" width="124" height="68" rx="6" class="c-backend" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(794.4 367) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="850.4" y="380" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">SLM Fact Auditor</text>
-          <text data-detail="context" x="850.4" y="397" class="t-muted" font-size="8" text-anchor="middle">audit @ temp 0</text>
-        <text data-detail="fine" x="850.4" y="415" class="t-backend" font-size="7" text-anchor="middle">qwen2.5:3b</text>
+          <text data-node-label="" data-detail-anchor="" x="850.4" y="382" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">SLM Fact Auditor</text>
+          <text data-detail="context" x="850.4" y="399" class="t-muted" font-size="8" text-anchor="middle">audit @ temp 0</text>
+        <text data-detail="fine" x="850.4" y="417" class="t-backend" font-size="7" text-anchor="middle">qwen2.5:3b</text>
         </g>
 
-        <g id="node-monologue_gen" data-node-id="monologue_gen" data-node-label="Podcast Script" tabindex="0" role="button" aria-label="Focus Podcast Script, truth hierarchy, System 2 Deliberation (Ollama SLMs) › Deliberate reasoning › 4. Monologue Audit &amp; Dispatch" aria-pressed="false" data-node-kind="backend" data-node-sublabel="truth hierarchy" data-node-tag="phi4-mini:3.8b" data-node-context="System 2 Deliberation (Ollama SLMs) › Deliberate reasoning › 4. Monologue Audit &amp; Dispatch">
-          <title>Podcast Script · truth hierarchy · System 2 Deliberation (Ollama SLMs) › Deliberate reasoning › 4. Monologue Audit &amp; Dispatch · phi4-mini:3.8b</title>
-          <rect x="988" y="359" width="124" height="68" rx="6" class="c-mask"/>
-          <rect x="988" y="359" width="124" height="68" rx="6" class="c-backend" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(994 365) scale(0.6875)">
+        <g id="node-cgap_planner" data-node-id="cgap_planner" data-node-label="CGAP Monologue" tabindex="0" role="button" aria-label="Focus CGAP Monologue, Dual-Grounding, System 2 Deliberation (Ollama SLMs) › Deliberate reasoning › 4. CGAP Monologue &amp; Dispatch" aria-pressed="false" data-node-kind="backend" data-node-sublabel="Dual-Grounding" data-node-tag="ADR-14/15 phi4-mini" data-node-context="System 2 Deliberation (Ollama SLMs) › Deliberate reasoning › 4. CGAP Monologue &amp; Dispatch">
+          <title>CGAP Monologue · Dual-Grounding · System 2 Deliberation (Ollama SLMs) › Deliberate reasoning › 4. CGAP Monologue &amp; Dispatch · ADR-14/15 phi4-mini</title>
+          <rect x="988" y="361" width="124" height="68" rx="6" class="c-mask"/>
+          <rect x="988" y="361" width="124" height="68" rx="6" class="c-backend" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(994 367) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="1050" y="380" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Podcast Script</text>
-          <text data-detail="context" x="1050" y="397" class="t-muted" font-size="8" text-anchor="middle">truth hierarchy</text>
-        <text data-detail="fine" x="1050" y="415" class="t-backend" font-size="7" text-anchor="middle">phi4-mini:3.8b</text>
+          <text data-node-label="" data-detail-anchor="" x="1050" y="382" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">CGAP Monologue</text>
+          <text data-detail="context" x="1050" y="399" class="t-muted" font-size="8" text-anchor="middle">Dual-Grounding</text>
+        <text data-detail="fine" x="1050" y="417" class="t-backend" font-size="7" text-anchor="middle">ADR-14/15 phi4-mini</text>
         </g>
 
         <g id="node-validator_gate" data-node-id="validator_gate" data-node-label="LAYA &amp; Regex Gate" tabindex="0" role="button" aria-label="Focus LAYA &amp; Regex Gate, regex + entailment, Verification &amp; Guardrails › Anti-hallucination gates › 3. Factual Verification" aria-pressed="false" data-node-kind="security" data-node-sublabel="regex + entailment" data-node-tag="Option 2 Pre-Gate" data-node-context="Verification &amp; Guardrails › Anti-hallucination gates › 3. Factual Verification">
           <title>LAYA &amp; Regex Gate · regex + entailment · Verification &amp; Guardrails › Anti-hallucination gates › 3. Factual Verification · Option 2 Pre-Gate</title>
-          <rect x="656.4" y="493" width="124" height="68" rx="6" class="c-mask"/>
-          <rect x="656.4" y="493" width="124" height="68" rx="6" class="c-security" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(662.4 499) scale(0.6875)">
+          <rect x="656.4" y="495" width="124" height="68" rx="6" class="c-mask"/>
+          <rect x="656.4" y="495" width="124" height="68" rx="6" class="c-security" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(662.4 501) scale(0.6875)">
             <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
             <path d="m5.8 8 1.5 1.5 3-3"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="718.4" y="514" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">LAYA &amp; Regex Gate</text>
-          <text data-detail="context" x="718.4" y="531" class="t-muted" font-size="8" text-anchor="middle">regex + entailment</text>
-        <text data-detail="fine" x="718.4" y="549" class="t-security" font-size="7" text-anchor="middle">Option 2 Pre-Gate</text>
+          <text data-node-label="" data-detail-anchor="" x="718.4" y="516" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">LAYA &amp; Regex Gate</text>
+          <text data-detail="context" x="718.4" y="533" class="t-muted" font-size="8" text-anchor="middle">regex + entailment</text>
+        <text data-detail="fine" x="718.4" y="551" class="t-security" font-size="7" text-anchor="middle">Option 2 Pre-Gate</text>
         </g>
 
         <g id="node-fallback_node" data-node-id="fallback_node" data-node-label="Safe Fallback" tabindex="0" role="button" aria-label="Focus Safe Fallback, warning + link, Verification &amp; Guardrails › Anti-hallucination gates › 3. Factual Verification" aria-pressed="false" data-node-kind="security" data-node-sublabel="warning + link" data-node-tag="fail-closed" data-node-context="Verification &amp; Guardrails › Anti-hallucination gates › 3. Factual Verification">
           <title>Safe Fallback · warning + link · Verification &amp; Guardrails › Anti-hallucination gates › 3. Factual Verification · fail-closed</title>
-          <rect x="788.4" y="493" width="124" height="68" rx="6" class="c-mask"/>
-          <rect x="788.4" y="493" width="124" height="68" rx="6" class="c-security" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(794.4 499) scale(0.6875)">
+          <rect x="788.4" y="495" width="124" height="68" rx="6" class="c-mask"/>
+          <rect x="788.4" y="495" width="124" height="68" rx="6" class="c-security" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(794.4 501) scale(0.6875)">
             <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
             <path d="m5.8 8 1.5 1.5 3-3"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="850.4" y="514" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Safe Fallback</text>
-          <text data-detail="context" x="850.4" y="531" class="t-muted" font-size="8" text-anchor="middle">warning + link</text>
-        <text data-detail="fine" x="850.4" y="549" class="t-security" font-size="7" text-anchor="middle">fail-closed</text>
+          <text data-node-label="" data-detail-anchor="" x="850.4" y="516" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Safe Fallback</text>
+          <text data-detail="context" x="850.4" y="533" class="t-muted" font-size="8" text-anchor="middle">warning + link</text>
+        <text data-detail="fine" x="850.4" y="551" class="t-security" font-size="7" text-anchor="middle">fail-closed</text>
         </g>
 
-        <g id="node-script_gate" data-node-id="script_gate" data-node-label="Script Auditor" tabindex="0" role="button" aria-label="Focus Script Auditor, Hierarchy of Truth, Verification &amp; Guardrails › Anti-hallucination gates › 4. Monologue Audit &amp; Dispatch" aria-pressed="false" data-node-kind="security" data-node-sublabel="Hierarchy of Truth" data-node-tag="anti-hallucination" data-node-context="Verification &amp; Guardrails › Anti-hallucination gates › 4. Monologue Audit &amp; Dispatch">
-          <title>Script Auditor · Hierarchy of Truth · Verification &amp; Guardrails › Anti-hallucination gates › 4. Monologue Audit &amp; Dispatch · anti-hallucination</title>
-          <rect x="988" y="493" width="124" height="68" rx="6" class="c-mask"/>
-          <rect x="988" y="493" width="124" height="68" rx="6" class="c-security" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(994 499) scale(0.6875)">
+        <g id="node-script_gate" data-node-id="script_gate" data-node-label="CGAP &amp; Truth Gate" tabindex="0" role="button" aria-label="Focus CGAP &amp; Truth Gate, predicates + truth, Verification &amp; Guardrails › Anti-hallucination gates › 4. CGAP Monologue &amp; Dispatch" aria-pressed="false" data-node-kind="security" data-node-sublabel="predicates + truth" data-node-tag="&lt;2ms pre-gate" data-node-context="Verification &amp; Guardrails › Anti-hallucination gates › 4. CGAP Monologue &amp; Dispatch">
+          <title>CGAP &amp; Truth Gate · predicates + truth · Verification &amp; Guardrails › Anti-hallucination gates › 4. CGAP Monologue &amp; Dispatch · &lt;2ms pre-gate</title>
+          <rect x="988" y="495" width="124" height="68" rx="6" class="c-mask"/>
+          <rect x="988" y="495" width="124" height="68" rx="6" class="c-security" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(994 501) scale(0.6875)">
             <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
             <path d="m5.8 8 1.5 1.5 3-3"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="1050" y="514" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Script Auditor</text>
-          <text data-detail="context" x="1050" y="531" class="t-muted" font-size="8" text-anchor="middle">Hierarchy of Truth</text>
-        <text data-detail="fine" x="1050" y="549" class="t-security" font-size="7" text-anchor="middle">anti-hallucination</text>
+          <text data-node-label="" data-detail-anchor="" x="1050" y="516" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">CGAP &amp; Truth Gate</text>
+          <text data-detail="context" x="1050" y="533" class="t-muted" font-size="8" text-anchor="middle">predicates + truth</text>
+        <text data-detail="fine" x="1050" y="551" class="t-security" font-size="7" text-anchor="middle">&lt;2ms pre-gate</text>
         </g>
 
-        <g id="node-tts_dispatch" data-node-id="tts_dispatch" data-node-label="Telegram Bot" tabindex="0" role="button" aria-label="Focus Telegram Bot, kokoro-mlx WAV, Voice Synthesis &amp; Delivery › Distribution › 4. Monologue Audit &amp; Dispatch" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="kokoro-mlx WAV" data-node-tag="notifier.py" data-node-context="Voice Synthesis &amp; Delivery › Distribution › 4. Monologue Audit &amp; Dispatch">
-          <title>Telegram Bot · kokoro-mlx WAV · Voice Synthesis &amp; Delivery › Distribution › 4. Monologue Audit &amp; Dispatch · notifier.py</title>
-          <rect x="988" y="627" width="124" height="68" rx="6" class="c-mask"/>
-          <rect x="988" y="627" width="124" height="68" rx="6" class="c-messagebus" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(994 633) scale(0.6875)">
+        <g id="node-tts_dispatch" data-node-id="tts_dispatch" data-node-label="Telegram Bot" tabindex="0" role="button" aria-label="Focus Telegram Bot, kokoro-mlx WAV, Voice Synthesis &amp; Delivery › Distribution › 4. CGAP Monologue &amp; Dispatch" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="kokoro-mlx WAV" data-node-tag="notifier.py" data-node-context="Voice Synthesis &amp; Delivery › Distribution › 4. CGAP Monologue &amp; Dispatch">
+          <title>Telegram Bot · kokoro-mlx WAV · Voice Synthesis &amp; Delivery › Distribution › 4. CGAP Monologue &amp; Dispatch · notifier.py</title>
+          <rect x="988" y="629" width="124" height="68" rx="6" class="c-mask"/>
+          <rect x="988" y="629" width="124" height="68" rx="6" class="c-messagebus" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(994 635) scale(0.6875)">
             <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11"/>
             <circle cx="5" cy="4.5" r="1" class="sigil-fill"/>
             <circle cx="10.5" cy="8" r="1" class="sigil-fill"/>
             <circle cx="7" cy="11.5" r="1" class="sigil-fill"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="1050" y="648" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Telegram Bot</text>
-          <text data-detail="context" x="1050" y="665" class="t-muted" font-size="8" text-anchor="middle">kokoro-mlx WAV</text>
-        <text data-detail="fine" x="1050" y="683" class="t-messagebus" font-size="7" text-anchor="middle">notifier.py</text>
+          <text data-node-label="" data-detail-anchor="" x="1050" y="650" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Telegram Bot</text>
+          <text data-detail="context" x="1050" y="667" class="t-muted" font-size="8" text-anchor="middle">kokoro-mlx WAV</text>
+        <text data-detail="fine" x="1050" y="685" class="t-messagebus" font-size="7" text-anchor="middle">notifier.py</text>
         </g>
 
         <!-- Edge labels -->
         <g data-detail="context" data-edge-from="ollama_auditor" data-edge-to="fallback_node" data-edge-label="failed 3x" data-edge-key="0" data-edge-id="e_auditor_fail">
-          <rect x="862.8" y="562" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
-          <text x="889.4" y="572" class="t-database" font-size="8" text-anchor="middle">failed 3x</text>
+          <rect x="862.8" y="564" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
+          <text x="889.4" y="574" class="t-database" font-size="8" text-anchor="middle">failed 3x</text>
         </g>
-        <g data-detail="context" data-edge-from="ollama_auditor" data-edge-to="monologue_gen" data-edge-label="audit passed" data-edge-key="1" data-edge-id="e_auditor_pass">
-          <rect x="916.4000000000001" y="323" width="67.6" height="14" rx="3" class="c-mask"/>
-          <text x="950.2" y="333" class="t-backend" font-size="8" text-anchor="middle">audit passed</text>
+        <g data-detail="context" data-edge-from="ollama_auditor" data-edge-to="cgap_planner" data-edge-label="audit passed" data-edge-key="1" data-edge-id="e_auditor_pass">
+          <rect x="916.4000000000001" y="325" width="67.6" height="14" rx="3" class="c-mask"/>
+          <text x="950.2" y="335" class="t-backend" font-size="8" text-anchor="middle">audit passed</text>
         </g>
         <g data-detail="context" data-edge-from="ollama_curator" data-edge-to="ollama_summary" data-edge-label="curated top 5" data-edge-key="2" data-edge-id="e_curator_summary">
-          <rect x="580" y="423" width="72.4" height="14" rx="3" class="c-mask"/>
-          <text x="616.2" y="433" class="t-muted" font-size="8" text-anchor="middle">curated top 5</text>
+          <rect x="580" y="425" width="72.4" height="14" rx="3" class="c-mask"/>
+          <text x="616.2" y="435" class="t-muted" font-size="8" text-anchor="middle">curated top 5</text>
         </g>
         <g data-detail="context" data-edge-from="fetcher" data-edge-to="laya_router" data-edge-label="breaking pool" data-edge-key="3" data-edge-id="e_fetch_router">
-          <rect x="317.2" y="294" width="72.4" height="14" rx="3" class="c-mask"/>
-          <text x="353.4" y="304" class="t-muted" font-size="8" text-anchor="middle">breaking pool</text>
+          <rect x="317.2" y="296" width="72.4" height="14" rx="3" class="c-mask"/>
+          <text x="353.4" y="306" class="t-muted" font-size="8" text-anchor="middle">breaking pool</text>
         </g>
         <g data-detail="context" data-edge-from="validator_gate" data-edge-to="ollama_auditor" data-edge-label="pre-gate pass" data-edge-key="4" data-edge-id="e_gate_auditor">
-          <rect x="748.1999999999999" y="562" width="72.4" height="14" rx="3" class="c-mask"/>
-          <text x="784.4" y="572" class="t-security" font-size="8" text-anchor="middle">pre-gate pass</text>
+          <rect x="748.1999999999999" y="564" width="72.4" height="14" rx="3" class="c-mask"/>
+          <text x="784.4" y="574" class="t-security" font-size="8" text-anchor="middle">pre-gate pass</text>
         </g>
         <g data-detail="context" data-edge-from="laya_prerank" data-edge-to="ollama_curator" data-edge-label="top 7 stories" data-edge-key="5" data-edge-id="e_prerank_curator">
-          <rect x="516.8" y="148" width="72.4" height="14" rx="3" class="c-mask"/>
-          <text x="553" y="158" class="t-backend" font-size="8" text-anchor="middle">top 7 stories</text>
+          <rect x="516.8" y="150" width="72.4" height="14" rx="3" class="c-mask"/>
+          <text x="553" y="160" class="t-backend" font-size="8" text-anchor="middle">top 7 stories</text>
         </g>
         <g data-detail="context" data-edge-from="laya_router" data-edge-to="laya_prerank" data-edge-label="active theme" data-edge-key="6" data-edge-id="e_router_prerank">
-          <rect x="419.4" y="148" width="67.6" height="14" rx="3" class="c-mask"/>
-          <text x="453.2" y="158" class="t-security" font-size="8" text-anchor="middle">active theme</text>
+          <rect x="419.4" y="150" width="67.6" height="14" rx="3" class="c-mask"/>
+          <text x="453.2" y="160" class="t-security" font-size="8" text-anchor="middle">active theme</text>
         </g>
         <g data-detail="context" data-edge-from="rss_sources" data-edge-to="fetcher" data-edge-label="pull XML/Atom" data-edge-key="7" data-edge-id="e_rss_fetch">
-          <rect x="176" y="105" width="72.4" height="14" rx="3" class="c-mask"/>
-          <text x="212.2" y="115" class="t-muted" font-size="8" text-anchor="middle">pull XML/Atom</text>
+          <rect x="176" y="107" width="72.4" height="14" rx="3" class="c-mask"/>
+          <text x="212.2" y="117" class="t-muted" font-size="8" text-anchor="middle">pull XML/Atom</text>
         </g>
-        <g data-detail="context" data-edge-from="monologue_gen" data-edge-to="script_gate" data-edge-label="monologue check" data-edge-key="8" data-edge-id="e_script_audit">
-          <rect x="1110" y="373" width="82" height="14" rx="3" class="c-mask"/>
-          <text x="1151" y="383" class="t-security" font-size="8" text-anchor="middle">monologue check</text>
+        <g data-detail="context" data-edge-from="cgap_planner" data-edge-to="script_gate" data-edge-label="plan &amp; audio audit" data-edge-key="8" data-edge-id="e_script_audit">
+          <rect x="1110" y="375" width="96.39999999999999" height="14" rx="3" class="c-mask"/>
+          <text x="1158.2" y="385" class="t-security" font-size="8" text-anchor="middle">plan &amp; audio audit</text>
         </g>
         <g data-detail="context" data-edge-from="script_gate" data-edge-to="tts_dispatch" data-edge-label="verified voice" data-edge-key="9" data-edge-id="e_script_dispatch">
-          <rect x="1050.4" y="696" width="77.2" height="14" rx="3" class="c-mask"/>
-          <text x="1089" y="706" class="t-backend" font-size="8" text-anchor="middle">verified voice</text>
+          <rect x="1050.4" y="698" width="77.2" height="14" rx="3" class="c-mask"/>
+          <text x="1089" y="708" class="t-backend" font-size="8" text-anchor="middle">verified voice</text>
         </g>
         <g data-detail="context" data-edge-from="ollama_summary" data-edge-to="validator_gate" data-edge-label="draft summary" data-edge-key="10" data-edge-id="e_summary_gate">
-          <rect x="333" y="423" width="72.4" height="14" rx="3" class="c-mask"/>
-          <text x="369.2" y="433" class="t-muted" font-size="8" text-anchor="middle">draft summary</text>
+          <rect x="333" y="425" width="72.4" height="14" rx="3" class="c-mask"/>
+          <text x="369.2" y="435" class="t-muted" font-size="8" text-anchor="middle">draft summary</text>
         </g>
 
         <!-- Legend -->
         <g data-legend="" data-legend-bridge="">
-          <text x="20" y="724" class="t-primary" font-size="12" font-weight="650">Legend</text>
-          <g data-legend-semantic-kind="frontend" data-legend-kind="frontend" data-legend-label="User UI" data-legend-x="20" data-legend-baseline="744" data-legend-width="74">
-            <rect x="20" y="736" width="14" height="9" rx="2" class="c-frontend" stroke-width="1"/>
-            <text x="42" y="744" class="t-muted" font-size="7.5" font-weight="500">User UI</text>
+          <text x="20" y="726" class="t-primary" font-size="12" font-weight="650">Legend</text>
+          <g data-legend-semantic-kind="frontend" data-legend-kind="frontend" data-legend-label="User UI" data-legend-x="20" data-legend-baseline="746" data-legend-width="74">
+            <rect x="20" y="738" width="14" height="9" rx="2" class="c-frontend" stroke-width="1"/>
+            <text x="42" y="746" class="t-muted" font-size="7.5" font-weight="500">User UI</text>
           </g>
-          <g data-legend-semantic-kind="backend" data-legend-kind="backend" data-legend-label="Agent logic" data-legend-x="101" data-legend-baseline="744" data-legend-width="91">
-            <rect x="101" y="736" width="14" height="9" rx="2" class="c-backend" stroke-width="1"/>
-            <text x="123" y="744" class="t-muted" font-size="7.5" font-weight="500">Agent logic</text>
+          <g data-legend-semantic-kind="backend" data-legend-kind="backend" data-legend-label="Agent logic" data-legend-x="101" data-legend-baseline="746" data-legend-width="91">
+            <rect x="101" y="738" width="14" height="9" rx="2" class="c-backend" stroke-width="1"/>
+            <text x="123" y="746" class="t-muted" font-size="7.5" font-weight="500">Agent logic</text>
           </g>
-          <g data-legend-semantic-kind="security" data-legend-kind="security" data-legend-label="Policy" data-legend-x="199" data-legend-baseline="744" data-legend-width="70">
-            <rect x="199" y="736" width="14" height="9" rx="2" class="c-security" stroke-width="1"/>
-            <text x="221" y="744" class="t-muted" font-size="7.5" font-weight="500">Policy</text>
+          <g data-legend-semantic-kind="security" data-legend-kind="security" data-legend-label="Policy" data-legend-x="199" data-legend-baseline="746" data-legend-width="70">
+            <rect x="199" y="738" width="14" height="9" rx="2" class="c-security" stroke-width="1"/>
+            <text x="221" y="746" class="t-muted" font-size="7.5" font-weight="500">Policy</text>
           </g>
-          <g data-legend-semantic-kind="messagebus" data-legend-kind="messagebus" data-legend-label="Tool action" data-legend-x="276" data-legend-baseline="744" data-legend-width="91">
-            <rect x="276" y="736" width="14" height="9" rx="2" class="c-messagebus" stroke-width="1"/>
-            <text x="298" y="744" class="t-muted" font-size="7.5" font-weight="500">Tool action</text>
+          <g data-legend-semantic-kind="messagebus" data-legend-kind="messagebus" data-legend-label="Tool action" data-legend-x="276" data-legend-baseline="746" data-legend-width="91">
+            <rect x="276" y="738" width="14" height="9" rx="2" class="c-messagebus" stroke-width="1"/>
+            <text x="298" y="746" class="t-muted" font-size="7.5" font-weight="500">Tool action</text>
           </g>
-          <g data-legend-semantic-kind="cloud" data-legend-kind="cloud" data-legend-label="Cloud service" data-legend-x="374" data-legend-baseline="744" data-legend-width="100">
-            <rect x="374" y="736" width="14" height="9" rx="2" class="c-cloud" stroke-width="1"/>
-            <text x="396" y="744" class="t-muted" font-size="7.5" font-weight="500">Cloud service</text>
+          <g data-legend-semantic-kind="cloud" data-legend-kind="cloud" data-legend-label="Cloud service" data-legend-x="374" data-legend-baseline="746" data-legend-width="100">
+            <rect x="374" y="738" width="14" height="9" rx="2" class="c-cloud" stroke-width="1"/>
+            <text x="396" y="746" class="t-muted" font-size="7.5" font-weight="500">Cloud service</text>
           </g>
         </g>
       </svg>
@@ -5629,18 +5630,18 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         </div>
         <ul>
           <li>&bull; LAYA executes in &lt;500ms on CPU: drops promotional hype, tallies theme gravity, and pre-gates entailment</li>
-          <li>&bull; Ollama SLMs (phi4-mini &amp; qwen2.5) focus strictly on deliberate CoT curation, extractive writing, and script generation</li>
+          <li>&bull; Ollama SLMs (phi4-mini &amp; qwen2.5) deliberate on CoT curation, extractive synthesis, and fact auditing</li>
         </ul>
       </div>
 
       <div class="card">
         <div class="card-header">
           <div class="card-dot amber"></div>
-          <h3>Dual-Stage Anti-Hallucination Audits</h3>
+          <h3>Anti-Hallucination &amp; Dual-Grounding CGAP</h3>
         </div>
         <ul>
-          <li>&bull; Gate 1 (Story Level): Summary regex matching, LAYA semantic pre-gating, and qwen2.5 adversarial fact-check @ temp 0.0</li>
-          <li>&bull; Gate 2 (Spoken Script Level): Hierarchy of Truth audit validates podcast monologue strictly against verified summaries before TTS</li>
+          <li>&bull; Level 2 Validation: Regex numerical match, LAYA entailment pre-gate, and qwen2.5 temp 0.0 adversarial check with 3x retry</li>
+          <li>&bull; Level 3 CGAP Monologue: Dual-Grounding anchors Level 2 summaries with Level 1 context, validated via &lt;2ms predicate pre-gate before Kokoro-mlx TTS</li>
         </ul>
       </div>
     </div>

@@ -145,7 +145,8 @@ def compile_story_predicates(stories: list[Story | dict[str, Any]]) -> list[Stor
 
 def build_cgap_script_plan(predicates: list[StoryFactPredicate], theme_name: str) -> str:
     """
-    Generate an abstract symbolic plan for monologue script synthesis based on CGAP.
+    Generate an abstract symbolic plan for monologue script synthesis based on CGAP and Dual-Grounding.
+    Provides Level 2 Core Takeaways as anchors and Level 1 Article Context for natural depth.
     Forces the LLM to follow a strict sequential path through verified predicates.
     """
     plan_lines: list[str] = [
@@ -157,19 +158,35 @@ def build_cgap_script_plan(predicates: list[StoryFactPredicate], theme_name: str
 
     for p in predicates:
         status_note = " [Follow-up Update]" if p.is_followup else ""
-        plan_lines.append(
-            f"  Step {p.story_id}: [CoverStory #{p.story_id}]{status_note} '{p.title}'\n"
-            f"          Allowed Facts: {p.summary}"
-        )
+        source_note = f" [Source: {p.source}]" if p.source else ""
+        is_failed = p.summary.startswith("⚠️")
+
+        step_lines = [f"  Step {p.story_id}: [CoverStory #{p.story_id}]{status_note} '{p.title}'{source_note}"]
+        if is_failed:
+            step_lines.append(
+                "          Notice: Summary unverified. Briefly state the title and headline only; do not speculate."
+            )
+        else:
+            step_lines.append(f"          Core Takeaway: {p.summary}")
+            # Dual-Grounding: provide clean, capped article context if available
+            clean_context = re.sub(r"\s+", " ", p.source_context).strip()
+            if clean_context and clean_context != p.summary:
+                if len(clean_context) > 300:
+                    clean_context = clean_context[:300].rsplit(" ", 1)[0] + "..."
+                step_lines.append(f"          Article Context: {clean_context}")
+
         if p.metrics:
-            plan_lines.append(f"          Allowed Metrics: {', '.join(sorted(p.metrics))}")
+            step_lines.append(f"          Allowed Metrics: {', '.join(sorted(p.metrics))}")
+
+        plan_lines.append("\n".join(step_lines))
 
     plan_lines.extend(
         [
             f"  Step {len(predicates) + 1}: [SignOff] State exactly: 'That is your briefing for today.'",
             "",
-            "Strict Grounding Invariant:",
-            "- Every claim, entity, and metric in Step k MUST bind exclusively to Story #k's Allowed Facts.",
+            "Strict Dual-Grounding Invariants:",
+            "- Every claim, entity, and metric in Step k MUST bind to Story #k's Core Takeaway and Article Context.",
+            "- Use the Article Context to explain the engineering problem and mechanics naturally; do not simply re-read the Core Takeaway.",
             "- NEVER introduce external metrics, ungrounded companies, or speculative claims.",
         ]
     )

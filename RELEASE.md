@@ -3,6 +3,30 @@
 All notable changes to this project are documented in this file under [Semantic Versioning](https://semver.org/).
 Major and minor releases require explicit human sign-off before version increments.
 
+## [2.4.0] - 2026-11-03
+
+### Added
+- **Dual-Grounding Monologue Architecture (ADR-15)**:
+  - Implemented the Dual-Grounding pattern in `src/cgap_planner.py` resolving the "Parrot vs. Hallucinator" dilemma:
+    - **Core Takeaway Anchor (Level 2)**: The verified, factual claim acts as an immutable anchor that the script cannot contradict or wander away from.
+    - **Article Context Canvas (Level 1)**: Clean excerpt of the original article body (up to 300 characters, cleanly bounded at sentence terminations) provides engineering depth, problem context, and technical vocabulary for natural spoken flow.
+  - Allowed metrics and key entities in `StoryFactPredicate` are combined from both Level 1 and Level 2, ensuring details mentioned from the article body pass deterministic `<2ms` pre-gate verification.
+- **Graceful Audio Story Degradation (Recommendation 1 & ADR-15)**:
+  - Stories that fail Level 2 summary validation (`⚠️`) are preserved in written Markdown digests with their original source links, but cleanly excluded from `verified_audio_stories` for spoken monologue generation.
+  - Eliminates planner deadlocks where small presenter SLMs were forced to narrate stories lacking verified factual anchors.
+- **Clean Sentence-Boundary Fallback Protection (Recommendation 3 & ADR-15)**:
+  - Implemented `extract_clean_sentence_excerpt()` in `src/briefing_generator.py` guaranteeing clean truncation at complete sentence terminations (`.`, `!`, `?`).
+  - Protected the emergency fallback monologue generator against reading raw broken truncated sentences (e.g. `"they ."`) or error notices over synthesized audio notes.
+- **Archify Showcase Workflows & Visual Assets**:
+  - Recompiled and delivered interactive architecture and testing strategy diagrams (`docs/pipeline_workflow.html` and `docs/testing_strategy.html`) under Archify's `showcase` quality profile.
+  - Added responsive dark/light visual workflow PNG assets (`docs/pipeline_architecture.png`, `docs/pipeline_architecture.dark.png`) to `README.md`, replacing legacy Mermaid flowchart syntax.
+- **End-to-End Pipeline Documentation Overhaul**:
+  - Fully updated `docs/RELIABLE_NEWS_PIPELINE.md` covering Ingestion Window Resiliency (ADR-13), Capability-Grounded Agentic Planning (ADR-14), Dual-Grounding & Audio Degradation (ADR-15), and the comprehensive 4-Tier Testing Strategy.
+- **Unit Test Suite Expansion**:
+  - Added unit tests for Dual-Grounding plan formatting, sentence-boundary extraction, and failed-story audio exclusion, expanding the test suite to **84 unit tests passing in <0.5s**.
+
+---
+
 ## [2.3.0] - 2026-11-03
 
 ### Added
