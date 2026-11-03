@@ -272,7 +272,7 @@ def fetch_entries_from_source(
             resp = requests.get(url, headers=headers, timeout=timeout)
             # Transient server error handling
             if resp.status_code in (500, 502, 503, 504) and attempt < max_retries:
-                backoff_s = attempt * 1.5
+                backoff_s = attempt * 2.0
                 logger.warning(
                     f"  ⚠️ {name} returned HTTP {resp.status_code} (attempt {attempt}/{max_retries}). Retrying in {backoff_s:.1f}s..."
                 )
@@ -306,7 +306,7 @@ def fetch_entries_from_source(
 
         except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as net_err:
             if attempt < max_retries:
-                backoff_s = attempt * 1.5
+                backoff_s = attempt * 2.0
                 logger.warning(
                     f"  ⚠️ Timeout/Connection error on {name} (attempt {attempt}/{max_retries}): {net_err}. Retrying in {backoff_s:.1f}s..."
                 )
@@ -502,3 +502,95 @@ def sample_breaking_headlines(config: dict[str, Any], max_items: int = 12, quota
         f"📡 Sampled {len(balanced_samples)} balanced headlines across {len(themes)} themes (quota={quota}/theme)."
     )
     return balanced_samples[:max_items]
+
+
+def check_all_sources_health(config: dict[str, Any]) -> dict[str, Any]:
+    """
+    Diagnostic tool to concurrently ping and validate all RSS feed sources across all configured themes.
+    Returns status codes, story yields within the max_age_hours cutoff, latencies, and error summaries.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+
+    themes = config.get("themes", {})
+    feeds_cfg = config.get("feeds", {})
+    now = datetime.now(UTC)
+    max_age_hours = float(feeds_cfg.get("max_age_hours", 96.0))
+    timeout = int(feeds_cfg.get("request_timeout", 15))
+
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        ),
+        "Accept": "application/rss+xml, application/xml, text/xml, */*",
+    }
+
+    def check_source(src: dict[str, Any]) -> dict[str, Any]:
+        src_name = src.get("name", "Unknown")
+        src_url = src.get("url", "")
+        t0 = time.time()
+        try:
+            resp = requests.get(src_url, headers=headers, timeout=timeout)
+            resp.raise_for_status()
+            sanitized = sanitize_feed_xml(resp.content)
+            parsed = feedparser.parse(sanitized)
+            if not parsed.entries and parsed.bozo:
+                parsed = feedparser.parse(src_url, request_headers=headers)
+            recent_count = 0
+            for entry in parsed.entries:
+                pub_parsed = getattr(entry, "published_parsed", None) or getattr(entry, "updated_parsed", None)
+                if pub_parsed:
+                    pub_dt = datetime(*pub_parsed[:6], tzinfo=UTC)
+                    age_hours = (now - pub_dt).total_seconds() / 3600.0
+                    if age_hours <= max_age_hours:
+                        recent_count += 1
+                else:
+                    recent_count += 1
+            latency = time.time() - t0
+            return {
+                "name": src_name,
+                "url": src_url,
+                "status": f"HTTP {resp.status_code}",
+                "stories_count": recent_count,
+                "latency_s": round(latency, 2),
+                "error": None,
+                "is_healthy": True,
+            }
+        except Exception as exc:
+            latency = time.time() - t0
+            return {
+                "name": src_name,
+                "url": src_url,
+                "status": "FAILED",
+                "stories_count": 0,
+                "latency_s": round(latency, 2),
+                "error": str(exc),
+                "is_healthy": False,
+            }
+
+    all_tasks = []
+    for theme_key, theme_dict in themes.items():
+        for src in theme_dict.get("sources", []):
+            all_tasks.append((theme_key, src))
+
+    with ThreadPoolExecutor(max_workers=min(10, max(1, len(all_tasks)))) as executor:
+        futures = [(t_key, executor.submit(check_source, src)) for t_key, src in all_tasks]
+        results_by_theme: dict[str, list[dict[str, Any]]] = {t_key: [] for t_key in themes}
+        total_sources = len(all_tasks)
+        healthy_sources = 0
+        failed_sources = 0
+
+        for t_key, f in futures:
+            res = f.result()
+            if res.pop("is_healthy"):
+                healthy_sources += 1
+            else:
+                failed_sources += 1
+            results_by_theme[t_key].append(res)
+
+    return {
+        "total_sources": total_sources,
+        "healthy_sources": healthy_sources,
+        "failed_sources": failed_sources,
+        "themes": results_by_theme,
+    }

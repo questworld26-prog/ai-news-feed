@@ -243,6 +243,33 @@ Customize themes, RSS feed URLs, specialized model tags, and schedule settings i
 
 ---
 
+## 💻 CLI Commands & Pipeline Execution
+
+```bash
+# 1. Live Daily Briefing (LAYA dynamic theme routing + TTS + Telegram)
+uv run python src/generate_news_digest.py
+
+# 2. Dry-Run Generation (Text briefing + monologue without audio synthesis or Telegram)
+uv run python src/generate_news_digest.py --dry-run
+
+# 3. Source Pool Health Audit (Concurrently pings all 22 RSS feeds across all 4 themes)
+uv run python src/generate_news_digest.py --check-sources
+
+# 4. Explicit Theme Selection (practitioner_radar | executive_lens | builders_digest | innovation_scout)
+uv run python src/generate_news_digest.py --theme practitioner_radar --dry-run
+
+# 5. All-Themes Batch Catch-Up Mode (Generates summaries across all 4 themes)
+uv run python src/generate_news_digest.py --all-themes
+
+# 6. Multi-Model Benchmark Harness
+uv run python src/model_eval/model_comparator.py
+
+# 7. Local Quality Dashboard & HITL Review Web Interface (http://localhost:8080)
+uv run python src/quality_dashboard/serve_dashboard.py
+```
+
+---
+
 ## ⏰ Scheduled Automation (`launchd`)
 
 To run the briefing automatically every day on macOS:

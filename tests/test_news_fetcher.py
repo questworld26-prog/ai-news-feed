@@ -131,3 +131,58 @@ def test_build_candidate_pool_caps_evaluation():
     for item in pool:
         counts[item.source] = counts.get(item.source, 0) + 1
     assert all(c <= 2 for c in counts.values())
+
+
+def test_check_all_sources_health(monkeypatch):
+    """Verify check_all_sources_health diagnostics across configured themes."""
+    from news_fetcher import check_all_sources_health
+
+    class MockResp:
+        def __init__(self, status_code: int, content: bytes):
+            self.status_code = status_code
+            self.content = content
+
+        def raise_for_status(self):
+            if self.status_code >= 400:
+                raise Exception(f"HTTP {self.status_code}")
+
+    def mock_get(url, headers, timeout):
+        if "bad" in url:
+            return MockResp(502, b"Bad Gateway")
+        rss = (
+            b'<?xml version="1.0" encoding="utf-8"?>\n'
+            b'<rss version="2.0">\n'
+            b"<channel><title>Feed</title>\n"
+            b"  <item><title>Item 1</title><link>https://ex.com/1</link><description>Valid summary context with more than eighty characters for parsing requirements.</description></item>\n"
+            b"</channel></rss>"
+        )
+        return MockResp(200, rss)
+
+    monkeypatch.setattr("requests.get", mock_get)
+    monkeypatch.setattr("time.sleep", lambda s: None)
+
+    cfg = {
+        "feeds": {"request_timeout": 5, "max_retries": 1, "max_age_hours": 96.0},
+        "themes": {
+            "theme_a": {
+                "name": "Theme A",
+                "sources": [
+                    {"name": "Good Source 1", "url": "https://example.com/feed1.xml"},
+                    {"name": "Bad Source", "url": "https://example.com/bad.xml"},
+                ],
+            },
+            "theme_b": {
+                "name": "Theme B",
+                "sources": [
+                    {"name": "Good Source 2", "url": "https://example.com/feed2.xml"},
+                ],
+            },
+        },
+    }
+
+    report = check_all_sources_health(cfg)
+    assert report["total_sources"] == 3
+    assert report["healthy_sources"] == 2
+    assert report["failed_sources"] == 1
+    assert "theme_a" in report["themes"]
+    assert len(report["themes"]["theme_a"]) == 2

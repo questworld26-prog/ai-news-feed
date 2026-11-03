@@ -111,6 +111,11 @@ def main() -> None:
         action="store_true",
         help="Clear the briefed story history database and exit",
     )
+    parser.add_argument(
+        "--check-sources",
+        action="store_true",
+        help="Scan and validate the health of all configured RSS sources across all themes and exit",
+    )
     args = parser.parse_args()
 
     project_root = Path(__file__).resolve().parent.parent
@@ -118,6 +123,28 @@ def main() -> None:
 
     config_path = project_root / args.config
     config = load_config(config_path)
+
+    if args.check_sources:
+        from news_fetcher import check_all_sources_health
+
+        logger.info("🔍 Scanning and validating all configured RSS sources across all themes...")
+        report = check_all_sources_health(config)
+        print("\n" + "=" * 70)
+        print(f"📡 RSS Source Health Audit Report ({report['healthy_sources']}/{report['total_sources']} healthy)")
+        print("=" * 70)
+        for t_key, t_sources in report["themes"].items():
+            t_name = config.get("themes", {}).get(t_key, {}).get("name", t_key)
+            print(f"\n📂 Theme: {t_name} ({len(t_sources)} sources)")
+            for s in t_sources:
+                st = s["status"]
+                cnt = s["stories_count"]
+                lat = s["latency_s"]
+                icon = "✅" if "200" in st or "OK" in st else "❌"
+                print(f"  {icon} [{st}] ({lat}s, {cnt} stories) {s['name']}")
+                if s.get("error"):
+                    print(f"     ⚠️ Error: {s['error']}")
+        print("=" * 70 + "\n")
+        return
 
     if args.clear_history:
         from story_history import StoryHistoryManager
