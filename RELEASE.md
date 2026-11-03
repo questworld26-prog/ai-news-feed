@@ -3,6 +3,29 @@
 All notable changes to this project are documented in this file under [Semantic Versioning](https://semver.org/).
 Major and minor releases require explicit human sign-off before version increments.
 
+## [3.0.0] - 2026-11-03
+
+### Added
+- **Spec-Driven Development (SDD) & Two-Way Spec Guardian Governance**:
+  - Implemented formal EARS requirement specifications under `specs/` defining 41 active requirements and 82 atomic acceptance criteria across 8 core domain modules.
+  - Enforced 100% two-way traceability: every public function and class in `src/` carries `# [spec: REQ-ID]`, and every test function in `tests/` carries `# [verifies: REQ-ID/AC-ID]`.
+  - Upgraded Spec Guardian (`guardian.py`) with a **4-Layer AST Semantic Alignment & Anti-Tag-Stacking Engine**:
+    - **Layer 1 (`1-Test-to-1-AC`)**: Strictly enforces that each test function verifies at most one acceptance criterion, eliminating tag-stacking across tests.
+    - **Layer 2 (Cross-Graph Call Verification)**: Verifies that tests bound to a requirement actually reference and exercise code bound to that requirement in `src/`.
+    - **Layer 3 (Anti-Mirage Assertion Audit)**: AST-audits tests to reject tests with vacuous assertions (`assert True`, `assert x is not None`).
+    - **Layer 4 (Backtick Identifier Anchors)**: Ensures code symbols mentioned in acceptance criteria match identifiers in AST definitions.
+  - Added support for `[PLANNED]` roadmap lifecycle specs with monotonic regression ratchets.
+- **Subpackage Modularization & Architecture Refactoring**:
+  - Modularized `src/model_eval/` (`evaluator.py`, `judges.py`, `metrics.py`, `model_comparator.py`, `save_html.py`) for clean offline LLM-as-judge benchmarks and pairwise model comparisons.
+  - Modularized `src/quality_dashboard/` (`quality_tracker.py`, `serve_dashboard.py`, `quality_dashboard.html`) for SQLite telemetry persistence, human review submission, and golden dataset promotion.
+- **Multi-Theme RSS Source Health Diagnostics (`--check-sources`)**:
+  - Added concurrent `--check-sources` CLI diagnostic to audit latency, HTTP status codes, and active story yields across all 4 editorial themes.
+  - Strengthened XML parser with automatic bare ampersand escaping and linear backoff retry loops for transient HTTP 502/504 gateway failures.
+- **Expanded Test Suite (120 Automated Tests)**:
+  - Unstacked and expanded the unit test suite to 120 deterministic unit tests covering 100% of active acceptance criteria with <4s execution time.
+
+---
+
 ## [2.4.0] - 2026-11-03
 
 ### Added
