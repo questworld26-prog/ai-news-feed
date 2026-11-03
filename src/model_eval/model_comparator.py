@@ -121,6 +121,7 @@ console = Console()
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+# [spec: COMPARE-001]
 def load_config() -> dict[str, Any]:
     """Load eval_config.toml."""
     if not CONFIG_PATH.exists():
@@ -130,6 +131,7 @@ def load_config() -> dict[str, Any]:
         return tomllib.load(f)
 
 
+# [spec: COMPARE-001]
 def load_golden_dataset(config: dict[str, Any]) -> list[dict[str, Any]]:
     """Load the golden dataset JSON file."""
     dataset_path = EVAL_DIR / config["evaluation"]["golden_dataset_path"]
@@ -147,6 +149,7 @@ def load_golden_dataset(config: dict[str, Any]) -> list[dict[str, Any]]:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+# [spec: COMPARE-001]
 def get_ollama_models(ollama_url: str) -> list[str]:
     """Query Ollama for the list of locally available models."""
     try:
@@ -159,6 +162,7 @@ def get_ollama_models(ollama_url: str) -> list[str]:
         sys.exit(1)
 
 
+# [spec: COMPARE-001]
 def select_models_interactively(available_models: list[str]) -> list[str]:
     """Prompt the user to select which models to compare."""
     console.print("\n[bold cyan]Available Ollama Models:[/bold cyan]")
@@ -190,6 +194,8 @@ def select_models_interactively(available_models: list[str]) -> list[str]:
     return selected
 
 
+# [spec: COMPARE-001]
+# [spec: AIM-003]
 def unload_model_from_ollama(model: str, ollama_url: str) -> None:
     """Instruct Ollama to unload a model from VRAM by setting keep_alive=0."""
     try:
@@ -203,6 +209,8 @@ def unload_model_from_ollama(model: str, ollama_url: str) -> None:
         pass
 
 
+# [spec: COMPARE-001]
+# [spec: AIM-003]
 def get_system_and_ollama_memory_gb(ollama_url: str = "http://localhost:11434") -> dict[str, float]:
     """Measures RAM usage across the system and Ollama process."""
     if not psutil:
@@ -231,6 +239,7 @@ def get_system_and_ollama_memory_gb(ollama_url: str = "http://localhost:11434") 
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+# [spec: COMPARE-001]
 def generate_summary_ollama(
     source_text: str,
     model: str,
@@ -431,6 +440,8 @@ def evaluate_summarization_case(
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+# [spec: COMPARE-001]
+# [spec: COMPARE-002]
 def evaluate_curation_case(
     case: dict[str, Any],
     model: str,
@@ -539,6 +550,8 @@ def evaluate_curation_case(
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+# [spec: COMPARE-001]
+# [spec: COMPARE-002]
 def evaluate_script_case(
     case: dict[str, Any],
     model: str,
@@ -664,6 +677,8 @@ def evaluate_script_case(
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+# [spec: COMPARE-001]
+# [spec: COMPARE-002]
 def evaluate_audit_case(
     case: dict[str, Any],
     model: str,
@@ -1011,6 +1026,7 @@ def print_comparison_table(all_results: list[dict[str, Any]]) -> None:
     console.print()
 
 
+# [spec: COMPARE-003]
 def save_markdown_report(all_results: list[dict[str, Any]], config: dict[str, Any]) -> Path:
     """Generate and save a detailed markdown report for all evaluated roles."""
     report_dir = PROJECT_ROOT / config.get("output", {}).get("report_dir", "eval/reports")

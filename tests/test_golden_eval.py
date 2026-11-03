@@ -32,6 +32,7 @@ def sample_story():
     }
 
 
+# [verifies: EVAL-001/AC-EVAL-001.1]
 def test_evaluate_regex_rules_valid_format(sample_story):
     valid_digest = (
         "## [vLLM 0.7.0 Released with Chunked Prefill](https://github.com/vllm-project/vllm/releases/tag/v0.7.0)\n\n"
@@ -42,6 +43,7 @@ def test_evaluate_regex_rules_valid_format(sample_story):
     assert len(errors) == 0
 
 
+# [verifies: EVAL-001/AC-EVAL-001.2]
 def test_evaluate_regex_rules_catches_bare_url_and_bad_header(sample_story):
     bad_digest = (
         "### vLLM 0.7.0 Released with Chunked Prefill\n"
@@ -53,6 +55,7 @@ def test_evaluate_regex_rules_catches_bare_url_and_bad_header(sample_story):
     assert any("Bare URL found" in e for e in errors)
 
 
+# [verifies: EVAL-002/AC-EVAL-002.1]
 def test_evaluate_hhh_guardrails_honest_pass(sample_story):
     valid_digest = (
         "## [vLLM 0.7.0 Released with Chunked Prefill](https://github.com/vllm-project/vllm/releases/tag/v0.7.0)\n\n"
@@ -65,6 +68,7 @@ def test_evaluate_hhh_guardrails_honest_pass(sample_story):
     assert verdict.harmless_pass is True
 
 
+# [verifies: EVAL-002/AC-EVAL-002.2]
 def test_evaluate_hhh_guardrails_catches_fabrication_and_hype(sample_story):
     hallucinated_digest = (
         "## [vLLM 0.7.0 Released with Chunked Prefill](https://github.com/vllm-project/vllm/releases/tag/v0.7.0)\n\n"
@@ -75,6 +79,7 @@ def test_evaluate_hhh_guardrails_catches_fabrication_and_hype(sample_story):
     assert verdict.honest_pass is False or verdict.harmless_pass is False
 
 
+# [verifies: EVAL-002/AC-EVAL-002.1]
 def test_evaluate_rubrics_1_to_5_scoring(sample_story):
     valid_digest = (
         "## [vLLM 0.7.0 Released with Chunked Prefill](https://github.com/vllm-project/vllm/releases/tag/v0.7.0)\n\n"
@@ -87,6 +92,7 @@ def test_evaluate_rubrics_1_to_5_scoring(sample_story):
     assert rubric.average_score >= 4.5
 
 
+# [verifies: EVAL-003/AC-EVAL-003.1]
 def test_run_full_evaluation_multi_run(monkeypatch):
     fixtures_path = Path(__file__).parent / "fixtures" / "golden_dataset.json"
 
@@ -126,6 +132,7 @@ def test_run_full_evaluation_multi_run(monkeypatch):
     assert report.mean_consistency_gap == 0.0
 
 
+# [verifies: EVAL-003/AC-EVAL-003.2]
 def test_golden_dataset_negative_traps_are_rejected():
     """Verify that negative traps with fabricated numbers or entities are caught by guardrails."""
     fixtures_path = Path(__file__).parent / "fixtures" / "golden_dataset.json"
@@ -149,6 +156,7 @@ def test_golden_dataset_negative_traps_are_rejected():
         assert len(validation_res.fabrication_warnings) > 0
 
 
+# [verifies: EVAL-003/AC-EVAL-003.2]
 def test_golden_dataset_adversarial_probes_are_flagged():
     """Verify that adversarial attacks, link hijacks, and XSS script tags are caught by structural or guardrail checks."""
     fixtures_path = Path(__file__).parent / "fixtures" / "golden_dataset.json"
@@ -173,6 +181,7 @@ def test_golden_dataset_adversarial_probes_are_flagged():
         assert adversarial_caught is True, f"Adversarial probe {case['id']} escaped all security gates!"
 
 
+# [verifies: EVAL-003/AC-EVAL-003.2]
 def test_golden_dataset_difficult_and_boundary_cases_pass_factuality():
     """Verify that difficult technical cases and boundary cases pass formatting and guardrails without false positives."""
     fixtures_path = Path(__file__).parent / "fixtures" / "golden_dataset.json"

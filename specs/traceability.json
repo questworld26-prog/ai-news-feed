@@ -1,14 +1,22 @@
 {
-  "last_audited_at": "2026-11-03T09:38:28.509657+00:00",
-  "total_requirements": 33,
-  "total_criteria": 66,
-  "verified_criteria_count": 66,
+  "last_audited_at": "2026-11-03T10:11:48.679564+00:00",
+  "total_requirements": 41,
+  "total_criteria": 82,
+  "verified_criteria_count": 82,
+  "planned_requirements_count": 0,
+  "reverse_traceability": {
+    "untagged_files_count": 0,
+    "untagged_src_symbols_count": 0,
+    "untagged_tests_count": 0,
+    "orphan_tags_count": 0
+  },
   "status": "PASS",
   "requirements": [
     {
       "requirement_id": "AUDIO-001",
       "title": "Graceful Audio Story Degradation",
       "spec_file": "specs/audio_monologue.md",
+      "is_planned": false,
       "sha256": "8d23c31c3a062effc15d9c1100a18093d63f8d480297486bb6fcc96a95d3eb6b",
       "verified_sha256": "8d23c31c3a062effc15d9c1100a18093d63f8d480297486bb6fcc96a95d3eb6b",
       "acceptance_criteria": [
@@ -28,6 +36,7 @@
       "requirement_id": "AUDIO-002",
       "title": "Clean Sentence-Boundary Fallback Protection",
       "spec_file": "specs/audio_monologue.md",
+      "is_planned": false,
       "sha256": "d2bed3a3366660a2ead885f230b01c8e56c5028a0c7ffd8213388e166b08ec3d",
       "verified_sha256": "d2bed3a3366660a2ead885f230b01c8e56c5028a0c7ffd8213388e166b08ec3d",
       "acceptance_criteria": [
@@ -47,6 +56,7 @@
       "requirement_id": "AUDIO-003",
       "title": "Spoken Monologue Script Sanitization",
       "spec_file": "specs/audio_monologue.md",
+      "is_planned": false,
       "sha256": "464fa1d6769fae2bc43f3b8cc9b6e36c4234b49cfefb547529bf11c122647dec",
       "verified_sha256": "464fa1d6769fae2bc43f3b8cc9b6e36c4234b49cfefb547529bf11c122647dec",
       "acceptance_criteria": [
@@ -66,6 +76,7 @@
       "requirement_id": "AUDIO-004",
       "title": "Metal-Accelerated TTS Synthesis & Chunking",
       "spec_file": "specs/audio_monologue.md",
+      "is_planned": false,
       "sha256": "28e9e6328c59dbb54ebf630c2c76a386ec2007a597d67271cc9d9835d9ab640b",
       "verified_sha256": "28e9e6328c59dbb54ebf630c2c76a386ec2007a597d67271cc9d9835d9ab640b",
       "acceptance_criteria": [
@@ -85,6 +96,7 @@
       "requirement_id": "CGAP-001",
       "title": "Atomic Capability Predicate Compilation",
       "spec_file": "specs/cgap_planner.md",
+      "is_planned": false,
       "sha256": "6a3f0425d4a35568a9a0ae36d92654558603596439bff416efa6be2e79d1848a",
       "verified_sha256": "6a3f0425d4a35568a9a0ae36d92654558603596439bff416efa6be2e79d1848a",
       "acceptance_criteria": [
@@ -104,6 +116,7 @@
       "requirement_id": "CGAP-002",
       "title": "Symbolic Monologue Execution Planning",
       "spec_file": "specs/cgap_planner.md",
+      "is_planned": false,
       "sha256": "fec1ed5c703f9c839772c497408a71f088917124909086aa8e252f5e338809f7",
       "verified_sha256": "fec1ed5c703f9c839772c497408a71f088917124909086aa8e252f5e338809f7",
       "acceptance_criteria": [
@@ -123,6 +136,7 @@
       "requirement_id": "CGAP-003",
       "title": "Dual-Grounding Monologue Architecture",
       "spec_file": "specs/cgap_planner.md",
+      "is_planned": false,
       "sha256": "90c12aeae29d420cca691bc728526fb6f1e6f947e76ae6fd83fb1a7a2632b125",
       "verified_sha256": "90c12aeae29d420cca691bc728526fb6f1e6f947e76ae6fd83fb1a7a2632b125",
       "acceptance_criteria": [
@@ -142,6 +156,7 @@
       "requirement_id": "CGAP-004",
       "title": "Deterministic Grounding Pre-Gate",
       "spec_file": "specs/cgap_planner.md",
+      "is_planned": false,
       "sha256": "9654b4df3c014acf4f9b7d0f67af2ca74c774e5e4e5fc278555b777536b1f465",
       "verified_sha256": "9654b4df3c014acf4f9b7d0f67af2ca74c774e5e4e5fc278555b777536b1f465",
       "acceptance_criteria": [
@@ -153,7 +168,68 @@
         "AC-CGAP-004.2"
       ],
       "implementation_files": [
+        "src/briefing_generator.py",
         "src/cgap_planner.py"
+      ],
+      "status": "VERIFIED"
+    },
+    {
+      "requirement_id": "EVAL-001",
+      "title": "Structural Link Hygiene & Regex Verification (Layer 1)",
+      "spec_file": "specs/evaluator.md",
+      "is_planned": false,
+      "sha256": "994f0efe0af2e69d6f1a739a2c7bcbefbdab542c1c417810e61af36e56bd8a95",
+      "verified_sha256": "994f0efe0af2e69d6f1a739a2c7bcbefbdab542c1c417810e61af36e56bd8a95",
+      "acceptance_criteria": [
+        "AC-EVAL-001.1",
+        "AC-EVAL-001.2"
+      ],
+      "verified_criteria": [
+        "AC-EVAL-001.1",
+        "AC-EVAL-001.2"
+      ],
+      "implementation_files": [
+        "src/model_eval/evaluator.py"
+      ],
+      "status": "VERIFIED"
+    },
+    {
+      "requirement_id": "EVAL-002",
+      "title": "HHH Guardrails & 1\u20135 Rubric Scoring Matrix (Layer 2)",
+      "spec_file": "specs/evaluator.md",
+      "is_planned": false,
+      "sha256": "ac3314a13824c36212a452e4ee67c9378b6e19478fe83aa846df6da650e47526",
+      "verified_sha256": "ac3314a13824c36212a452e4ee67c9378b6e19478fe83aa846df6da650e47526",
+      "acceptance_criteria": [
+        "AC-EVAL-002.1",
+        "AC-EVAL-002.2"
+      ],
+      "verified_criteria": [
+        "AC-EVAL-002.1",
+        "AC-EVAL-002.2"
+      ],
+      "implementation_files": [
+        "src/model_eval/evaluator.py"
+      ],
+      "status": "VERIFIED"
+    },
+    {
+      "requirement_id": "EVAL-003",
+      "title": "Multi-Run Golden Dataset Evaluation & Consistency Gap (`Mean@K` vs `Pass^K`)",
+      "spec_file": "specs/evaluator.md",
+      "is_planned": false,
+      "sha256": "7acd1ad6b53a73a985b04e516e9ddc7aa864399c72327fd8bd98c5d5ae423bed",
+      "verified_sha256": "7acd1ad6b53a73a985b04e516e9ddc7aa864399c72327fd8bd98c5d5ae423bed",
+      "acceptance_criteria": [
+        "AC-EVAL-003.1",
+        "AC-EVAL-003.2"
+      ],
+      "verified_criteria": [
+        "AC-EVAL-003.1",
+        "AC-EVAL-003.2"
+      ],
+      "implementation_files": [
+        "src/model_eval/evaluator.py"
       ],
       "status": "VERIFIED"
     },
@@ -161,6 +237,7 @@
       "requirement_id": "COMPARE-001",
       "title": "Multi-Role Benchmark Execution",
       "spec_file": "specs/model_comparator.md",
+      "is_planned": false,
       "sha256": "d2fee6088b12b6eee854ca6673763dfcebe620753bfc27c560feb6d303474117",
       "verified_sha256": "d2fee6088b12b6eee854ca6673763dfcebe620753bfc27c560feb6d303474117",
       "acceptance_criteria": [
@@ -180,6 +257,7 @@
       "requirement_id": "COMPARE-002",
       "title": "Multi-Dimensional Evaluation Scoring",
       "spec_file": "specs/model_comparator.md",
+      "is_planned": false,
       "sha256": "a9dfd1b025caca5d57d18295aa90382df97b6158fcc78c26275c956c6967687d",
       "verified_sha256": "a9dfd1b025caca5d57d18295aa90382df97b6158fcc78c26275c956c6967687d",
       "acceptance_criteria": [
@@ -191,6 +269,7 @@
         "AC-COMPARE-002.2"
       ],
       "implementation_files": [
+        "src/model_eval/judges.py",
         "src/model_eval/metrics.py",
         "src/model_eval/model_comparator.py"
       ],
@@ -200,6 +279,7 @@
       "requirement_id": "COMPARE-003",
       "title": "Interactive HTML Report Generation",
       "spec_file": "specs/model_comparator.md",
+      "is_planned": false,
       "sha256": "69f1de9d7acfdaa5f59b667c934f1e8fb34105e6a9269846a022172bc059323f",
       "verified_sha256": "69f1de9d7acfdaa5f59b667c934f1e8fb34105e6a9269846a022172bc059323f",
       "acceptance_criteria": [
@@ -217,9 +297,92 @@
       "status": "VERIFIED"
     },
     {
+      "requirement_id": "INGEST-001",
+      "title": "Resilient RSS Fetching & Transient Gateway Backoff",
+      "spec_file": "specs/news_fetcher.md",
+      "is_planned": false,
+      "sha256": "0326e93f37f84df2de74e363693a88f4fb7410cfeb1ccddc86e59a3690dfe6a4",
+      "verified_sha256": "0326e93f37f84df2de74e363693a88f4fb7410cfeb1ccddc86e59a3690dfe6a4",
+      "acceptance_criteria": [
+        "AC-INGEST-001.1",
+        "AC-INGEST-001.2"
+      ],
+      "verified_criteria": [
+        "AC-INGEST-001.1",
+        "AC-INGEST-001.2"
+      ],
+      "implementation_files": [
+        "src/news_fetcher.py"
+      ],
+      "status": "VERIFIED"
+    },
+    {
+      "requirement_id": "INGEST-002",
+      "title": "Staleness Cutoff, Hard Filtering & Live Excerpt Enrichment",
+      "spec_file": "specs/news_fetcher.md",
+      "is_planned": false,
+      "sha256": "06a243a1c8d7f8c15d32f9b0251f3b50565e40124a0de8360aa0adf370e85e83",
+      "verified_sha256": "06a243a1c8d7f8c15d32f9b0251f3b50565e40124a0de8360aa0adf370e85e83",
+      "acceptance_criteria": [
+        "AC-INGEST-002.1",
+        "AC-INGEST-002.2"
+      ],
+      "verified_criteria": [
+        "AC-INGEST-002.1",
+        "AC-INGEST-002.2"
+      ],
+      "implementation_files": [
+        "src/news_fetcher.py"
+      ],
+      "status": "VERIFIED"
+    },
+    {
+      "requirement_id": "INGEST-003",
+      "title": "Candidate Pool Scoring, Fuzzy Deduplication & Per-Source Caps",
+      "spec_file": "specs/news_fetcher.md",
+      "is_planned": false,
+      "sha256": "a659ad271fd16babfed469a2cbff5d72bd698989f03e3b1670cfe847eb598364",
+      "verified_sha256": "a659ad271fd16babfed469a2cbff5d72bd698989f03e3b1670cfe847eb598364",
+      "acceptance_criteria": [
+        "AC-INGEST-003.1",
+        "AC-INGEST-003.2"
+      ],
+      "verified_criteria": [
+        "AC-INGEST-003.1",
+        "AC-INGEST-003.2"
+      ],
+      "implementation_files": [
+        "src/news_fetcher.py",
+        "src/story.py",
+        "src/story_history.py"
+      ],
+      "status": "VERIFIED"
+    },
+    {
+      "requirement_id": "INGEST-004",
+      "title": "Concurrent Multi-Theme RSS Source Health Audit (`--check-sources`)",
+      "spec_file": "specs/news_fetcher.md",
+      "is_planned": false,
+      "sha256": "cad2596058eeccffbe64f705ad715afefe8cb189afd2fa53822bcfa28802bff9",
+      "verified_sha256": "cad2596058eeccffbe64f705ad715afefe8cb189afd2fa53822bcfa28802bff9",
+      "acceptance_criteria": [
+        "AC-INGEST-004.1",
+        "AC-INGEST-004.2"
+      ],
+      "verified_criteria": [
+        "AC-INGEST-004.1",
+        "AC-INGEST-004.2"
+      ],
+      "implementation_files": [
+        "src/news_fetcher.py"
+      ],
+      "status": "VERIFIED"
+    },
+    {
       "requirement_id": "TRACK-001",
       "title": "SQLite Run & Pipeline Metrics Persistence",
       "spec_file": "specs/quality_tracker.md",
+      "is_planned": false,
       "sha256": "b5386e46bb97036723e53a5908209a4ec4ded2c9af71ddd0db8eee26d32f7056",
       "verified_sha256": "b5386e46bb97036723e53a5908209a4ec4ded2c9af71ddd0db8eee26d32f7056",
       "acceptance_criteria": [
@@ -239,6 +402,7 @@
       "requirement_id": "TRACK-002",
       "title": "Human Review Submission & Aggregation",
       "spec_file": "specs/quality_tracker.md",
+      "is_planned": false,
       "sha256": "c273f6e38cabf6dae178aa0bb39e25ae96bbf3116b98f307fe3e1404357184ac",
       "verified_sha256": "c273f6e38cabf6dae178aa0bb39e25ae96bbf3116b98f307fe3e1404357184ac",
       "acceptance_criteria": [
@@ -258,6 +422,7 @@
       "requirement_id": "TRACK-003",
       "title": "Golden Dataset Feedback Promotion",
       "spec_file": "specs/quality_tracker.md",
+      "is_planned": false,
       "sha256": "98649e3a26e991c0e5f9587e3639932f612cccf1df5039308d05bbaf61e6b0b0",
       "verified_sha256": "98649e3a26e991c0e5f9587e3639932f612cccf1df5039308d05bbaf61e6b0b0",
       "acceptance_criteria": [
@@ -277,6 +442,7 @@
       "requirement_id": "DASH-001",
       "title": "Local HTTP Dashboard & Static UI Serving",
       "spec_file": "specs/serve_dashboard.md",
+      "is_planned": false,
       "sha256": "1c068e2d6e77256d246c5b02f732c2f3fa436af25ff746549404d12cb317b374",
       "verified_sha256": "1c068e2d6e77256d246c5b02f732c2f3fa436af25ff746549404d12cb317b374",
       "acceptance_criteria": [
@@ -296,6 +462,7 @@
       "requirement_id": "DASH-002",
       "title": "REST JSON API for Telemetry & Run History",
       "spec_file": "specs/serve_dashboard.md",
+      "is_planned": false,
       "sha256": "dd518f2f4ea25a04bc27d8f03004f74529ad1b9b5a6084f8f8ed2a31b28b210e",
       "verified_sha256": "dd518f2f4ea25a04bc27d8f03004f74529ad1b9b5a6084f8f8ed2a31b28b210e",
       "acceptance_criteria": [
@@ -315,6 +482,7 @@
       "requirement_id": "DASH-003",
       "title": "Review & Promotion API Handlers",
       "spec_file": "specs/serve_dashboard.md",
+      "is_planned": false,
       "sha256": "0da3716f4d513e1fa722a8fe6d513f4e9a24d6c14a3275618eb26a3efac68523",
       "verified_sha256": "0da3716f4d513e1fa722a8fe6d513f4e9a24d6c14a3275618eb26a3efac68523",
       "acceptance_criteria": [
@@ -334,6 +502,7 @@
       "requirement_id": "SUMM-001",
       "title": "Extractive Quote Anchoring via Schema Decoding",
       "spec_file": "specs/summarizer.md",
+      "is_planned": false,
       "sha256": "431528118068bb5529458e14fb2e51403816de77a5f9ad8f43522f4c6cd22a11",
       "verified_sha256": "431528118068bb5529458e14fb2e51403816de77a5f9ad8f43522f4c6cd22a11",
       "acceptance_criteria": [
@@ -353,6 +522,7 @@
       "requirement_id": "SUMM-002",
       "title": "Two-Sentence Summary Constraint",
       "spec_file": "specs/summarizer.md",
+      "is_planned": false,
       "sha256": "9c221163f637c9bd9289514cfce96aed243ff34d021b769b5a42479230b0d776",
       "verified_sha256": "9c221163f637c9bd9289514cfce96aed243ff34d021b769b5a42479230b0d776",
       "acceptance_criteria": [
@@ -372,6 +542,7 @@
       "requirement_id": "SUMM-003",
       "title": "Validation Retry Loop with Targeted Feedback",
       "spec_file": "specs/summarizer.md",
+      "is_planned": false,
       "sha256": "27605d5a8e4ddac192329f844f3fa71525c29e82ab4d9d8a11decc3f42c4770a",
       "verified_sha256": "27605d5a8e4ddac192329f844f3fa71525c29e82ab4d9d8a11decc3f42c4770a",
       "acceptance_criteria": [
@@ -391,6 +562,7 @@
       "requirement_id": "SUMM-004",
       "title": "Fail-Closed Unverified Story Fallback",
       "spec_file": "specs/summarizer.md",
+      "is_planned": false,
       "sha256": "c371139e7e6a3c7d4cae4373c52f0efa8c4069adb6c856c873b6dba973d9d6e0",
       "verified_sha256": "c371139e7e6a3c7d4cae4373c52f0efa8c4069adb6c856c873b6dba973d9d6e0",
       "acceptance_criteria": [
@@ -410,6 +582,7 @@
       "requirement_id": "AIM-001",
       "title": "100% Local Execution with Zero Paid API Footprint",
       "spec_file": "specs/system_aims.md",
+      "is_planned": false,
       "sha256": "7315db8742e55fb84b3a1b30429c3550523a08dc8ac1df736e99dd370d011704",
       "verified_sha256": "7315db8742e55fb84b3a1b30429c3550523a08dc8ac1df736e99dd370d011704",
       "acceptance_criteria": [
@@ -429,6 +602,7 @@
       "requirement_id": "AIM-002",
       "title": "Hierarchy of Truth Anti-Hallucination Invariant",
       "spec_file": "specs/system_aims.md",
+      "is_planned": false,
       "sha256": "43ecc04e61ae04ed369c2ca21e9966af1fa0762995119d9ebe2d11d26f942a20",
       "verified_sha256": "43ecc04e61ae04ed369c2ca21e9966af1fa0762995119d9ebe2d11d26f942a20",
       "acceptance_criteria": [
@@ -441,7 +615,9 @@
       ],
       "implementation_files": [
         "src/briefing_generator.py",
-        "src/cgap_planner.py"
+        "src/cgap_planner.py",
+        "src/story.py",
+        "src/validator.py"
       ],
       "status": "VERIFIED"
     },
@@ -449,6 +625,7 @@
       "requirement_id": "AIM-003",
       "title": "Operational Memory Headroom on 8GB Apple Silicon",
       "spec_file": "specs/system_aims.md",
+      "is_planned": false,
       "sha256": "582bf57f357733f7b33aed68f1bc8ae1bd812935e73f47573f4c35e0c84dee14",
       "verified_sha256": "582bf57f357733f7b33aed68f1bc8ae1bd812935e73f47573f4c35e0c84dee14",
       "acceptance_criteria": [
@@ -462,7 +639,10 @@
       "implementation_files": [
         "src/generate_news_digest.py",
         "src/laya_decision.py",
-        "src/notifier.py"
+        "src/model_eval/model_comparator.py",
+        "src/model_provider.py",
+        "src/notifier.py",
+        "src/telemetry.py"
       ],
       "status": "VERIFIED"
     },
@@ -470,6 +650,7 @@
       "requirement_id": "AIM-004",
       "title": "Automated Multi-Modal Daily Telegram Delivery",
       "spec_file": "specs/system_aims.md",
+      "is_planned": false,
       "sha256": "7d22cedc4a2bc923246f4ddfe494bb1499f7f7ef444f9356af8771efac472770",
       "verified_sha256": "7d22cedc4a2bc923246f4ddfe494bb1499f7f7ef444f9356af8771efac472770",
       "acceptance_criteria": [
@@ -481,7 +662,8 @@
         "AC-AIM-004.2"
       ],
       "implementation_files": [
-        "src/notifier.py"
+        "src/notifier.py",
+        "src/story.py"
       ],
       "status": "VERIFIED"
     },
@@ -489,6 +671,7 @@
       "requirement_id": "THEME-001",
       "title": "Four Curated Editorial Thematic Lenses",
       "spec_file": "specs/themes.md",
+      "is_planned": false,
       "sha256": "61d603ab05b9ebbcb3fc4cb98ccb85cfe119b75278af82ae6a3f07aabbaabe36",
       "verified_sha256": "61d603ab05b9ebbcb3fc4cb98ccb85cfe119b75278af82ae6a3f07aabbaabe36",
       "acceptance_criteria": [
@@ -500,7 +683,9 @@
         "AC-THEME-001.2"
       ],
       "implementation_files": [
-        "src/generate_news_digest.py"
+        "src/briefing_generator.py",
+        "src/generate_news_digest.py",
+        "src/news_fetcher.py"
       ],
       "status": "VERIFIED"
     },
@@ -508,6 +693,7 @@
       "requirement_id": "THEME-002",
       "title": "Story-Driven Dynamic Theme Routing",
       "spec_file": "specs/themes.md",
+      "is_planned": false,
       "sha256": "1b5d5d330dc59048200bf7660eedb575f2f2b495f8369e8044538834733bec7f",
       "verified_sha256": "1b5d5d330dc59048200bf7660eedb575f2f2b495f8369e8044538834733bec7f",
       "acceptance_criteria": [
@@ -519,7 +705,8 @@
         "AC-THEME-002.2"
       ],
       "implementation_files": [
-        "src/laya_decision.py"
+        "src/laya_decision.py",
+        "src/news_fetcher.py"
       ],
       "status": "VERIFIED"
     },
@@ -527,6 +714,7 @@
       "requirement_id": "THEME-003",
       "title": "Thematic Diversity & Cooldown Rotation",
       "spec_file": "specs/themes.md",
+      "is_planned": false,
       "sha256": "8f88eba4e4280633ac2f97588d60adb83e3d73bfb3bedda94b4b7bdd1bea990d",
       "verified_sha256": "8f88eba4e4280633ac2f97588d60adb83e3d73bfb3bedda94b4b7bdd1bea990d",
       "acceptance_criteria": [
@@ -538,6 +726,7 @@
         "AC-THEME-003.2"
       ],
       "implementation_files": [
+        "src/laya_decision.py",
         "src/story_history.py"
       ],
       "status": "VERIFIED"
@@ -546,6 +735,7 @@
       "requirement_id": "THEME-004",
       "title": "Multi-Tier Ingestion & Theme Fallback",
       "spec_file": "specs/themes.md",
+      "is_planned": false,
       "sha256": "c5bbea3d2bad2abed2756ce3c800816b0f3a5bd9a657a35a5823a74aaca07168",
       "verified_sha256": "c5bbea3d2bad2abed2756ce3c800816b0f3a5bd9a657a35a5823a74aaca07168",
       "acceptance_criteria": [
@@ -565,6 +755,7 @@
       "requirement_id": "THEME-005",
       "title": "Theme Override & All-Themes Batch Mode",
       "spec_file": "specs/themes.md",
+      "is_planned": false,
       "sha256": "16f5f6deedd92d6162d62c2f7bcf21c74b6103f72b641767f8c5349fbd5972a7",
       "verified_sha256": "16f5f6deedd92d6162d62c2f7bcf21c74b6103f72b641767f8c5349fbd5972a7",
       "acceptance_criteria": [
@@ -584,6 +775,7 @@
       "requirement_id": "VALID-001",
       "title": "Deterministic Numerical Fabrication Detection",
       "spec_file": "specs/validator.md",
+      "is_planned": false,
       "sha256": "4607a69287a920b24191c9e4d65cf2146d6655c17fec571ad9cb15b953d930f2",
       "verified_sha256": "4607a69287a920b24191c9e4d65cf2146d6655c17fec571ad9cb15b953d930f2",
       "acceptance_criteria": [
@@ -603,6 +795,7 @@
       "requirement_id": "VALID-002",
       "title": "Unanchored Proper-Noun & Entity Detection",
       "spec_file": "specs/validator.md",
+      "is_planned": false,
       "sha256": "8e3a02ad830daac86307ab365ce45e132205e577b95b7835ebd4788b70f65ae7",
       "verified_sha256": "8e3a02ad830daac86307ab365ce45e132205e577b95b7835ebd4788b70f65ae7",
       "acceptance_criteria": [
@@ -622,8 +815,9 @@
       "requirement_id": "VALID-003",
       "title": "Lexical Keyword Overlap Floor",
       "spec_file": "specs/validator.md",
-      "sha256": "a93b9898a675e3e90a6420a372e132bbf97995a6b35dd2a1d63193635066a1c8",
-      "verified_sha256": "a93b9898a675e3e90a6420a372e132bbf97995a6b35dd2a1d63193635066a1c8",
+      "is_planned": false,
+      "sha256": "3788b13a4b289731be8fbbfea077b8965773f95fbe0a078587121849034ecc82",
+      "verified_sha256": "3788b13a4b289731be8fbbfea077b8965773f95fbe0a078587121849034ecc82",
       "acceptance_criteria": [
         "AC-VALID-003.1",
         "AC-VALID-003.2"
@@ -633,6 +827,27 @@
         "AC-VALID-003.2"
       ],
       "implementation_files": [
+        "src/validator.py"
+      ],
+      "status": "VERIFIED"
+    },
+    {
+      "requirement_id": "VALID-004",
+      "title": "Hybrid System 1 (LAYA) & System 2 (Ollama) Semantic Fact-Checking",
+      "spec_file": "specs/validator.md",
+      "is_planned": false,
+      "sha256": "eef21b52b7b141b062d94599938655d824135cebed6fd6cd206dabbd4e845bb2",
+      "verified_sha256": "eef21b52b7b141b062d94599938655d824135cebed6fd6cd206dabbd4e845bb2",
+      "acceptance_criteria": [
+        "AC-VALID-004.1",
+        "AC-VALID-004.2"
+      ],
+      "verified_criteria": [
+        "AC-VALID-004.1",
+        "AC-VALID-004.2"
+      ],
+      "implementation_files": [
+        "src/laya_decision.py",
         "src/validator.py"
       ],
       "status": "VERIFIED"

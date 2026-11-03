@@ -27,12 +27,14 @@ def temp_tracker(tmp_path):
     return QualityTracker(db_file)
 
 
+# [verifies: TRACK-001/AC-TRACK-001.2]
 def test_extract_domain():
     assert extract_domain("https://www.cnbc.com/2026/09/30/ftc-ai-probe.html") == "cnbc.com"
     assert extract_domain("https://aws.amazon.com/blogs/ml/test") == "aws.amazon.com"
     assert extract_domain("not-a-url") == "unknown"
 
 
+# [verifies: TRACK-001/AC-TRACK-001.1]
 def test_get_current_git_commit():
     commit = get_current_git_commit()
     assert isinstance(commit, str)
@@ -144,6 +146,7 @@ def test_human_review_update(temp_tracker):
     assert summary["avg_human_rating"] == 5.0
 
 
+# [verifies: TRACK-001/AC-TRACK-001.2]
 def test_parse_summary_markdown():
     sample_md = """🧭 **Practitioner's Radar**
 _What you need to know to stay credible in AI and prototype smarter_

@@ -22,6 +22,7 @@ logger = logging.getLogger("ai_briefing")
 DEFAULT_DB_PATH = Path("eval/quality.db")
 
 
+# [spec: TRACK-001]
 def get_current_git_commit() -> str:
     """Return short git commit SHA or 'unknown'."""
     try:
@@ -37,6 +38,7 @@ def get_current_git_commit() -> str:
         return "unknown"
 
 
+# [spec: TRACK-001]
 def extract_domain(url: str) -> str:
     """Extract clean domain name from URL."""
     try:
@@ -49,6 +51,7 @@ def extract_domain(url: str) -> str:
         return "unknown"
 
 
+# [spec: TRACK-001]
 def check_theme_relevance(title: str, summary: str, theme_dict: dict[str, Any] | None) -> bool:
     """Heuristic check for theme relevance using theme description/keywords."""
     if not theme_dict:
@@ -533,6 +536,7 @@ class QualityTracker:
         }
 
 
+# [spec: TRACK-001]
 def parse_summary_markdown(content: str) -> tuple[list[dict[str, Any]], str]:
     """Parse output markdown format into stories list and audio script text."""
     parts = content.split("## Spoken Audio Script")

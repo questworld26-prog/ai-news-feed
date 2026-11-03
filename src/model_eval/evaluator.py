@@ -20,6 +20,7 @@ from validator import compute_keyword_overlap, detect_fabrications, validate_sto
 logger = logging.getLogger("ai_briefing")
 
 
+# [spec: EVAL-002]
 class HHHVerdict(NamedTuple):
     honest_pass: bool
     honest_reasons: list[str]
@@ -30,6 +31,7 @@ class HHHVerdict(NamedTuple):
     passed: bool
 
 
+# [spec: EVAL-002]
 class RubricScore(NamedTuple):
     honest_score: float  # 1.0 to 5.0
     helpful_score: float  # 1.0 to 5.0
@@ -38,6 +40,7 @@ class RubricScore(NamedTuple):
     reasoning: list[str]
 
 
+# [spec: EVAL-003]
 class MultiRunResult(NamedTuple):
     case_id: str
     story_title: str
@@ -52,6 +55,7 @@ class MultiRunResult(NamedTuple):
     run_details: list[dict[str, Any]]
 
 
+# [spec: EVAL-003]
 class EvaluationReport(NamedTuple):
     total_cases: int
     regex_pass_count: int
@@ -66,6 +70,7 @@ class EvaluationReport(NamedTuple):
     execution_time_seconds: float = 0.0
 
 
+# [spec: EVAL-001]
 def evaluate_regex_rules(
     digest_text: str, story: Story | dict[str, Any], custom_regex: list[str] | None = None
 ) -> tuple[bool, list[str]]:
@@ -100,6 +105,7 @@ def evaluate_regex_rules(
     return len(errors) == 0, errors
 
 
+# [spec: EVAL-002]
 def evaluate_hhh_guardrails(digest_text: str, story: Story | dict[str, Any]) -> HHHVerdict:
     """
     Layer 2: HHH Guardrails Evaluation (Helpful, Honest, Harmless).
@@ -152,6 +158,7 @@ def evaluate_hhh_guardrails(digest_text: str, story: Story | dict[str, Any]) -> 
     )
 
 
+# [spec: EVAL-002]
 def evaluate_rubrics(
     digest_text: str, story: Story | dict[str, Any], config: dict[str, Any] | None = None
 ) -> RubricScore:
@@ -214,6 +221,7 @@ def evaluate_rubrics(
     )
 
 
+# [spec: EVAL-003]
 def evaluate_llm_judge(digest_summary: str, story: dict[str, Any], config: dict[str, Any]) -> tuple[bool, float, str]:
     """
     Layer 3: LLM-as-a-Judge Factual Adherence Check.
@@ -224,6 +232,7 @@ def evaluate_llm_judge(digest_summary: str, story: dict[str, Any], config: dict[
     return validation_res.passed, score, validation_res.llm_reasoning
 
 
+# [spec: EVAL-003]
 def run_full_evaluation(
     golden_dataset_path: Path,
     config: dict[str, Any],
@@ -389,6 +398,7 @@ def run_full_evaluation(
     )
 
 
+# [spec: EVAL-003]
 def print_evaluation_report(report: EvaluationReport) -> None:
     """Pretty-print the multi-layer evaluation report using Rich tables."""
     try:

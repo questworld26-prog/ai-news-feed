@@ -26,6 +26,7 @@ def mock_candidates() -> list[Story]:
     ]
 
 
+# [verifies: THEME-001/AC-THEME-001.2]
 def test_curation_response_schema_validation():
     data = {
         "evaluation_criteria": "Focus on system efficiency and AI performance optimizations.",
@@ -41,6 +42,7 @@ def test_curation_response_schema_validation():
     assert model.selected == [1, 3]
 
 
+# [verifies: THEME-001/AC-THEME-001.2]
 def test_llm_curate_stories_success_path(mock_candidates, monkeypatch):
     dummy_theme = {"name": "Test Theme", "description": "Test Desc", "tone": "Technical"}
     dummy_config = {
@@ -69,6 +71,7 @@ def test_llm_curate_stories_success_path(mock_candidates, monkeypatch):
     assert curated[2].title == "Story 1 Title"
 
 
+# [verifies: THEME-001/AC-THEME-001.2]
 def test_llm_curate_stories_defensive_padding_and_dedup(mock_candidates, monkeypatch):
     dummy_theme = {"name": "Test Theme", "description": "Test Desc", "tone": "Technical"}
     dummy_config = {

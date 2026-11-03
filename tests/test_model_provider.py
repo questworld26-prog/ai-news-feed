@@ -19,7 +19,6 @@ class DummySchema(BaseModel):
 
 
 # [verifies: AIM-001/AC-AIM-001.1]
-# [verifies: AIM-001/AC-AIM-001.2]
 def test_factory_returns_ollama_provider():
     ModelProviderFactory.reset()
     config = {
@@ -34,6 +33,7 @@ def test_factory_returns_ollama_provider():
     assert provider.default_model == "phi4-mini:3.8b"
 
 
+# [verifies: AIM-001/AC-AIM-001.1]
 def test_factory_caches_singleton():
     ModelProviderFactory.reset()
     config = {
@@ -47,6 +47,7 @@ def test_factory_caches_singleton():
     assert provider1 is provider2
 
 
+# [verifies: AIM-001/AC-AIM-001.1]
 def test_factory_resets_on_url_change():
     ModelProviderFactory.reset()
     config1 = {"llm": {"ollama_url": "http://localhost:11434"}}
@@ -57,6 +58,7 @@ def test_factory_resets_on_url_change():
     assert provider2.base_url == "http://remote-server:11434"
 
 
+# [verifies: AIM-001/AC-AIM-001.1]
 def test_ollama_provider_generate(monkeypatch):
     provider = OllamaProvider(base_url="http://localhost:11434", default_model="phi4-mini:3.8b")
 
@@ -79,6 +81,7 @@ def test_ollama_provider_generate(monkeypatch):
     assert res == "Generated script text."
 
 
+# [verifies: AIM-001/AC-AIM-001.1]
 def test_ollama_provider_generate_structured(monkeypatch):
     provider = OllamaProvider(base_url="http://localhost:11434", default_model="qwen2.5:3b")
 
@@ -132,3 +135,17 @@ def test_ollama_provider_unload_models(monkeypatch):
 
     provider.unload_models()
     assert calls == ["phi4-mini:3.8b", "qwen2.5:3b"]
+
+
+# [verifies: AIM-001/AC-AIM-001.2]
+def test_zero_paid_cloud_sdk_imports_in_production_modules():
+    """Verify that paid cloud SDKs (google.genai, openai, anthropic) are strictly quarantined outside production src/*.py."""
+    src_dir = project_root / "src"
+    production_files = [p for p in src_dir.glob("*.py") if p.name != "__init__.py"]
+    assert len(production_files) >= 8
+
+    forbidden_imports = ("google.genai", "from google import genai", "import openai", "import anthropic")
+    for py_file in production_files:
+        content = py_file.read_text(encoding="utf-8")
+        for forbidden in forbidden_imports:
+            assert forbidden not in content, f"Forbidden paid cloud import '{forbidden}' found in {py_file.name}"

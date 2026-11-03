@@ -8,6 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 from telemetry import PipelineTracker
 
 
+# [verifies: AIM-003/AC-AIM-003.1]
 def test_pipeline_tracker_stage_recording():
     tracker = PipelineTracker()
 
@@ -24,6 +25,7 @@ def test_pipeline_tracker_stage_recording():
     assert rec.metrics["candidates_found"] == 12
 
 
+# [verifies: AIM-003/AC-AIM-003.1]
 def test_pipeline_tracker_summary_dashboard(capsys):
     tracker = PipelineTracker()
 

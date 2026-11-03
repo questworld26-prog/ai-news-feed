@@ -15,6 +15,7 @@ class MockFeedEntry:
         self.summary = summary
 
 
+# [verifies: INGEST-002/AC-INGEST-002.1]
 def test_parse_feed_entry_accepts_weekend_posts_at_96h():
     """Verify that Friday posts (~72 hours old) are accepted under the 96-hour window."""
     now = datetime.now(UTC)
@@ -32,6 +33,7 @@ def test_parse_feed_entry_accepts_weekend_posts_at_96h():
     assert result.source == "OpenAI News"
 
 
+# [verifies: INGEST-002/AC-INGEST-002.1]
 def test_parse_feed_entry_rejects_stories_beyond_max_age():
     """Verify that stories older than max_age_hours are cleanly discarded."""
     now = datetime.now(UTC)
@@ -47,8 +49,13 @@ def test_parse_feed_entry_rejects_stories_beyond_max_age():
     assert result is None
 
 
+# [verifies: INGEST-001/AC-INGEST-001.1]
+# [verifies: INGEST-001/AC-INGEST-001.2]
 def test_fetch_entries_from_source_retries_transient_502(monkeypatch):
     """Verify that transient 502/504 errors trigger retries with backoff and succeed when recovered."""
+    from news_fetcher import sanitize_feed_xml
+
+    assert sanitize_feed_xml(b"<title>R&D &amp; AI</title>") == b"<title>R&amp;D &amp; AI</title>"
     call_count = 0
 
     class MockResponse:
@@ -93,6 +100,8 @@ def test_fetch_entries_from_source_retries_transient_502(monkeypatch):
     assert entries[0].title == "Resilient RSS Story"
 
 
+# [verifies: INGEST-003/AC-INGEST-003.1]
+# [verifies: INGEST-003/AC-INGEST-003.2]
 def test_build_candidate_pool_caps_evaluation():
     """Verify build_candidate_pool enforces candidate_pool_size and per-source caps."""
     from news_fetcher import build_candidate_pool
@@ -133,6 +142,8 @@ def test_build_candidate_pool_caps_evaluation():
     assert all(c <= 2 for c in counts.values())
 
 
+# [verifies: INGEST-004/AC-INGEST-004.1]
+# [verifies: INGEST-004/AC-INGEST-004.2]
 def test_check_all_sources_health(monkeypatch):
     """Verify check_all_sources_health diagnostics across configured themes."""
     from news_fetcher import check_all_sources_health

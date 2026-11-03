@@ -10,6 +10,8 @@ from datetime import datetime
 from typing import Any
 
 
+# [spec: INGEST-003]
+# [spec: AIM-002]
 @dataclass
 class Story:
     """
@@ -92,6 +94,7 @@ class Story:
         return d
 
 
+# [spec: AIM-004]
 @dataclass
 class BriefingOutput:
     """

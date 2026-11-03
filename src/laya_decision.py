@@ -25,6 +25,7 @@ _laya_agent = None
 _laya_initialized = False
 
 
+# [spec: THEME-003]
 def get_recent_briefed_themes(db_path: Path | str | None = None, limit: int = 2) -> list[str]:
     """Retrieve the most recent briefed themes from quality.db to apply rotation cooldowns."""
     db = Path(db_path or "eval/quality.db")
@@ -56,6 +57,9 @@ def get_recent_briefed_themes(db_path: Path | str | None = None, limit: int = 2)
     return []
 
 
+# [spec: THEME-002]
+# [spec: THEME-003]
+# [spec: VALID-004]
 class LayaDecisionEngine:
     """Manages local LAYA System 1 model inference and decision routing."""
 
@@ -347,6 +351,8 @@ class LayaDecisionEngine:
 _engine_instance: LayaDecisionEngine | None = None
 
 
+# [spec: THEME-002]
+# [spec: VALID-004]
 def get_laya_engine(config: dict[str, Any] | None = None) -> LayaDecisionEngine:
     """Get or create singleton LayaDecisionEngine."""
     global _engine_instance

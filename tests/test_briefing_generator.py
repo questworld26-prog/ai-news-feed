@@ -202,6 +202,7 @@ def test_validate_and_correct_audio_script_hierarchy_of_truth_detects_unsupporte
 
 
 # [verifies: AIM-003/AC-AIM-003.1]
+# [verifies: AIM-003/AC-AIM-003.2]
 # [verifies: AUDIO-004/AC-AUDIO-004.2]
 def test_synthesize_audio_memory_headroom_lifecycle(tmp_path, test_config, monkeypatch):
     """M1 8GB Hardware Invariant: synthesize_audio unloads LLMs and clears Metal cache."""

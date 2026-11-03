@@ -46,6 +46,7 @@ def chunk_text(text: str, max_words: int = 150) -> list[str]:
     return [c.strip() for c in chunks if c.strip()]
 
 
+# [spec: AIM-003]
 def unload_ollama_models(ollama_url: str = "http://localhost:11434", config: dict[str, Any] | None = None) -> None:
     """
     Explicitly offload any active LLM models from Ollama VRAM/unified memory
@@ -81,6 +82,8 @@ def unload_ollama_models(ollama_url: str = "http://localhost:11434", config: dic
         logger.warning(f"Could not offload Ollama models: {e}")
 
 
+# [spec: AIM-003]
+# [spec: AUDIO-004]
 def clear_mlx_memory() -> None:
     """Free MLX intermediate tensor buffers and run Python garbage collection."""
     import gc

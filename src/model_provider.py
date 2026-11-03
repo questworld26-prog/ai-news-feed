@@ -54,6 +54,8 @@ class ModelProvider(ABC):
         pass
 
 
+# [spec: AIM-001]
+# [spec: AIM-003]
 class OllamaProvider(ModelProvider):
     """
     Ollama implementation of ModelProvider.
@@ -129,6 +131,7 @@ class OllamaProvider(ModelProvider):
             logger.warning(f"Could not offload Ollama models: {e}")
 
 
+# [spec: AIM-001]
 class ModelProviderFactory:
     """Factory for creating and retrieving configured ModelProvider instances."""
 

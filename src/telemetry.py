@@ -29,6 +29,7 @@ except ImportError:
     _HAS_RICH = False
 
 
+# [spec: AIM-003]
 @dataclass
 class StageRecord:
     name: str
@@ -40,6 +41,7 @@ class StageRecord:
     metrics: dict[str, Any] = field(default_factory=dict)
 
 
+# [spec: AIM-003]
 class StageContext:
     def __init__(self, name: str, tracker: PipelineTracker):
         self.name = name
@@ -53,6 +55,7 @@ class StageContext:
         self.metrics.update(data)
 
 
+# [spec: AIM-003]
 class PipelineTracker:
     """Tracks and reports performance, memory, and throughput metrics across pipeline stages."""
 

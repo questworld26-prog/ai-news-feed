@@ -18,6 +18,10 @@ from story import Story
 logger = logging.getLogger("ai_briefing")
 
 
+# [spec: VALID-001]
+# [spec: VALID-002]
+# [spec: VALID-003]
+# [spec: VALID-004]
 class ValidationResult(NamedTuple):
     story_title: str
     keyword_overlap_score: float
@@ -27,6 +31,7 @@ class ValidationResult(NamedTuple):
     passed: bool
 
 
+# [spec: VALID-003]
 def extract_key_tokens(text: str) -> set[str]:
     """Extract numbers, capitalized proper nouns, and significant technical terms."""
     if not text:
@@ -245,6 +250,8 @@ def detect_unanchored_entities(source_text: str, digest_text: str) -> list[str]:
     return warnings
 
 
+# [spec: VALID-004]
+# [spec: AIM-002]
 class FactCheckResponse(BaseModel):
     reasoning: str = Field(
         description="Detailed step-by-step reasoning evaluating factual adherence and checking for fabrications or URLs"
@@ -255,6 +262,8 @@ class FactCheckResponse(BaseModel):
     )
 
 
+# [spec: VALID-004]
+# [spec: AIM-002]
 def llm_fact_check(source_text: str, digest_summary: str, config: dict[str, Any]) -> tuple[bool, str]:
     """Use local model via provider factory to perform a factual adherence audit."""
     llm_cfg = config.get("llm", {})
@@ -291,6 +300,11 @@ def llm_fact_check(source_text: str, digest_summary: str, config: dict[str, Any]
         return False, f"Fact check failed due to error: {e}"
 
 
+# [spec: VALID-001]
+# [spec: VALID-002]
+# [spec: VALID-003]
+# [spec: VALID-004]
+# [spec: AIM-002]
 def validate_story(
     story: Story | dict[str, Any],
     digest_summary: str,

@@ -18,11 +18,13 @@ from story import BriefingOutput, Story
 logger = logging.getLogger("ai_briefing")
 
 
+# [spec: THEME-001]
 class StorySelectionJustification(BaseModel):
     index: int = Field(description="1-based integer index of the candidate story")
     reasoning: str = Field(description="Brief technical justification for why this story was selected")
 
 
+# [spec: THEME-001]
 class CurationResponse(BaseModel):
     evaluation_criteria: str = Field(
         description="Summary of theme evaluation criteria applied when curating candidate stories"
@@ -127,6 +129,7 @@ def clean_script_for_audio(raw_script: str) -> str:
     return text
 
 
+# [spec: THEME-001]
 def llm_curate_stories(
     candidates: list[Story | dict[str, Any]],
     theme_dict: dict[str, Any],
@@ -385,6 +388,8 @@ def generate_story_summary_validated(
     return STORY_FALLBACK_SUMMARY
 
 
+# [spec: CGAP-004]
+# [spec: AIM-002]
 def validate_and_correct_audio_script(
     stories: list[Story | dict[str, Any]],
     audio_script: str,

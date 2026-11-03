@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from story import Story
 
 
+# [verifies: INGEST-003/AC-INGEST-003.2]
 def test_story_init_defaults():
     s = Story(
         source="Test Source",
@@ -24,6 +25,7 @@ def test_story_init_defaults():
     assert s.validated_summary is None
 
 
+# [verifies: INGEST-003/AC-INGEST-003.2]
 def test_story_to_dict_and_from_dict():
     now = datetime.now(UTC)
     s1 = Story(
@@ -55,6 +57,7 @@ def test_story_to_dict_and_from_dict():
     assert s2.extra_metadata == s1.extra_metadata
 
 
+# [verifies: INGEST-003/AC-INGEST-003.2]
 def test_story_to_prompt_context():
     s = Story(
         source="GitHub Trending",
@@ -70,6 +73,7 @@ def test_story_to_prompt_context():
     assert "Summary: Curated list of AI frameworks and tools." in prompt_str
 
 
+# [verifies: INGEST-003/AC-INGEST-003.2]
 def test_story_to_structured_prompt_dict():
     s = Story(
         source="TechCrunch",
@@ -101,6 +105,7 @@ def test_story_to_structured_prompt_dict():
     assert struct_dict_up["original_briefed_date"] == "2026-10-01"
 
 
+# [verifies: AIM-004/AC-AIM-004.1]
 def test_briefing_output_markdown_rendering():
     from story import BriefingOutput
 

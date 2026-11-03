@@ -61,6 +61,7 @@ AUDIO_BENIGN_ENTITIES = {
 }
 
 
+# [spec: CGAP-001]
 @dataclass
 class StoryFactPredicate:
     """Atomic factual capability contract for a validated story."""
@@ -88,6 +89,7 @@ class StoryFactPredicate:
         )
 
 
+# [spec: CGAP-004]
 @dataclass
 class CGAPVerificationResult:
     """Verification results from deterministic CGAP grounding analysis."""
@@ -346,6 +348,7 @@ def verify_cgap_grounding(
     )
 
 
+# [spec: CGAP-004]
 def format_cgap_feedback_hint(result: CGAPVerificationResult) -> str:
     """Format granular, actionable correction feedback for the LLM retry prompt."""
     if result.passed:

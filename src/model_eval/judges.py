@@ -24,6 +24,7 @@ except ImportError:
 console = Console()
 
 
+# [spec: COMPARE-002]
 def build_gemini_client() -> genai.Client | None:
     """Build and return an authenticated Gemini client if API key is present."""
     if genai is None:
@@ -133,6 +134,7 @@ def _heuristic_judge_score(
     }
 
 
+# [spec: COMPARE-002]
 def llm_judge_score(
     source_text: str,
     summary: str,
@@ -192,6 +194,7 @@ def llm_judge_score(
     return _heuristic_judge_score(source_text, summary, expected_facts, lexical_hallucinations, "API Timeout")
 
 
+# [spec: COMPARE-002]
 def llm_judge_script_score(
     source_summaries: str,
     script: str,

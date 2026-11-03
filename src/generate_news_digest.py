@@ -36,6 +36,7 @@ logging.basicConfig(
 logger = logging.getLogger("ai_briefing")
 
 
+# [spec: THEME-001]
 def load_config(config_path: Path) -> dict[str, Any]:
     """Load configuration from TOML file."""
     if not config_path.exists():

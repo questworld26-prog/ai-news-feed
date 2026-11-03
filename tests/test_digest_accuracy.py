@@ -59,7 +59,6 @@ def test_detect_fabrications_catches_fake_numbers():
     assert any("5000" in w for w in warnings)
 
 
-# [verifies: VALID-002/AC-VALID-002.1]
 # [verifies: VALID-002/AC-VALID-002.2]
 def test_golden_story_validation(golden_stories):
     dummy_config = {"llm": {"model": "phi4-mini:3.8b", "ollama_url": "http://localhost:11434"}}
@@ -72,6 +71,7 @@ def test_golden_story_validation(golden_stories):
     assert len(result.fabrication_warnings) == 0
 
 
+# [verifies: INGEST-002/AC-INGEST-002.1]
 def test_matches_hard_filters_filters_quote_and_low_context():
     from news_fetcher import matches_hard_filters
 
@@ -92,6 +92,7 @@ def test_matches_hard_filters_filters_quote_and_low_context():
     )
 
 
+# [verifies: VALID-003/AC-VALID-003.1]
 def test_detect_fabrications_catches_hallucinated_tool():
     # Test prompt guardrail / fabrication detection on quote-like summary
     source = "Quoting voxium: It has been half a month since I started a new role. Everything is made by Claude Code."
@@ -104,6 +105,7 @@ def test_detect_fabrications_catches_hallucinated_tool():
     assert overlap < 0.35
 
 
+# [verifies: VALID-004/AC-VALID-004.2]
 def test_llm_fact_check_passes_mocked(monkeypatch):
     from validator import llm_fact_check
 
@@ -124,6 +126,7 @@ def test_llm_fact_check_passes_mocked(monkeypatch):
     assert "Factual and supported" in reasoning
 
 
+# [verifies: VALID-004/AC-VALID-004.2]
 def test_llm_fact_check_fails_mocked(monkeypatch):
     from validator import llm_fact_check
 
@@ -144,6 +147,7 @@ def test_llm_fact_check_fails_mocked(monkeypatch):
     assert "unsupported claims" in reasoning
 
 
+# [verifies: VALID-004/AC-VALID-004.2]
 def test_llm_fact_check_fails_closed_on_exception(monkeypatch):
     import requests
 
@@ -161,6 +165,7 @@ def test_llm_fact_check_fails_closed_on_exception(monkeypatch):
     assert "timed out" in reasoning
 
 
+# [verifies: VALID-003/AC-VALID-003.2]
 def test_extract_key_tokens_preserves_acronyms_and_models():
     from validator import extract_key_tokens
 
@@ -174,6 +179,7 @@ def test_extract_key_tokens_preserves_acronyms_and_models():
     assert "o3" in tokens
 
 
+# [verifies: INGEST-002/AC-INGEST-002.1]
 def test_parse_feed_entry_rejects_stale_stories():
     from datetime import UTC, datetime, timedelta
 
@@ -192,6 +198,7 @@ def test_parse_feed_entry_rejects_stale_stories():
     assert result is None  # Must be rejected due to 48-hour cutoff
 
 
+# [verifies: INGEST-002/AC-INGEST-002.2]
 def test_fetch_article_excerpt_filters_cookie_banners(monkeypatch):
     import requests
 
@@ -223,6 +230,7 @@ def test_fetch_article_excerpt_filters_cookie_banners(monkeypatch):
     assert "distributed inference kernel" in excerpt
 
 
+# [verifies: VALID-002/AC-VALID-002.1]
 def test_detect_unanchored_entities_catches_hallucinated_orgs():
     from validator import detect_unanchored_entities
 
@@ -236,6 +244,7 @@ def test_detect_unanchored_entities_catches_hallucinated_orgs():
     assert any("OpenAI" in w for w in warnings)
 
 
+# [verifies: SUMM-001/AC-SUMM-001.1]
 def test_story_summary_response_extractive_anchoring():
     from briefing_generator import StorySummaryResponse
 

@@ -94,6 +94,7 @@ def test_laya_filter_hype_technical_vs_fluff():
     assert "hype" in reason_fluff.lower()
 
 
+# [verifies: VALID-004/AC-VALID-004.1]
 def test_laya_fact_check_pregate():
     """Option 2: Test that LAYA passes grounded summaries and rejects hallucinations."""
     engine = get_laya_engine()
@@ -113,6 +114,7 @@ def test_laya_fact_check_pregate():
     assert "hallucination" in fail_reason.lower()
 
 
+# [verifies: THEME-001/AC-THEME-001.2]
 def test_laya_rank_candidates_for_theme():
     """Option 1: Test that LAYA pre-ranks candidates according to theme relevance."""
     engine = get_laya_engine()
@@ -190,6 +192,7 @@ def test_laya_route_theme_from_stories():
     assert distribution["practitioner_radar"] > distribution["builders_digest"]
 
 
+# [verifies: VALID-004/AC-VALID-004.1]
 def test_laya_disabled_fallback():
     """Test that when LAYA is disabled in config, fallback behaviors operate safely."""
     LayaDecisionEngine()
@@ -284,6 +287,7 @@ def test_laya_route_theme_cooldown_penalty(tmp_path: Path):
     assert dist_cooldown["practitioner_radar"] < dist_no_cooldown["practitioner_radar"]
 
 
+# [verifies: VALID-004/AC-VALID-004.1]
 @pytest.mark.heavy
 def test_laya_live_model_inference():
     """Heavy Tier 3 integration test: loads real weights when explicitly requested via `pytest -m heavy`."""

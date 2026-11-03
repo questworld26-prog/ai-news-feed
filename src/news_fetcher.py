@@ -25,6 +25,7 @@ _SNIPPET_MIN_CHARS = 50
 _ARTICLE_EXCERPT_CHARS = 300
 
 
+# [spec: INGEST-002]
 def fetch_article_excerpt(url: str, max_chars: int = _ARTICLE_EXCERPT_CHARS) -> str:
     """
     Fetch the article at *url* and return a clean plain-text excerpt of up to
@@ -104,6 +105,7 @@ def fetch_article_excerpt(url: str, max_chars: int = _ARTICLE_EXCERPT_CHARS) -> 
         return ""
 
 
+# [spec: INGEST-002]
 def clean_html_text(raw_html: str) -> str:
     """Strip basic HTML tags, metadata lines, and excessive whitespace."""
     if not raw_html:
@@ -115,6 +117,7 @@ def clean_html_text(raw_html: str) -> str:
     return text
 
 
+# [spec: INGEST-003]
 def is_similar_title(title1: str, title2: str, threshold: float = 0.65) -> bool:
     """Check if two story titles are fuzzy duplicates."""
     t1 = re.sub(r"[^\w\s]", "", title1.lower()).strip()
@@ -126,6 +129,7 @@ def is_similar_title(title1: str, title2: str, threshold: float = 0.65) -> bool:
     return SequenceMatcher(None, t1, t2).ratio() >= threshold
 
 
+# [spec: INGEST-003]
 def score_entry(entry: Story | dict[str, Any]) -> float:
     """
     Compute a relevance score for a feed entry.
@@ -159,6 +163,7 @@ def score_entry(entry: Story | dict[str, Any]) -> float:
     return (0.6 * recency_score) + (0.4 * popularity_score)
 
 
+# [spec: INGEST-002]
 def matches_hard_filters(title: str, summary: str, hard_filters: list[str]) -> bool:
     """
     Check if title or summary contains any excluded terms, quote prefixes,
@@ -180,6 +185,7 @@ def matches_hard_filters(title: str, summary: str, hard_filters: list[str]) -> b
     return False
 
 
+# [spec: INGEST-002]
 def parse_feed_entry(
     entry: Any, name: str, hard_filters: list[str], now: datetime, max_age_hours: float = 96.0
 ) -> Story | None:
@@ -230,6 +236,7 @@ def parse_feed_entry(
     )
 
 
+# [spec: INGEST-001]
 def sanitize_feed_xml(raw_bytes: bytes) -> bytes:
     """Fix common RSS XML malformations such as unescaped ampersands."""
     text = raw_bytes.decode("utf-8", errors="replace")
@@ -238,6 +245,7 @@ def sanitize_feed_xml(raw_bytes: bytes) -> bytes:
     return text.encode("utf-8")
 
 
+# [spec: INGEST-001]
 def fetch_entries_from_source(
     src: dict[str, Any],
     hard_filters: list[str],
@@ -320,6 +328,7 @@ def fetch_entries_from_source(
     return entries
 
 
+# [spec: INGEST-003]
 def build_candidate_pool(
     all_entries: list[Story],
     candidate_pool_size: int,
@@ -397,6 +406,8 @@ def build_candidate_pool(
     return candidate_pool
 
 
+# [spec: INGEST-003]
+# [spec: THEME-001]
 def fetch_stories_for_theme(
     theme_dict: dict[str, Any], config: dict[str, Any], max_age_hours: float | None = None
 ) -> list[Story]:
@@ -443,6 +454,8 @@ def fetch_stories_for_theme(
     return candidate_pool
 
 
+# [spec: INGEST-003]
+# [spec: THEME-002]
 def sample_breaking_headlines(config: dict[str, Any], max_items: int = 12, quota_per_theme: int = 2) -> list[Story]:
     """
     Fetch a balanced cross-section of top breaking headlines across all configured themes
@@ -504,6 +517,7 @@ def sample_breaking_headlines(config: dict[str, Any], max_items: int = 12, quota
     return balanced_samples[:max_items]
 
 
+# [spec: INGEST-004]
 def check_all_sources_health(config: dict[str, Any]) -> dict[str, Any]:
     """
     Diagnostic tool to concurrently ping and validate all RSS feed sources across all configured themes.

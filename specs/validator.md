@@ -32,3 +32,14 @@ Acceptance Criteria:
 - AC-VALID-003.1: Rejects candidate summaries with keyword overlap score strictly below 0.35.
 - AC-VALID-003.2: Computes lexical overlap after normalizing tokens, removing English stopwords, and stripping punctuation.
 
+---
+
+## VALID-004: Hybrid System 1 (LAYA) & System 2 (Ollama) Semantic Fact-Checking
+
+When deterministic lexical and numerical pre-gates pass, the system shall evaluate semantic entailment using the LAYA System 1 pre-gate and escalate ambiguous cases to the System 2 Ollama `llm_fact_check` auditor, failing closed on any exception.
+
+Acceptance Criteria:
+- AC-VALID-004.1: High-confidence grounded summaries fast-pass via `fact_check_pregate`, high-confidence hallucinations fast-fail, and disabled/unavailable LAYA falls back safely.
+- AC-VALID-004.2: System 2 `llm_fact_check` parses structured `FactCheckResponse` verdicts and fails closed (`passed=False`) if the local LLM request times out or raises an exception.
+
+

@@ -45,6 +45,7 @@ _TITLE_PREFIX_PATTERN = re.compile(
 )
 
 
+# [spec: INGEST-003]
 def normalize_url(raw_url: str) -> str:
     """
     Clean and canonicalize a URL by removing marketing tracking parameters,
@@ -74,6 +75,7 @@ def normalize_url(raw_url: str) -> str:
         return raw_url.strip()
 
 
+# [spec: INGEST-003]
 def normalize_title(raw_title: str) -> str:
     """
     Normalize title by stripping feed prefix tags, lowercasing,
@@ -88,6 +90,7 @@ def normalize_title(raw_title: str) -> str:
     return " ".join(t.split())
 
 
+# [spec: INGEST-003]
 def compute_story_hash(canonical_url: str, clean_title: str) -> str:
     """Compute deterministic SHA-256 hash for a canonical URL and title."""
     composite = f"{canonical_url.strip()}|{clean_title.strip()}".encode()

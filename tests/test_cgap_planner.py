@@ -122,6 +122,7 @@ def test_verify_cgap_grounding_passes_valid_ordered_script():
     assert result.is_ordered is True
 
 
+# [verifies: CGAP-004/AC-CGAP-004.1]
 def test_verify_cgap_grounding_detects_missing_story():
     predicates = [
         StoryFactPredicate(
@@ -150,6 +151,7 @@ def test_verify_cgap_grounding_detects_missing_story():
     assert any("Beta Quantum Modeling" in v for v in result.violations)
 
 
+# [verifies: CGAP-004/AC-CGAP-004.1]
 def test_verify_cgap_grounding_detects_out_of_order_narration():
     predicates = [
         StoryFactPredicate(
@@ -201,6 +203,7 @@ def test_verify_cgap_grounding_detects_fabricated_metrics():
     assert any("99.4%" in v or "99.4" in v for v in result.violations)
 
 
+# [verifies: CGAP-004/AC-CGAP-004.2]
 def test_verify_cgap_grounding_detects_theatrical_flattery():
     predicates = [
         StoryFactPredicate(
@@ -223,6 +226,7 @@ def test_verify_cgap_grounding_detects_theatrical_flattery():
     assert any("theatrical filler" in v for v in result.violations)
 
 
+# [verifies: CGAP-004/AC-CGAP-004.1]
 def test_format_cgap_feedback_hint():
     predicates = [
         StoryFactPredicate(

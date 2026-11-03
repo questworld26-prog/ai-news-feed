@@ -21,6 +21,7 @@ def compute_rouge_l(source_text: str, summary: str) -> float:
     return round(scores["rougeL"].fmeasure, 4)
 
 
+# [spec: COMPARE-002]
 def compute_keyword_overlap(source_text: str, summary: str, expected_facts: list[str]) -> float:
     """Fraction of expected_facts that appear in the summary."""
     if not expected_facts or not summary:
@@ -30,6 +31,7 @@ def compute_keyword_overlap(source_text: str, summary: str, expected_facts: list
     return round(hits / len(expected_facts), 4)
 
 
+# [spec: COMPARE-002]
 def detect_hallucinations(source_text: str, summary: str) -> list[str]:
     """Flags capitalized multi-word tokens/numbers not in source text."""
     if not summary:
@@ -49,6 +51,7 @@ def detect_hallucinations(source_text: str, summary: str) -> list[str]:
     return list(set(hallucinations))
 
 
+# [spec: COMPARE-002]
 def compute_length_metrics(summary: str) -> dict[str, int]:
     """Return word count and sentence count for the text."""
     words = len(summary.split()) if summary else 0

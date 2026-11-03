@@ -48,6 +48,7 @@ def test_clean_script_for_audio_strips_preamble_and_outro_flattery():
     assert cleaned.endswith("That is your briefing for today.")
 
 
+# [verifies: AUDIO-003/AC-AUDIO-003.1]
 def test_clean_script_for_audio_empty_string():
     assert clean_script_for_audio("") == ""
     assert clean_script_for_audio(None) == ""

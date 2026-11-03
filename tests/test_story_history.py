@@ -23,6 +23,7 @@ from story_history import (
 )
 
 
+# [verifies: INGEST-003/AC-INGEST-003.1]
 def test_normalize_url():
     url1 = "https://www.example.com/ai/article/?utm_source=twitter&utm_medium=social#section-1"
     url2 = "https://example.com/ai/article?ref=hackernews"
@@ -35,6 +36,7 @@ def test_normalize_url():
     assert "utm_campaign" not in normalize_url(url3)
 
 
+# [verifies: INGEST-003/AC-INGEST-003.1]
 def test_normalize_title():
     t1 = "[Show HN] Fast-Inference: A new local LLM engine (v1.0)!"
     t2 = "Show HN: Fast-Inference: A new local LLM engine"
@@ -44,6 +46,7 @@ def test_normalize_title():
     assert "fast inference a new local llm engine" in norm2
 
 
+# [verifies: INGEST-003/AC-INGEST-003.1]
 def test_compute_story_hash():
     h1 = compute_story_hash("https://example.com/article", "fast inference engine")
     h2 = compute_story_hash("https://example.com/article", "fast inference engine")
@@ -53,6 +56,7 @@ def test_compute_story_hash():
     assert len(h1) == 24
 
 
+# [verifies: INGEST-003/AC-INGEST-003.1]
 def test_history_record_and_recurrence_detection(tmp_path: Path):
     db_file = tmp_path / "test_history.db"
     manager = StoryHistoryManager(db_file)
@@ -109,6 +113,7 @@ def test_history_record_and_recurrence_detection(tmp_path: Path):
     assert prev_date3 is None
 
 
+# [verifies: INGEST-003/AC-INGEST-003.1]
 def test_soft_score_decay_application(tmp_path: Path):
     db_file = tmp_path / "test_decay.db"
     manager = StoryHistoryManager(db_file)
@@ -162,6 +167,7 @@ def test_soft_score_decay_application(tmp_path: Path):
     assert cand_fresh.score == 0.60
 
 
+# [verifies: INGEST-003/AC-INGEST-003.1]
 def test_build_candidate_pool_integration_with_decay(tmp_path: Path):
     db_file = tmp_path / "candidate_pool_decay.db"
     manager = StoryHistoryManager(db_file)
@@ -218,6 +224,7 @@ def test_build_candidate_pool_integration_with_decay(tmp_path: Path):
     assert pool[1].original_briefed_date == past_date.strftime("%Y-%m-%d")
 
 
+# [verifies: INGEST-003/AC-INGEST-003.1]
 def test_clear_history(tmp_path: Path):
     db_file = tmp_path / "clear_history.db"
     manager = StoryHistoryManager(db_file)
