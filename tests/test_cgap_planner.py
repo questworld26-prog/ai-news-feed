@@ -60,13 +60,13 @@ def test_compile_story_predicates_incorporates_article_context():
             source="AWS Blog",
             title="SageMaker SeqKD Architecture",
             link="https://aws.amazon.com/sagemaker",
-            summary="SageMaker AI introduces sequence-level knowledge distillation with 2.4x lower cost on Llama-3.",
+            summary="SageMaker AI introduces sequence-level knowledge distillation with 45 percent lower cost on Llama-3.",
             validated_summary="SageMaker AI introduces sequence-level knowledge distillation.",
         )
     ]
     predicates = compile_story_predicates(stories)
     assert len(predicates) == 1
-    assert "2.4x" in predicates[0].metrics or "2.4" in predicates[0].metrics
+    assert "45" in predicates[0].metrics
     assert "sequence-level knowledge distillation" in predicates[0].source_context
 
 
@@ -95,7 +95,7 @@ def test_build_cgap_script_plan_formats_steps():
 
     plan = build_cgap_script_plan(predicates, "Innovation Scout")
     assert "=== CGAP SYMBOLIC MONOLOGUE PLAN (Innovation Scout) ===" in plan
-    assert "Step 0: [Intro]" in plan
+    assert "Step 0: [Theme Opening]" in plan
     assert "Step 1: [CoverStory #1] 'Story Alpha'" in plan
     assert "Step 2: [CoverStory #2] [Follow-up Update] 'Story Beta'" in plan
     assert "Step 3: [SignOff]" in plan
