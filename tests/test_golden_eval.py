@@ -12,7 +12,7 @@ import pytest
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root / "src"))
 
-from evaluator import (
+from model_eval.evaluator import (
     evaluate_hhh_guardrails,
     evaluate_regex_rules,
     evaluate_rubrics,

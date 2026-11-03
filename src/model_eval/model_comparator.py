@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 import sys
 import time
@@ -43,12 +42,6 @@ except ImportError:
     sys.exit(1)
 
 try:
-    from rouge_score import rouge_scorer
-except ImportError:
-    print("ERROR: `rouge-score` not installed. Run: uv add rouge-score --group dev")
-    sys.exit(1)
-
-try:
     from rich import box
     from rich.console import Console
     from rich.panel import Panel
@@ -56,13 +49,6 @@ try:
     from rich.table import Table
 except ImportError:
     print("ERROR: `rich` not installed. Run: uv add rich --group dev")
-    sys.exit(1)
-
-try:
-    from google import genai
-    from google.genai import types as genai_types
-except ImportError:
-    print("ERROR: `google-genai` not installed. Run: uv add google-genai --group dev")
     sys.exit(1)
 
 try:
@@ -84,7 +70,7 @@ except ImportError:
     pass
 
 # ── Setup path to src to reuse production modules/schemas ───────────────────
-SRC_DIR = Path(__file__).parent
+SRC_DIR = Path(__file__).resolve().parent.parent
 PROJECT_ROOT = SRC_DIR.parent
 EVAL_DIR = PROJECT_ROOT / "eval"
 if str(SRC_DIR) not in sys.path:
@@ -113,11 +99,18 @@ except ImportError as e:
         return re.sub(r"\s+", " ", text).strip()
 
 
-# ── HTML Dashboard Generator Import ──────────────────────────────────────────
-try:
-    from save_html import save_html_dashboard
-except ImportError:
-    from eval.save_html import save_html_dashboard  # type: ignore[no-redef]
+from model_eval.judges import (  # noqa: E402
+    build_gemini_client,
+    llm_judge_score,
+    llm_judge_script_score,
+)
+from model_eval.metrics import (  # noqa: E402
+    compute_keyword_overlap,
+    compute_length_metrics,
+    compute_rouge_l,
+    detect_hallucinations,
+)
+from model_eval.save_html import save_html_dashboard  # noqa: E402
 
 CONFIG_PATH = EVAL_DIR / "eval_config.toml"
 console = Console()
@@ -328,284 +321,6 @@ def generate_summary_ollama(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Lexical & Heuristic Metrics
-# ─────────────────────────────────────────────────────────────────────────────
-
-_rouge = rouge_scorer.RougeScorer(["rougeL"], use_stemmer=True)
-
-
-# [spec: COMPARE-002]
-def compute_rouge_l(source_text: str, summary: str) -> float:
-    """Compute ROUGE-L F1 between source text and generated summary."""
-    if not summary:
-        return 0.0
-    scores = _rouge.score(source_text, summary)
-    return round(scores["rougeL"].fmeasure, 4)
-
-
-def compute_keyword_overlap(source_text: str, summary: str, expected_facts: list[str]) -> float:
-    """Fraction of expected_facts that appear in the summary."""
-    if not expected_facts or not summary:
-        return 0.0
-    summary_lower = summary.lower()
-    hits = sum(1 for fact in expected_facts if fact.lower() in summary_lower)
-    return round(hits / len(expected_facts), 4)
-
-
-def detect_hallucinations(source_text: str, summary: str) -> list[str]:
-    """Flags capitalized multi-word tokens/numbers not in source text."""
-    if not summary:
-        return []
-    candidate_patterns = [
-        r"\b\d+(?:\.\d+)?%\b",
-        r"\b\d+(?:,\d{3})*(?:\.\d+)?\b",
-        r"\b[A-Z][a-zA-Z0-9]*(?:\s+[A-Z][a-zA-Z0-9]+)+\b",
-    ]
-    source_lower = source_text.lower()
-    hallucinations = []
-    for pattern in candidate_patterns:
-        for match in re.finditer(pattern, summary):
-            token = match.group()
-            if token.lower() not in source_lower:
-                hallucinations.append(token)
-    return list(set(hallucinations))
-
-
-def compute_length_metrics(summary: str) -> dict[str, int]:
-    """Return word count and sentence count for the text."""
-    words = len(summary.split()) if summary else 0
-    sentences = len([s for s in re.split(r"[.!?]+", summary) if s.strip()]) if summary else 0
-    return {"word_count": words, "sentence_count": sentences}
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Gemini Judge Setup & Scoring
-# ─────────────────────────────────────────────────────────────────────────────
-
-
-def build_gemini_client() -> genai.Client | None:
-    """Build and return an authenticated Gemini client if API key is present."""
-    api_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        console.print("[yellow]WARNING:[/yellow] GOOGLE_API_KEY environment variable not set.")
-        console.print("  LLM judge will use deterministic heuristic evaluation fallback.")
-        return None
-    try:
-        return genai.Client(api_key=api_key)
-    except Exception as e:
-        console.print(f"[yellow]WARNING:[/yellow] Could not initialize Gemini client: {e}")
-        return None
-
-
-_JUDGE_PROMPT_TEMPLATE = """You are an expert technical journalist evaluating AI-generated summaries for factual accuracy, grounding, and semantic hallucinations.
-
-SOURCE ARTICLE:
-{source_text}
-
-GENERATED SUMMARY:
-{summary}
-
-TASK:
-1. Identify any SEMANTIC or CONCEPTUAL HALLUCINATIONS in the generated summary. Look for plausible-sounding technical jargon, concepts, benchmark claims, architectural features, or metrics that are NOT supported by the source article.
-2. Score this summary on a scale of 1 to 5 for factual accuracy and grounding.
-
-SCORING RUBRIC:
-- 5: All claims in the summary are directly supported by the source. Zero hallucinations or ungrounded jargon.
-- 4: Mostly accurate with minor omissions of detail. No fabricated facts or fake jargon.
-- 3: Partially accurate. Some key facts are present but one or two details are imprecise or ungrounded.
-- 2: Significant inaccuracies or conceptual hallucinations present. Plausible-sounding fake features or numbers were invented.
-- 1: The summary is largely fabricated or unrelated to the source article.
-
-Respond ONLY in this exact JSON format:
-{{
-  "score": <integer 1-5>,
-  "verdict": "<PASS or FAIL>",
-  "conceptual_hallucinations": ["<list of invented jargon, claims, or ungrounded concepts found in summary>"],
-  "reasoning": "<one sentence explaining the score and any detected hallucinations>"
-}}"""
-
-
-_SCRIPT_JUDGE_PROMPT_TEMPLATE = """You are an expert audio broadcast editor evaluating a podcast monologue script written for an engineering audience.
-
-INPUT SOURCE SUMMARIES GIVEN TO THE MODEL:
-{source_summaries}
-
-GENERATED PODCAST SCRIPT:
-{script}
-
-TASK:
-1. Check if the script is factually grounded in the provided source summaries.
-2. Check for fabricated claims, fake benchmark metrics, or ungrounded stories not in the inputs.
-3. Check if the flow, transitions, and tone are natural and engaging for senior engineers.
-
-SCORING RUBRIC:
-- 5: Excellent factual fidelity, natural broadcast cadence, smooth thematic transitions, zero hallucinations.
-- 4: Good technical depth, minor stylistic imperfections, completely grounded in source facts.
-- 3: Understandable but contains slight factual embellishments or awkward transitions.
-- 2: Notable hallucinations, invented specs/numbers, or missing major source stories.
-- 1: Largely fabricated, incoherent, or unrelated to the input stories.
-
-Respond ONLY in this exact JSON format:
-{{
-  "score": <integer 1-5>,
-  "verdict": "<PASS or FAIL>",
-  "conceptual_hallucinations": ["<list of ungrounded claims or invented metrics>"],
-  "reasoning": "<one or two sentences evaluating technical fidelity, flow, and grounding>"
-}}"""
-
-
-def _heuristic_judge_score(
-    source_text: str,
-    summary: str,
-    expected_facts: list[str] | None,
-    lexical_hallucinations: list[str] | None,
-    reason_prefix: str,
-) -> dict[str, Any]:
-    """Deterministic fallback judge when Gemini API is offline or unavailable."""
-    lex_halls = lexical_hallucinations or []
-    facts = expected_facts or []
-    overlap = compute_keyword_overlap(source_text, summary, facts) if facts else 1.0
-
-    if len(lex_halls) > 0:
-        score = 2
-        verdict = "FAIL"
-        reason = f"[{reason_prefix}] Found ungrounded tokens: {', '.join(lex_halls[:3])}"
-    elif overlap >= 0.5:
-        score = 4
-        verdict = "PASS"
-        reason = f"[{reason_prefix}] High factual overlap ({overlap:.0%}) & 0 lexical hallucinations."
-    elif overlap >= 0.25:
-        score = 3
-        verdict = "PASS"
-        reason = f"[{reason_prefix}] Moderate factual overlap ({overlap:.0%}) & 0 lexical hallucinations."
-    else:
-        score = 2
-        verdict = "FAIL"
-        reason = f"[{reason_prefix}] Low factual overlap ({overlap:.0%})."
-
-    return {
-        "score": score,
-        "verdict": verdict,
-        "conceptual_hallucinations": [],
-        "reasoning": reason,
-        "api_error": True,
-    }
-
-
-def llm_judge_score(
-    source_text: str,
-    summary: str,
-    gemini_client: genai.Client | None,
-    judge_model: str = "gemini-2.5-flash",
-    expected_facts: list[str] | None = None,
-    lexical_hallucinations: list[str] | None = None,
-) -> dict[str, Any]:
-    """Evaluate summary quality with Gemini LLM-as-judge."""
-    if not summary or not summary.strip():
-        return {
-            "score": 1,
-            "verdict": "FAIL",
-            "conceptual_hallucinations": ["Empty summary generated."],
-            "reasoning": "Model produced empty or whitespace output.",
-        }
-
-    if gemini_client is None:
-        return _heuristic_judge_score(
-            source_text=source_text,
-            summary=summary,
-            expected_facts=expected_facts,
-            lexical_hallucinations=lexical_hallucinations,
-            reason_prefix="Fallback",
-        )
-
-    prompt = _JUDGE_PROMPT_TEMPLATE.format(source_text=source_text, summary=summary)
-    for attempt in range(2):
-        try:
-            response = gemini_client.models.generate_content(
-                model=judge_model,
-                contents=prompt,
-                config=genai_types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    temperature=0.0,
-                ),
-            )
-            raw = (response.text or "").strip()
-            parsed = json.loads(raw)
-            return {
-                "score": int(parsed.get("score", 3)),
-                "verdict": str(parsed.get("verdict", "PASS")).upper(),
-                "conceptual_hallucinations": list(parsed.get("conceptual_hallucinations", [])),
-                "reasoning": str(parsed.get("reasoning", "")),
-            }
-        except Exception as e:
-            if attempt == 0:
-                time.sleep(1.0)
-                continue
-            return _heuristic_judge_score(
-                source_text=source_text,
-                summary=summary,
-                expected_facts=expected_facts,
-                lexical_hallucinations=lexical_hallucinations,
-                reason_prefix=f"API Error ({type(e).__name__})",
-            )
-    return _heuristic_judge_score(source_text, summary, expected_facts, lexical_hallucinations, "API Timeout")
-
-
-def llm_judge_script_score(
-    source_summaries: str,
-    script: str,
-    gemini_client: genai.Client | None,
-    judge_model: str = "gemini-2.5-flash",
-) -> dict[str, Any]:
-    """Evaluate audio script factual grounding and broadcast flow with Gemini."""
-    if not script or not script.strip():
-        return {
-            "score": 1,
-            "verdict": "FAIL",
-            "conceptual_hallucinations": ["Empty script generated."],
-            "reasoning": "Model produced empty script output.",
-        }
-
-    if gemini_client is None:
-        return {
-            "score": 4,
-            "verdict": "PASS",
-            "conceptual_hallucinations": [],
-            "reasoning": "[Fallback] Heuristic pass without Gemini judge key.",
-        }
-
-    prompt = _SCRIPT_JUDGE_PROMPT_TEMPLATE.format(source_summaries=source_summaries, script=script)
-    for attempt in range(2):
-        try:
-            response = gemini_client.models.generate_content(
-                model=judge_model,
-                contents=prompt,
-                config=genai_types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    temperature=0.0,
-                ),
-            )
-            parsed = json.loads((response.text or "").strip())
-            return {
-                "score": int(parsed.get("score", 3)),
-                "verdict": str(parsed.get("verdict", "PASS")).upper(),
-                "conceptual_hallucinations": list(parsed.get("conceptual_hallucinations", [])),
-                "reasoning": str(parsed.get("reasoning", "")),
-            }
-        except Exception as e:
-            if attempt == 0:
-                time.sleep(1.0)
-                continue
-            return {
-                "score": 3,
-                "verdict": "PASS",
-                "conceptual_hallucinations": [],
-                "reasoning": f"[API Error ({type(e).__name__})] Fallback judge score applied.",
-            }
-    return {"score": 3, "verdict": "PASS", "conceptual_hallucinations": [], "reasoning": "Fallback judge."}
-
-
-# ─────────────────────────────────────────────────────────────────────────────
 # Evaluator: Role 1 — Summarization
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -615,7 +330,7 @@ def evaluate_summarization_case(
     case: dict[str, Any],
     model: str,
     config: dict[str, Any],
-    gemini_client: genai.Client | None,
+    gemini_client: Any | None,
     run_idx: int = 1,
 ) -> dict[str, Any]:
     """Evaluates a single summarization golden case."""
@@ -828,7 +543,7 @@ def evaluate_script_case(
     case: dict[str, Any],
     model: str,
     config: dict[str, Any],
-    gemini_client: genai.Client | None,
+    gemini_client: Any | None,
     run_idx: int = 1,
 ) -> dict[str, Any]:
     """Evaluates monologue script generation for word target, coverage, and leakage."""
@@ -1018,7 +733,7 @@ def evaluate_model(
     model: str,
     dataset: list[dict[str, Any]],
     config: dict[str, Any],
-    gemini_client: genai.Client | None,
+    gemini_client: Any | None,
     task_filter: str = "all",
 ) -> dict[str, Any]:
     """Evaluates a single model across all filtered cases in the golden dataset."""

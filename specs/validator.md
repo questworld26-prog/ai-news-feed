@@ -31,3 +31,4 @@ When validating a candidate summary, the system shall compute token overlap agai
 Acceptance Criteria:
 - AC-VALID-003.1: Rejects candidate summaries with keyword overlap score strictly below 0.35.
 - AC-VALID-003.2: Computes lexical overlap after normalizing tokens, removing English stopwords, and stripping punctuation.
+

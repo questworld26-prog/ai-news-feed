@@ -31,3 +31,4 @@ The system shall handle POST requests to submit human quality scores and trigger
 Acceptance Criteria:
 - AC-DASH-003.1: Endpoint POST /api/review validates rating integer between 1 and 5 and updates SQLite tracker.
 - AC-DASH-003.2: Endpoint POST /api/promote verifies story parameters and promotes entry into golden dataset.
+

@@ -41,3 +41,4 @@ The system shall synthesize 24kHz audio using Kokoro-mlx with automatic text chu
 Acceptance Criteria:
 - AC-AUDIO-004.1: Partitions the sanitized monologue into sequential chunks capped at 150 words without breaking sentences.
 - AC-AUDIO-004.2: Synthesizes high-fidelity 24kHz audio WAV files on Apple Silicon Metal acceleration.
+

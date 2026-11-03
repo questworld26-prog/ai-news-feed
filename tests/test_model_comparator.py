@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 
 from rich.console import Console
 
-from model_comparator import (
+from model_eval.model_comparator import (
     build_argument_parser,
     compute_keyword_overlap,
     compute_length_metrics,
@@ -21,7 +21,7 @@ from model_comparator import (
     generate_summary_ollama,
     print_comparison_table,
 )
-from save_html import save_html_dashboard
+from model_eval.save_html import save_html_dashboard
 
 
 # [verifies: COMPARE-001/AC-COMPARE-001.1]
@@ -127,11 +127,11 @@ def test_evaluate_audit_case_clean_and_poisoned() -> None:
     dummy_config = {"ollama": {"url": "http://localhost:11434"}}
 
     with patch(
-        "model_comparator.get_system_and_ollama_memory_gb",
+        "model_eval.model_comparator.get_system_and_ollama_memory_gb",
         return_value={"ollama_process_rss_gb": 1.2, "system_used_ram_gb": 4.5},
     ):
         # Mock Clean summary passing verification (True Negative)
-        with patch("model_comparator.llm_fact_check", return_value=(True, "Factual summary")):
+        with patch("model_eval.model_comparator.llm_fact_check", return_value=(True, "Factual summary")):
             res_clean = evaluate_audit_case(clean_case, "phi4-mini:3.8b", dummy_config)
             assert res_clean["is_poisoned"] is False
             assert res_clean["actual_verdict"] is True
@@ -139,7 +139,9 @@ def test_evaluate_audit_case_clean_and_poisoned() -> None:
             assert res_clean["passed"] is True
 
         # Mock Poisoned summary failing verification (True Positive detection of poison)
-        with patch("model_comparator.llm_fact_check", return_value=(False, "Fabrication detected: acquired Google")):
+        with patch(
+            "model_eval.model_comparator.llm_fact_check", return_value=(False, "Fabrication detected: acquired Google")
+        ):
             res_poisoned = evaluate_audit_case(poisoned_case, "phi4-mini:3.8b", dummy_config)
             assert res_poisoned["is_poisoned"] is True
             assert res_poisoned["actual_verdict"] is False
@@ -201,7 +203,7 @@ def test_print_comparison_table() -> None:
         }
     ]
     test_console = Console(file=io.StringIO(), force_terminal=False)
-    with patch("model_comparator.console", test_console):
+    with patch("model_eval.model_comparator.console", test_console):
         print_comparison_table(all_results)
         output = test_console.file.getvalue()
         assert "Multi-Role Model Evaluation" in output

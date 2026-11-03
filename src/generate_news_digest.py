@@ -25,7 +25,7 @@ from briefing_generator import (
 )
 from news_fetcher import fetch_stories_for_theme
 from notifier import send_to_telegram, synthesize_audio
-from quality_tracker import QualityTracker, get_current_git_commit
+from quality_dashboard import QualityTracker, get_current_git_commit
 from telemetry import PipelineTracker
 
 logging.basicConfig(

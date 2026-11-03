@@ -16,8 +16,7 @@ from unittest.mock import patch
 
 import pytest
 
-from quality_tracker import QualityTracker
-from serve_dashboard import DashboardRequestHandler
+from quality_dashboard import DashboardRequestHandler, QualityTracker
 
 
 @pytest.fixture
@@ -58,7 +57,7 @@ def test_dashboard_server(tmp_path: Path) -> Generator[str, None, None]:
         def __init__(self, *args, **kwargs):
             self.tracker = tracker
             super(DashboardRequestHandler, self).__init__(
-                *args, directory=str(Path(__file__).parent.parent / "src"), **kwargs
+                *args, directory=str(Path(__file__).parent.parent / "src" / "quality_dashboard"), **kwargs
             )
 
     server = ThreadingHTTPServer(("127.0.0.1", 0), CustomHandler)
@@ -90,7 +89,7 @@ def test_dashboard_server_cli_binding_parameters() -> None:
     """Verify that run_server accepts custom port and host parameters."""
     import inspect
 
-    from serve_dashboard import run_server
+    from quality_dashboard import run_server
 
     sig = inspect.signature(run_server)
     assert "port" in sig.parameters

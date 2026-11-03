@@ -19,7 +19,7 @@ def save_html_dashboard(
 ) -> Path:
     """Generate a rich, interactive HTML dashboard with Chart.js visualization for model comparison."""
     if project_root is None:
-        project_root = Path(__file__).parent.parent
+        project_root = Path(__file__).resolve().parent.parent.parent
     report_dir = project_root / config["output"]["report_dir"]
     report_dir.mkdir(parents=True, exist_ok=True)
 

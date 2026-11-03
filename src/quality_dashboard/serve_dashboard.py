@@ -17,10 +17,9 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+from quality_dashboard.quality_tracker import QualityTracker
 
-from quality_tracker import QualityTracker  # noqa: E402
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("quality_dashboard")

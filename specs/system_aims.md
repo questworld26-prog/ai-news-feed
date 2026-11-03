@@ -41,3 +41,4 @@ When daily execution finishes, the system shall format a standardized Markdown d
 Acceptance Criteria:
 - AC-AIM-004.1: Assembles briefing markdown conforming to the BriefingOutput schema with metadata and story links.
 - AC-AIM-004.2: Dispatches synthesized WAV audio notes and formatted markdown to Telegram Bot API with automatic 45MB chunking.
+

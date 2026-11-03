@@ -56,7 +56,7 @@ uv run python ~/.gemini/config/skills/spec-driven-development/scripts/guardian.p
 
 Print the detailed Multi-Layer Evaluation & Reliability Report (Structural Regex, HHH Guardrails, 1–5 Rubrics, and ALTK Consistency Gap tables):
 ```bash
-uv run python src/evaluator.py
+uv run python src/model_eval/evaluator.py
 # Or view with pytest stdout capture disabled:
 uv run pytest -s tests/test_golden_eval.py
 ```
@@ -68,7 +68,7 @@ uv run pytest -m heavy
 
 Compare candidate Ollama models across all 4 pipeline roles (Summarization, Curation, Scriptwriting, Adversarial Audit):
 ```bash
-uv run python src/model_comparator.py --task all
+uv run python src/model_eval/model_comparator.py --task all
 ```
 
 ### 📊 Telemetrics & Quality Web Dashboard
@@ -76,7 +76,7 @@ uv run python src/model_comparator.py --task all
 Launch the interactive telemetrics webpage server to monitor pipeline execution telemetry, memory footprints, fact-checking pass rates, and submit human quality reviews:
 
 ```bash
-uv run python src/serve_dashboard.py
+uv run python src/quality_dashboard/serve_dashboard.py
 ```
 
 Once launched, open your browser at:  
@@ -157,16 +157,23 @@ AI_news_voice_feed/
 │   ├── RELIABLE_NEWS_PIPELINE.md # Deep-dive stage-by-stage engineering guide
 │   ├── pipeline_workflow.html    # Interactive System 1 / System 2 pipeline visualizer
 │   └── testing_strategy.html     # Interactive 4-tier testing & evaluation visualizer
-├── eval/                         # Quality tracker DB, model comparator & web dashboard
+├── eval/                         # Quality tracker DB & benchmark datasets
 │   ├── README.md                 # Evaluation subsystem documentation & benchmark guides
 │   ├── eval_config.toml          # Model comparator benchmark configuration
-│   ├── golden_dataset.json       # Multi-role benchmark dataset for model comparison
-│   ├── model_comparator.py       # Multi-role LLM benchmark harness
-│   ├── quality_dashboard.html    # Interactive telemetrics web interface
-│   ├── save_html.py              # Chart.js HTML report generator
-│   └── serve_dashboard.py        # Web server & REST API for telemetrics dashboard
+│   └── golden_dataset.json       # Multi-role benchmark dataset for model comparison
 ├── launchd/
 │   └── com.aibriefing.daily.plist # macOS LaunchAgent daily schedule configuration
+├── specs/                        # Formal EARS specifications & Spec Guardian traceability
+│   ├── system_aims.md            # AIM-001..004 System Aims
+│   ├── themes.md                 # THEME-001..005 Thematic Architecture & Routing
+│   ├── validator.md              # VALID-001..003 Deterministic Validation
+│   ├── summarizer.md             # SUMM-001..004 Extractive Summarization
+│   ├── cgap_planner.md           # CGAP-001..004 Capability-Grounded Agentic Planning
+│   ├── audio_monologue.md        # AUDIO-001..004 Monologue & Speech Synthesis
+│   ├── quality_tracker.md        # TRACK-001..003 SQLite Telemetry & HITL Promotion
+│   ├── serve_dashboard.md        # DASH-001..003 Dashboard Server & REST API
+│   ├── model_comparator.md       # COMPARE-001..003 Multi-Role Benchmark & Reporting
+│   └── traceability.json         # Automated bi-directional traceability graph
 ├── src/
 │   ├── generate_news_digest.py   # Main CLI entrypoint & phase orchestrator
 │   ├── news_fetcher.py           # Concurrent RSS aggregation, scraping, scoring & filtering
@@ -177,11 +184,21 @@ AI_news_voice_feed/
 │   ├── story.py                  # Structured Story and BriefingOutput data contracts
 │   ├── story_history.py          # Persistent sliding-window recurrence & decay manager
 │   ├── validator.py              # Anti-hallucination validation & deterministic entity/number gates
-│   ├── evaluator.py              # 3-layer evaluation harness (Regex, HHH, Pass^K / Consistency Gap)
-│   ├── quality_tracker.py        # SQLite telemetry, quality scoring & HITL benchmark promotion
 │   ├── telemetry.py              # Stage latency & RSS memory profiler
-│   └── notifier.py               # Local TTS synthesis (kokoro-mlx) & Telegram dispatch
-└── tests/                        # 82 fast-path unit tests + 30-case golden benchmark suite
+│   ├── notifier.py               # Local TTS synthesis (kokoro-mlx) & Telegram dispatch
+│   ├── model_eval/               # Model evaluation & benchmarking package
+│   │   ├── __init__.py           # Package exports
+│   │   ├── evaluator.py          # 3-layer evaluation harness (Regex, HHH, Pass^K / Consistency Gap)
+│   │   ├── model_comparator.py   # Multi-role LLM benchmark harness & role dispatcher
+│   │   ├── metrics.py            # ROUGE-L, keyword overlap, length, and hallucination metrics
+│   │   ├── judges.py             # LLM-as-a-judge and heuristic scoring
+│   │   └── save_html.py          # Chart.js HTML report generator
+│   └── quality_dashboard/        # Telemetrics & human review dashboard package
+│       ├── __init__.py           # Package exports
+│       ├── quality_tracker.py    # SQLite telemetry, quality scoring & HITL benchmark promotion
+│       ├── serve_dashboard.py    # Web server & REST API for telemetrics dashboard
+│       └── quality_dashboard.html # Interactive telemetrics single-page web interface
+└── tests/                        # 102 fast-path unit tests + 30-case golden benchmark suite
 ```
 
 ---

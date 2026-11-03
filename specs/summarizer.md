@@ -41,3 +41,4 @@ If a story summary fails validation across all three attempts, the system shall 
 Acceptance Criteria:
 - AC-SUMM-004.1: Emits the standardized fallback badge warning with the verified original article URL in the markdown digest.
 - AC-SUMM-004.2: Suppresses all unverified or hallucinated LLM text from appearing in the published output.
+

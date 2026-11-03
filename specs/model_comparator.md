@@ -31,3 +31,4 @@ The system shall compile benchmark results into an interactive HTML report with 
 Acceptance Criteria:
 - AC-COMPARE-003.1: Emits an interactive dark-theme HTML report with Chart.js bar and line charts via save_html.py.
 - AC-COMPARE-003.2: Renders comparative model ranking tables and throughput summaries in the terminal via rich.
+

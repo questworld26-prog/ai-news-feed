@@ -41,3 +41,4 @@ Before executing audio synthesis or neural fact audits, the system shall execute
 Acceptance Criteria:
 - AC-CGAP-004.1: Deterministically verifies 100% story coverage and strictly monotonic sequential order in the candidate monologue.
 - AC-CGAP-004.2: Flags any metric or named entity in a script segment that is absent from the story's predicate catalog.
+

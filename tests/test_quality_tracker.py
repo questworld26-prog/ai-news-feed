@@ -13,7 +13,7 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 
 import pytest
 
-from quality_tracker import (
+from quality_dashboard import (
     QualityTracker,
     extract_domain,
     get_current_git_commit,

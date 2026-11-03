@@ -1,5 +1,5 @@
 {
-  "last_audited_at": "2026-11-03T09:09:48.033324+00:00",
+  "last_audited_at": "2026-11-03T09:18:16.933516+00:00",
   "total_requirements": 33,
   "total_criteria": 66,
   "verified_criteria_count": 66,
@@ -172,7 +172,7 @@
         "AC-COMPARE-001.2"
       ],
       "implementation_files": [
-        "src/model_comparator.py"
+        "src/model_eval/model_comparator.py"
       ],
       "status": "VERIFIED"
     },
@@ -191,7 +191,8 @@
         "AC-COMPARE-002.2"
       ],
       "implementation_files": [
-        "src/model_comparator.py"
+        "src/model_eval/metrics.py",
+        "src/model_eval/model_comparator.py"
       ],
       "status": "VERIFIED"
     },
@@ -210,8 +211,8 @@
         "AC-COMPARE-003.2"
       ],
       "implementation_files": [
-        "src/model_comparator.py",
-        "src/save_html.py"
+        "src/model_eval/model_comparator.py",
+        "src/model_eval/save_html.py"
       ],
       "status": "VERIFIED"
     },
@@ -230,7 +231,7 @@
         "AC-TRACK-001.2"
       ],
       "implementation_files": [
-        "src/quality_tracker.py"
+        "src/quality_dashboard/quality_tracker.py"
       ],
       "status": "VERIFIED"
     },
@@ -249,7 +250,7 @@
         "AC-TRACK-002.2"
       ],
       "implementation_files": [
-        "src/quality_tracker.py"
+        "src/quality_dashboard/quality_tracker.py"
       ],
       "status": "VERIFIED"
     },
@@ -268,7 +269,7 @@
         "AC-TRACK-003.2"
       ],
       "implementation_files": [
-        "src/quality_tracker.py"
+        "src/quality_dashboard/quality_tracker.py"
       ],
       "status": "VERIFIED"
     },
@@ -287,7 +288,7 @@
         "AC-DASH-001.2"
       ],
       "implementation_files": [
-        "src/serve_dashboard.py"
+        "src/quality_dashboard/serve_dashboard.py"
       ],
       "status": "VERIFIED"
     },
@@ -306,7 +307,7 @@
         "AC-DASH-002.2"
       ],
       "implementation_files": [
-        "src/serve_dashboard.py"
+        "src/quality_dashboard/serve_dashboard.py"
       ],
       "status": "VERIFIED"
     },
@@ -325,7 +326,7 @@
         "AC-DASH-003.2"
       ],
       "implementation_files": [
-        "src/serve_dashboard.py"
+        "src/quality_dashboard/serve_dashboard.py"
       ],
       "status": "VERIFIED"
     },
