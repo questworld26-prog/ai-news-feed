@@ -142,6 +142,7 @@ def extract_key_tokens(text: str) -> set[str]:
     return meaningful
 
 
+# [spec: VALID-003]
 def compute_keyword_overlap(source_text: str, digest_text: str) -> float:
     """Calculate ratio of digest key tokens found in source text."""
     digest_tokens = extract_key_tokens(digest_text)
@@ -155,6 +156,7 @@ def compute_keyword_overlap(source_text: str, digest_text: str) -> float:
     return len(matched) / len(digest_tokens)
 
 
+# [spec: VALID-001]
 def detect_fabrications(source_text: str, digest_text: str) -> list[str]:
     """Detect numbers, metrics, or percentages in digest text that do not appear in source text."""
     warnings = []
@@ -172,6 +174,7 @@ def detect_fabrications(source_text: str, digest_text: str) -> list[str]:
     return warnings
 
 
+# [spec: VALID-002]
 def detect_unanchored_entities(source_text: str, digest_text: str) -> list[str]:
     """
     Deterministic gate: flag any capitalized proper nouns, company names,

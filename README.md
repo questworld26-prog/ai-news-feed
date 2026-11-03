@@ -44,9 +44,14 @@ options:
 
 ### Testing & Quality Verification
 
-Run the fast-path test suite (84 tests in $< 1\text{s}$ with decoupled mock providers):
+Run the fast-path test suite (102 unit & regression tests in $< 4\text{s}$ with decoupled mock providers):
 ```bash
 uv run pytest
+```
+
+Execute the Spec Guardian bi-directional traceability audit across all 9 formal EARS specifications:
+```bash
+uv run python ~/.gemini/config/skills/spec-driven-development/scripts/guardian.py audit --strict
 ```
 
 Print the detailed Multi-Layer Evaluation & Reliability Report (Structural Regex, HHH Guardrails, 1–5 Rubrics, and ALTK Consistency Gap tables):
@@ -63,7 +68,7 @@ uv run pytest -m heavy
 
 Compare candidate Ollama models across all 4 pipeline roles (Summarization, Curation, Scriptwriting, Adversarial Audit):
 ```bash
-uv run python eval/model_comparator.py --task all
+uv run python src/model_comparator.py --task all
 ```
 
 ### 📊 Telemetrics & Quality Web Dashboard
@@ -71,7 +76,7 @@ uv run python eval/model_comparator.py --task all
 Launch the interactive telemetrics webpage server to monitor pipeline execution telemetry, memory footprints, fact-checking pass rates, and submit human quality reviews:
 
 ```bash
-uv run python eval/serve_dashboard.py
+uv run python src/serve_dashboard.py
 ```
 
 Once launched, open your browser at:  

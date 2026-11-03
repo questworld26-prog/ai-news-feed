@@ -19,6 +19,7 @@ logger = logging.getLogger("ai_briefing")
 T = TypeVar("T", bound=BaseModel)
 
 
+# [spec: AIM-001]
 class ModelProvider(ABC):
     """Abstract Base Class for LLM providers."""
 

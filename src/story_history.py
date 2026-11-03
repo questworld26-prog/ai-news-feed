@@ -132,6 +132,7 @@ class StoryHistoryManager:
             conn.execute("CREATE INDEX IF NOT EXISTS idx_briefed_at ON briefed_story_history(briefed_at);")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_canonical_url ON briefed_story_history(canonical_url);")
 
+    # [spec: THEME-003]
     def record_briefed_stories(
         self,
         stories: list[Story],

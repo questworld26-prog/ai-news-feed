@@ -135,6 +135,7 @@ class QualityTracker:
             except sqlite3.OperationalError:
                 pass
 
+    # [spec: TRACK-001]
     def log_run(
         self,
         run_id: str,
@@ -285,6 +286,7 @@ class QualityTracker:
         )
         return run_id
 
+    # [spec: TRACK-002]
     def update_review(self, run_id: str, rating: int | None, comment: str | None) -> bool:
         """Update human review rating (1-5) and freestyle comment for a run."""
         now_iso = datetime.now().isoformat()
@@ -459,6 +461,7 @@ class QualityTracker:
 
         return backfilled
 
+    # [spec: TRACK-003]
     def promote_story_to_golden(
         self,
         run_id: str,

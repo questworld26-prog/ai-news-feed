@@ -84,9 +84,9 @@ except ImportError:
     pass
 
 # ── Setup path to src to reuse production modules/schemas ───────────────────
-EVAL_DIR = Path(__file__).parent
-PROJECT_ROOT = EVAL_DIR.parent
-SRC_DIR = PROJECT_ROOT / "src"
+SRC_DIR = Path(__file__).parent
+PROJECT_ROOT = SRC_DIR.parent
+EVAL_DIR = PROJECT_ROOT / "eval"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
@@ -115,13 +115,9 @@ except ImportError as e:
 
 # ── HTML Dashboard Generator Import ──────────────────────────────────────────
 try:
-    from eval.save_html import save_html_dashboard
+    from save_html import save_html_dashboard
 except ImportError:
-    try:
-        from save_html import save_html_dashboard
-    except ImportError:
-        sys.path.insert(0, str(EVAL_DIR))
-        from save_html import save_html_dashboard  # type: ignore[no-redef]
+    from eval.save_html import save_html_dashboard  # type: ignore[no-redef]
 
 CONFIG_PATH = EVAL_DIR / "eval_config.toml"
 console = Console()
@@ -338,6 +334,7 @@ def generate_summary_ollama(
 _rouge = rouge_scorer.RougeScorer(["rougeL"], use_stemmer=True)
 
 
+# [spec: COMPARE-002]
 def compute_rouge_l(source_text: str, summary: str) -> float:
     """Compute ROUGE-L F1 between source text and generated summary."""
     if not summary:
@@ -613,6 +610,7 @@ def llm_judge_script_score(
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+# [spec: COMPARE-002]
 def evaluate_summarization_case(
     case: dict[str, Any],
     model: str,
@@ -1015,6 +1013,7 @@ def evaluate_audit_case(
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+# [spec: COMPARE-001]
 def evaluate_model(
     model: str,
     dataset: list[dict[str, Any]],
@@ -1212,6 +1211,7 @@ def evaluate_model(
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+# [spec: COMPARE-003]
 def print_comparison_table(all_results: list[dict[str, Any]]) -> None:
     """Print a rich terminal table with metrics broken down by pipeline role."""
     table = Table(
@@ -1400,7 +1400,9 @@ def save_markdown_report(all_results: list[dict[str, Any]], config: dict[str, An
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def main() -> None:
+# [spec: COMPARE-001]
+def build_argument_parser() -> argparse.ArgumentParser:
+    """Build and return CLI argument parser for model comparator."""
     parser = argparse.ArgumentParser(description="Multi-Role LLM Evaluation Harness for AI News Voice Feed")
     parser.add_argument(
         "--task",
@@ -1414,6 +1416,11 @@ def main() -> None:
         default=None,
         help="Comma-separated list of Ollama models to evaluate (e.g. 'llama3.2:3b,phi4-mini:3.8b')",
     )
+    return parser
+
+
+def main() -> None:
+    parser = build_argument_parser()
     args = parser.parse_args()
 
     console.print(

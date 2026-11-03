@@ -49,6 +49,7 @@ def load_config(config_path: Path) -> dict[str, Any]:
 _VALIDATION_MAX_RETRIES = 3
 
 
+# [spec: THEME-005]
 def run_all_themes(config: dict[str, Any], output_dir: Path, today_str: str) -> None:
     """
     Generate a comprehensive multi-theme digest covering all configured themes.
@@ -80,6 +81,9 @@ def run_all_themes(config: dict[str, Any], output_dir: Path, today_str: str) -> 
     print("\n" + "".join(combined_report))
 
 
+# [spec: THEME-001]
+# [spec: THEME-004]
+# [spec: AIM-003]
 def main() -> None:
     parser = argparse.ArgumentParser(description="AI News Daily Voice Briefing Pipeline")
     parser.add_argument("--config", default="config.toml", help="Path to configuration TOML file")

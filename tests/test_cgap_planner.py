@@ -13,6 +13,8 @@ from cgap_planner import (
 from story import Story
 
 
+# [verifies: CGAP-001/AC-CGAP-001.1]
+# [verifies: CGAP-001/AC-CGAP-001.2]
 def test_compile_story_predicates_extracts_metrics_and_entities():
     stories = [
         Story(
@@ -52,6 +54,8 @@ def test_compile_story_predicates_extracts_metrics_and_entities():
     assert "0.7" in p2.metrics
 
 
+# [verifies: CGAP-002/AC-CGAP-002.1]
+# [verifies: CGAP-002/AC-CGAP-002.2]
 def test_build_cgap_script_plan_formats_steps():
     predicates = [
         StoryFactPredicate(
@@ -83,6 +87,7 @@ def test_build_cgap_script_plan_formats_steps():
     assert "Step 3: [SignOff]" in plan
 
 
+# [verifies: CGAP-004/AC-CGAP-004.1]
 def test_verify_cgap_grounding_passes_valid_ordered_script():
     predicates = [
         StoryFactPredicate(
@@ -173,6 +178,7 @@ def test_verify_cgap_grounding_detects_out_of_order_narration():
     assert any("Narrative ordering violation" in v for v in result.violations)
 
 
+# [verifies: CGAP-004/AC-CGAP-004.2]
 def test_verify_cgap_grounding_detects_fabricated_metrics():
     predicates = [
         StoryFactPredicate(
@@ -238,6 +244,8 @@ def test_format_cgap_feedback_hint():
     assert "Include missing stories: [2]" in hint
 
 
+# [verifies: CGAP-003/AC-CGAP-003.1]
+# [verifies: CGAP-003/AC-CGAP-003.2]
 def test_build_cgap_script_plan_dual_grounding_formats_context():
     """Verify Dual-Grounding formats both Core Takeaway and Article Context in plan."""
     predicates = [

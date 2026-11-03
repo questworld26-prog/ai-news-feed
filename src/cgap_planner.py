@@ -99,6 +99,7 @@ class CGAPVerificationResult:
     is_ordered: bool = True
 
 
+# [spec: CGAP-001]
 def compile_story_predicates(stories: list[Story | dict[str, Any]]) -> list[StoryFactPredicate]:
     """
     Deterministically compile Level 2 validated stories into atomic ground predicates.
@@ -143,6 +144,9 @@ def compile_story_predicates(stories: list[Story | dict[str, Any]]) -> list[Stor
     return predicates
 
 
+# [spec: CGAP-002]
+# [spec: CGAP-003]
+# [spec: AIM-002]
 def build_cgap_script_plan(predicates: list[StoryFactPredicate], theme_name: str) -> str:
     """
     Generate an abstract symbolic plan for monologue script synthesis based on CGAP and Dual-Grounding.
@@ -226,6 +230,7 @@ def _find_story_mention_position(script_lower: str, predicate: StoryFactPredicat
     return -1
 
 
+# [spec: CGAP-004]
 def verify_cgap_grounding(
     script: str,
     predicates: list[StoryFactPredicate],

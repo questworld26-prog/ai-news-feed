@@ -18,6 +18,8 @@ class DummySchema(BaseModel):
     score: int = Field(description="A test score")
 
 
+# [verifies: AIM-001/AC-AIM-001.1]
+# [verifies: AIM-001/AC-AIM-001.2]
 def test_factory_returns_ollama_provider():
     ModelProviderFactory.reset()
     config = {
@@ -104,6 +106,7 @@ def test_ollama_provider_generate_structured(monkeypatch):
     assert res.score == 10
 
 
+# [verifies: AIM-003/AC-AIM-003.2]
 def test_ollama_provider_unload_models(monkeypatch):
     provider = OllamaProvider(base_url="http://localhost:11434")
 

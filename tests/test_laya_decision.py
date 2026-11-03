@@ -72,6 +72,7 @@ def mock_laya_agent_autouse(monkeypatch, request):
     monkeypatch.setattr(LayaDecisionEngine, "load_agent", lambda self: mock_agent)
 
 
+# [verifies: THEME-001/AC-THEME-001.2]
 def test_laya_filter_hype_technical_vs_fluff():
     """Option 4: Test that LAYA differentiates technical substance from marketing hype."""
     engine = get_laya_engine()
@@ -150,6 +151,8 @@ def test_laya_rank_candidates_for_theme():
     assert "Building local RAG agents with LangChain and Ollama in Python" in titles
 
 
+# [verifies: THEME-002/AC-THEME-002.1]
+# [verifies: THEME-002/AC-THEME-002.2]
 def test_laya_route_theme_from_stories():
     """Option 5: Test that LAYA dynamically routes breaking news to the appropriate theme."""
     engine = get_laya_engine()
@@ -195,6 +198,7 @@ def test_laya_disabled_fallback():
     assert not LayaDecisionEngine.is_enabled(dummy_config)
 
 
+# [verifies: THEME-003/AC-THEME-003.1]
 def test_get_recent_briefed_themes(tmp_path: Path):
     """Test extraction of recent briefed themes from SQLite database."""
     import sqlite3
@@ -221,6 +225,7 @@ def test_get_recent_briefed_themes(tmp_path: Path):
     assert recent == ["practitioner_radar", "builders_digest"]
 
 
+# [verifies: THEME-003/AC-THEME-003.2]
 def test_laya_route_theme_cooldown_penalty(tmp_path: Path):
     """Test that recent theme cooldown penalty reduces score of recently briefed themes."""
     import sqlite3

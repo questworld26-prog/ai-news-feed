@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 
+# [spec: COMPARE-003]
 def save_html_dashboard(
     all_results: list[dict[str, Any]],
     config: dict[str, Any],

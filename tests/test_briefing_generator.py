@@ -52,6 +52,10 @@ def test_config() -> dict:
     }
 
 
+# [verifies: SUMM-001/AC-SUMM-001.1]
+# [verifies: SUMM-001/AC-SUMM-001.2]
+# [verifies: SUMM-002/AC-SUMM-002.1]
+# [verifies: SUMM-002/AC-SUMM-002.2]
 def test_generate_story_summary_validated_success_first_attempt(sample_story, sample_theme, test_config, monkeypatch):
     """ADR-02: Validated summary passes on attempt 1 with grounded quotes."""
     mock_summary = StorySummaryResponse(
@@ -76,8 +80,16 @@ def test_generate_story_summary_validated_success_first_attempt(sample_story, sa
     assert sample_story.extra_metadata["summary_status"] == "success"
     assert sample_story.extra_metadata["retry_count"] == 1
     assert sample_story.extra_metadata["keyword_overlap"] > 0.40
+    # Two sentence constraint verification
+    import re
+
+    sentences = [s for s in re.split(r"(?<=[.!?])\s+", summary) if s.strip()]
+    assert len(sentences) == 2
+    assert len(mock_summary.direct_quotes) >= 1
 
 
+# [verifies: SUMM-003/AC-SUMM-003.1]
+# [verifies: SUMM-003/AC-SUMM-003.2]
 def test_generate_story_summary_validated_retries_with_hint_then_passes(
     sample_story, sample_theme, test_config, monkeypatch
 ):
@@ -121,6 +133,8 @@ def test_generate_story_summary_validated_retries_with_hint_then_passes(
     assert "CORRECTION REQUIRED FOR PREVIOUS ATTEMPT" in prompts_received[1]
 
 
+# [verifies: SUMM-004/AC-SUMM-004.1]
+# [verifies: SUMM-004/AC-SUMM-004.2]
 def test_generate_story_summary_validated_fails_closed_to_fallback(
     sample_story, sample_theme, test_config, monkeypatch
 ):
@@ -149,6 +163,7 @@ def test_generate_story_summary_validated_fails_closed_to_fallback(
     assert sample_story.extra_metadata["keyword_overlap"] == 0.0
 
 
+# [verifies: AIM-002/AC-AIM-002.1]
 def test_validate_and_correct_audio_script_hierarchy_of_truth_pass(sample_story, test_config, monkeypatch):
     """Hierarchy of Truth (Level 3 vs Level 2): Audio script matches verified summary."""
     sample_story.validated_summary = "vLLM 0.7.0 adds chunked prefill, improving TTFT by 3x."
@@ -165,6 +180,7 @@ def test_validate_and_correct_audio_script_hierarchy_of_truth_pass(sample_story,
     assert "grounded" in reasoning.lower()
 
 
+# [verifies: AIM-002/AC-AIM-002.2]
 def test_validate_and_correct_audio_script_hierarchy_of_truth_detects_unsupported_monologue(
     sample_story, test_config, monkeypatch
 ):
@@ -185,6 +201,8 @@ def test_validate_and_correct_audio_script_hierarchy_of_truth_detects_unsupporte
     assert "OpenAI acquired Google" in reasoning or "absent" in reasoning
 
 
+# [verifies: AIM-003/AC-AIM-003.1]
+# [verifies: AUDIO-004/AC-AUDIO-004.2]
 def test_synthesize_audio_memory_headroom_lifecycle(tmp_path, test_config, monkeypatch):
     """M1 8GB Hardware Invariant: synthesize_audio unloads LLMs and clears Metal cache."""
     from notifier import synthesize_audio
@@ -238,6 +256,8 @@ def test_synthesize_audio_memory_headroom_lifecycle(tmp_path, test_config, monke
     assert write_called is True
 
 
+# [verifies: AUDIO-002/AC-AUDIO-002.1]
+# [verifies: AUDIO-002/AC-AUDIO-002.2]
 def test_extract_clean_sentence_excerpt():
     """Verify clean sentence-boundary truncation without trailing fragments or broken words."""
     from briefing_generator import extract_clean_sentence_excerpt
@@ -257,6 +277,8 @@ def test_extract_clean_sentence_excerpt():
     assert res_no_punct.endswith(".")
 
 
+# [verifies: AUDIO-001/AC-AUDIO-001.1]
+# [verifies: AUDIO-001/AC-AUDIO-001.2]
 def test_generate_briefing_llm_excludes_failed_stories_from_audio(sample_theme, test_config, monkeypatch):
     """Verify Recommendation 1: Stories with failed summaries are excluded from spoken audio planning."""
     from briefing_generator import generate_briefing_llm

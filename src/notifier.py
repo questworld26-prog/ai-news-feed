@@ -19,6 +19,7 @@ from model_provider import ModelProviderFactory
 logger = logging.getLogger("ai_briefing")
 
 
+# [spec: AUDIO-004]
 def chunk_text(text: str, max_words: int = 150) -> list[str]:
     """
     Split script into sentence-bounded chunks of ~max_words
@@ -96,6 +97,8 @@ def clear_mlx_memory() -> None:
         logger.debug(f"MLX cache clear skipped: {e}")
 
 
+# [spec: AUDIO-004]
+# [spec: AIM-003]
 def synthesize_audio(
     script: str,
     output_dir: Path,
@@ -188,6 +191,7 @@ def _redact_token(message: str, token: str) -> str:
     return message.replace(token, "***REDACTED***")
 
 
+# [spec: AIM-004]
 def send_to_telegram(
     text_digest: str,
     audio_files: list[Path],

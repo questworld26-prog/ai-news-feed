@@ -17,16 +17,15 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
-# Add src to sys.path so we can import quality_tracker
 REPO_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO_ROOT / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from quality_tracker import QualityTracker  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("quality_dashboard")
 
-DASHBOARD_HTML_PATH = REPO_ROOT / "eval" / "quality_dashboard.html"
+DASHBOARD_HTML_PATH = Path(__file__).resolve().parent / "quality_dashboard.html"
 
 
 class DashboardRequestHandler(SimpleHTTPRequestHandler):
@@ -34,7 +33,7 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
 
     def __init__(self, *args, **kwargs):
         self.tracker = QualityTracker(REPO_ROOT / "eval" / "quality.db")
-        super().__init__(*args, directory=str(REPO_ROOT / "eval"), **kwargs)
+        super().__init__(*args, directory=str(Path(__file__).resolve().parent), **kwargs)
 
     def _send_json(self, data: Any, status: int = HTTPStatus.OK) -> None:
         payload = json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8")
@@ -54,6 +53,8 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
 
+    # [spec: DASH-001]
+    # [spec: DASH-002]
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
         path = parsed.path
@@ -107,6 +108,7 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
 
         self.send_error(HTTPStatus.NOT_FOUND, "Resource not found.")
 
+    # [spec: DASH-003]
     def do_POST(self) -> None:
         parsed = urlparse(self.path)
         path = parsed.path
@@ -170,6 +172,7 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
         self.send_error(HTTPStatus.NOT_FOUND, "Endpoint not found.")
 
 
+# [spec: DASH-001]
 def run_server(port: int = 8765, host: str = "127.0.0.1") -> None:
     # Pre-backfill historical files if quality.db is empty
     tracker = QualityTracker(REPO_ROOT / "eval" / "quality.db")

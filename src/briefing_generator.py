@@ -35,6 +35,7 @@ class CurationResponse(BaseModel):
     )
 
 
+# [spec: AUDIO-002]
 def extract_clean_sentence_excerpt(text: str, max_chars: int = 220) -> str:
     """
     Extract up to max_chars from text, truncating strictly at the last complete sentence.
@@ -86,6 +87,7 @@ def extract_clean_sentence_excerpt(text: str, max_chars: int = 220) -> str:
     return result
 
 
+# [spec: AUDIO-003]
 def clean_script_for_audio(raw_script: str) -> str:
     """Remove URLs, bracketed paths, markdown formatting, and theatrical flattery from spoken scripts."""
     if not raw_script:
@@ -234,6 +236,7 @@ def llm_curate_stories(
         return sorted_candidates[:max_stories]
 
 
+# [spec: SUMM-001]
 class StorySummaryResponse(BaseModel):
     direct_quotes: list[str] = Field(
         description="2 to 3 verbatim sentences or phrases extracted word-for-word directly from the source text"
@@ -247,6 +250,7 @@ class StorySummaryResponse(BaseModel):
 STORY_FALLBACK_SUMMARY = "⚠️ Failed to generate a reliable summary. Read the original article."
 
 
+# [spec: SUMM-002]
 def generate_story_summary(
     story: Story | dict[str, Any],
     theme_dict: dict[str, Any],
@@ -313,6 +317,9 @@ def generate_story_summary(
 _VALIDATION_MAX_RETRIES = 3
 
 
+# [spec: SUMM-003]
+# [spec: SUMM-004]
+# [spec: AIM-002]
 def generate_story_summary_validated(
     story: Story | dict[str, Any],
     theme_dict: dict[str, Any],
@@ -412,6 +419,7 @@ def validate_and_correct_audio_script(
     return passed, reasoning
 
 
+# [spec: AUDIO-001]
 def generate_briefing_llm(
     stories: list[Story | dict[str, Any]],
     theme_dict: dict[str, Any],

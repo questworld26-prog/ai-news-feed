@@ -252,6 +252,7 @@ class LayaDecisionEngine:
         )
         return shortlist
 
+    # [spec: THEME-002]
     def route_theme_from_stories(
         self,
         stories: list[Story],
@@ -357,6 +358,7 @@ def get_laya_engine(config: dict[str, Any] | None = None) -> LayaDecisionEngine:
     return _engine_instance
 
 
+# [spec: AIM-003]
 def unload_laya_engine() -> None:
     """Release cached LAYA System 1 model weights from CPU memory before TTS synthesis."""
     import gc

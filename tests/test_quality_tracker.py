@@ -39,6 +39,8 @@ def test_get_current_git_commit():
     assert len(commit) >= 4
 
 
+# [verifies: TRACK-001/AC-TRACK-001.1]
+# [verifies: TRACK-001/AC-TRACK-001.2]
 def test_log_run_and_get_detail(temp_tracker):
     stories = [
         {
@@ -86,8 +88,10 @@ def test_log_run_and_get_detail(temp_tracker):
 
     # Verify run detail
     detail = temp_tracker.get_run_detail(run_id)
-    assert detail is not None
+    assert isinstance(detail, dict)
+    assert detail["run_id"] == "run_20261002_test"
     assert detail["git_commit"] == "fc16b29"
+    assert detail["total_duration_s"] == 120.5
     assert detail["stories_total"] == 2
     assert detail["stories_failed"] == 1
     assert detail["story_failure_rate"] == 0.5
@@ -102,6 +106,8 @@ def test_log_run_and_get_detail(temp_tracker):
     assert story_scores[1]["summary_status"] == "failed"
 
 
+# [verifies: TRACK-002/AC-TRACK-002.1]
+# [verifies: TRACK-002/AC-TRACK-002.2]
 def test_human_review_update(temp_tracker):
     stories = [{"title": "Test Story", "link": "https://test.com", "summary": "Valid summary", "extra_metadata": {}}]
     run_id = temp_tracker.log_run(
@@ -130,7 +136,12 @@ def test_human_review_update(temp_tracker):
     detail_after = temp_tracker.get_run_detail(run_id)
     assert detail_after["human_rating"] == 5
     assert detail_after["human_comment"] == "Spot-on summary, loved the tone!"
-    assert detail_after["reviewed_at"] is not None
+    assert len(detail_after["reviewed_at"]) >= 19
+
+    # Verify summary aggregate
+    summary = temp_tracker.get_summary()
+    assert summary["total_runs"] == 1
+    assert summary["avg_human_rating"] == 5.0
 
 
 def test_parse_summary_markdown():
@@ -156,6 +167,8 @@ Welcome back. Today we look through our practitioner lens at distributed nodes a
     assert "Welcome back" in script
 
 
+# [verifies: TRACK-003/AC-TRACK-003.1]
+# [verifies: TRACK-003/AC-TRACK-003.2]
 def test_promote_story_to_golden(temp_tracker, tmp_path):
     """Tier 4 HITL Promotion: Verify promoting a flagged story into a golden benchmark file."""
     import json
@@ -208,3 +221,14 @@ def test_promote_story_to_golden(temp_tracker, tmp_path):
     assert case["digest_summary"] == stories[0]["summary"]
     assert case["injected_hallucinations"] == ["Invented 100x speedup claim"]
     assert case["promoted_by"] == "human_reviewer"
+
+    # Re-promote same case to verify deduplication
+    result_repromoted = temp_tracker.promote_story_to_golden(
+        run_id=run_id,
+        story_idx=0,
+        correction="Updated correction",
+        notes="Updated notes",
+        golden_path=golden_file,
+    )
+    assert result_repromoted["status"] == "ok"
+    assert result_repromoted["total_cases"] == 1  # Deduplicated: updated in-place

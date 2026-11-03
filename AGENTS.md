@@ -55,7 +55,9 @@ All agent code contributions must adhere to the decisions recorded in `ADR.md` a
 - **Plan First**: For changes modifying more than 2 files or changing pipeline interfaces, present a structured plan before making edits.
 - **Automated Verification**: Before marking any task complete:
   1. `uv run ruff check .`
-  2. `uv run pytest tests/` (or the relevant sub-suite for targeted changes).
+  2. `uv run ruff format --check .`
+  3. `uv run pytest tests/` (or the relevant sub-suite for targeted changes).
+  4. `uv run python ~/.gemini/config/skills/spec-driven-development/scripts/guardian.py audit --strict` (0 untested criteria, 0 hash drift).
 - **Preserve Documentation**: Keep all existing docstrings, test fixtures, and architectural decision records up to date.
 
 ---
@@ -71,4 +73,25 @@ All agent code contributions must adhere to the decisions recorded in `ADR.md` a
   - **MANDATORY HUMAN GATE**: Always explicitly ask the user for approval before proposing, generating, or bumping `MAJOR` or `MINOR` versions. Never increment them autonomously.
 - **`README.md` Operational Parity**:
   - Keep `README.md` continuously synchronized with how to run the pipeline (flags, options) and how to run tests.
+
+---
+
+## 6. Spec-Driven Development (SDD) & Test-Driven Development (TDD) Standard
+
+- **Spec Guardian & Bi-Directional Traceability**:
+  - All system capabilities and behaviors must be formally specified using EARS syntax in `specs/*.md`.
+  - Every requirement block must define atomic acceptance criteria (`AC-<REQ-ID>.<NUM>`).
+  - Source implementations in `src/` must carry `# [spec: REQ-ID]` annotations above the implementing functions/classes.
+  - Test cases in `tests/` must carry `# [verifies: REQ-ID/AC-REQ-ID.NUM]` annotations above test functions.
+  - Run the global Spec Guardian audit before any commit or release:
+    ```bash
+    uv run python ~/.gemini/config/skills/spec-driven-development/scripts/guardian.py audit --strict
+    ```
+- **Strict TDD Workflow (Red-Green-Refactor)**:
+  - From version 2.4.0 onward, development is strictly Test-Driven:
+    1. **Red**: Draft or update the formal EARS spec in `specs/`, then author a failing test in `tests/` tagged with `# [verifies: REQ/AC]`.
+    2. **Anti-Mirage Assertions**: Assertions must be mathematically strict and deterministic (e.g., exact counts, exact keys, exact ranges). Loose assertions (`assert x is not None`, `assert len(x) > 0`) are prohibited.
+    3. **Green**: Write the minimal implementation in `src/` tagged with `# [spec: REQ]` to pass the test.
+    4. **Refactor**: Format and lint (`uv run ruff format . && uv run ruff check .`), then run full test suite and guardian audit.
+
 

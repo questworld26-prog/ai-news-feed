@@ -36,21 +36,31 @@ def golden_stories():
     ]
 
 
+# [verifies: VALID-003/AC-VALID-003.1]
+# [verifies: VALID-003/AC-VALID-003.2]
 def test_keyword_overlap_accurate():
     source = "Datasette auth github 1.0 released by Simon Willison fixing session cookie expiration."
     digest = "Simon Willison released datasette auth github 1.0 to fix session cookie expiration issues."
     score = compute_keyword_overlap(source, digest)
     assert score >= 0.5
+    # Token normalization and stopword removal check on unrelated vocabulary
+    unrelated_digest = "Bananas and apples are popular fruits grown worldwide."
+    assert compute_keyword_overlap(source, unrelated_digest) == 0.0
 
 
+# [verifies: VALID-001/AC-VALID-001.1]
+# [verifies: VALID-001/AC-VALID-001.2]
 def test_detect_fabrications_catches_fake_numbers():
     source = "Datasette auth github 1.0 released by Simon Willison."
     digest = "Datasette auth github 1.0 was released with a 99.9% accuracy score and 5000 stars."
     warnings = detect_fabrications(source, digest)
-    assert len(warnings) >= 1
-    assert any("99.9%" in w or "5000" in w for w in warnings)
+    assert len(warnings) == 2
+    assert any("99.9" in w for w in warnings)
+    assert any("5000" in w for w in warnings)
 
 
+# [verifies: VALID-002/AC-VALID-002.1]
+# [verifies: VALID-002/AC-VALID-002.2]
 def test_golden_story_validation(golden_stories):
     dummy_config = {"llm": {"model": "phi4-mini:3.8b", "ollama_url": "http://localhost:11434"}}
     story = golden_stories[0]
