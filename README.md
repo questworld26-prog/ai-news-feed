@@ -275,7 +275,7 @@ uv run python src/quality_dashboard/serve_dashboard.py
 
 To run the briefing automatically every day on macOS:
 
-1. Update `/Users/YOUR_USERNAME` and the repository path in `launchd/com.aibriefing.daily.plist` to match your local machine.
+1. Update your home path (e.g. `~` or `$HOME`) and the repository path in `launchd/com.aibriefing.daily.plist` to match your local machine.
 2. Copy the plist to LaunchAgents:
    ```bash
    cp launchd/com.aibriefing.daily.plist ~/Library/LaunchAgents/

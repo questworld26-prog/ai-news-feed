@@ -63,7 +63,7 @@ Benchmark runs generate comprehensive markdown tables and standalone interactive
 
 ## 🔬 Empirical CGAP A/B Benchmark (`benchmark_cgap.py`)
 
-Measures the quantitative impact of **Capability-Grounded Agentic Planning ([ADR-14](file:///Users/prithis/QuestWorld/AI_news_voice_feed/ADR.md))** on Level 3 spoken monologue generation. Compares unconstrained baseline prompts against predicate-compiled symbolic execution plans across identical golden multi-story test cases.
+Measures the quantitative impact of **Capability-Grounded Agentic Planning ([ADR-14](../ADR.md))** on Level 3 spoken monologue generation. Compares unconstrained baseline prompts against predicate-compiled symbolic execution plans across identical golden multi-story test cases.
 
 ### Evaluated Metrics
 - **Generation Latency (s)**: Total wall-clock time for script generation.

@@ -65,6 +65,9 @@ def check_theme_relevance(title: str, summary: str, theme_dict: dict[str, Any] |
     return True
 
 
+# [spec: TRACK-001]
+# [spec: TRACK-002]
+# [spec: TRACK-003]
 class QualityTracker:
     """Encapsulates SQLite quality tracking database operations."""
 

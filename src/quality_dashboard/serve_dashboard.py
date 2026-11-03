@@ -27,6 +27,9 @@ logger = logging.getLogger("quality_dashboard")
 DASHBOARD_HTML_PATH = Path(__file__).resolve().parent / "quality_dashboard.html"
 
 
+# [spec: DASH-001]
+# [spec: DASH-002]
+# [spec: DASH-003]
 class DashboardRequestHandler(SimpleHTTPRequestHandler):
     """Handles REST API endpoints and dashboard UI serving."""
 
