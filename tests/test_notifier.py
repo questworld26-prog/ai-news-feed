@@ -27,6 +27,25 @@ def test_clean_script_for_audio_strips_urls_and_markdown():
     assert "vLLM 0.7 Released" in cleaned
 
 
+def test_clean_script_for_audio_strips_preamble_and_outro_flattery():
+    raw = (
+        "Welcome back. Today we're looking through our Innovation Scout lens, diving into the latest unconventional and cross disciplinary AI breakthroughs. "
+        "Our journey will take us through the realms of capability grounded planning and world modeling. "
+        "Let's embark on this exploratory mission together. "
+        "First up, researchers deployed a new model architecture. "
+        "In conclusion, today's thematic journey through the Innovation Scout lens has taken us across diverse territories. "
+        "Thank you for joining us on this intellectual voyage. Until next time, keep innovating and exploring the frontiers of technology."
+    )
+    cleaned = clean_script_for_audio(raw)
+    assert "Welcome back" not in cleaned
+    assert "Our journey will take us through the realms" not in cleaned
+    assert "Let's embark on this exploratory mission" not in cleaned
+    assert "In conclusion, today's thematic journey" not in cleaned
+    assert "intellectual voyage" not in cleaned
+    assert "First up, researchers deployed a new model architecture." in cleaned
+    assert cleaned.endswith("That is your briefing for today.")
+
+
 def test_clean_script_for_audio_empty_string():
     assert clean_script_for_audio("") == ""
     assert clean_script_for_audio(None) == ""

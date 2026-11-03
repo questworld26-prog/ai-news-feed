@@ -201,10 +201,48 @@ def main() -> None:
     logger.info("=" * 60)
     with tracker.track_stage("Phase 1: RSS Ingestion", {"sources": len(theme_dict.get("sources", []))}) as stage:
         candidates = fetch_stories_for_theme(theme_dict, config)
+
+        # Tier 1 Fallback: Staleness Backoff for selected theme if empty
+        if not candidates:
+            configured_max_age = float(config.get("feeds", {}).get("max_age_hours", 96.0))
+            relaxed_max_age = 168.0  # 7 days
+            if configured_max_age < relaxed_max_age:
+                logger.warning(
+                    f"⚠️ No stories found within {configured_max_age:.0f}h for '{theme_dict.get('name')}'. "
+                    f"Attempting Tier 1 Staleness Backoff (relaxing to {relaxed_max_age:.0f}h / 7 days)..."
+                )
+                candidates = fetch_stories_for_theme(theme_dict, config, max_age_hours=relaxed_max_age)
+                if candidates:
+                    logger.info(f"✅ Tier 1 Staleness Backoff recovered {len(candidates)} candidates.")
+
+        # Tier 2 Fallback: Alternative Theme Fallback if still empty
+        if not candidates:
+            logger.warning(
+                f"⚠️ Theme '{theme_key}' yielded 0 candidates. Attempting Tier 2 Theme Fallback across alternative themes..."
+            )
+            for alt_theme_key, alt_theme_dict in themes.items():
+                if alt_theme_key == theme_key:
+                    continue
+                logger.info(f"Checking fallback theme: '{alt_theme_key}' ({alt_theme_dict.get('name')})...")
+                alt_candidates = fetch_stories_for_theme(alt_theme_dict, config)
+                if not alt_candidates:
+                    alt_candidates = fetch_stories_for_theme(alt_theme_dict, config, max_age_hours=168.0)
+                if alt_candidates:
+                    logger.info(
+                        f"✅ Fallback successful: switched active theme from '{theme_key}' to '{alt_theme_key}' "
+                        f"with {len(alt_candidates)} candidates."
+                    )
+                    theme_key = alt_theme_key
+                    theme_dict = alt_theme_dict
+                    candidates = alt_candidates
+                    stage.set_metric("fallback_theme", theme_key)
+                    break
+
         stage.set_metric("candidates_pool", len(candidates))
+        stage.set_metric("active_theme", theme_key)
 
     if not candidates:
-        logger.error(f"No stories retrieved for theme {theme_key}. Exiting.")
+        logger.error("No stories retrieved across all themes and fallback windows. Exiting.")
         tracker.print_summary_dashboard()
         sys.exit(1)
 

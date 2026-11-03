@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 from datetime import UTC, datetime
 from difflib import SequenceMatcher
 from typing import Any
@@ -180,7 +181,7 @@ def matches_hard_filters(title: str, summary: str, hard_filters: list[str]) -> b
 
 
 def parse_feed_entry(
-    entry: Any, name: str, hard_filters: list[str], now: datetime, max_age_hours: float = 48.0
+    entry: Any, name: str, hard_filters: list[str], now: datetime, max_age_hours: float = 96.0
 ) -> Story | None:
     """Parse, clean, filter, and enrich a single feed entry."""
     pub_parsed = getattr(entry, "published_parsed", None) or getattr(entry, "updated_parsed", None)
@@ -237,12 +238,24 @@ def sanitize_feed_xml(raw_bytes: bytes) -> bytes:
     return text.encode("utf-8")
 
 
-def fetch_entries_from_source(src: dict[str, Any], hard_filters: list[str], now: datetime) -> list[Story]:
+def fetch_entries_from_source(
+    src: dict[str, Any],
+    hard_filters: list[str],
+    now: datetime,
+    config: dict[str, Any] | None = None,
+    max_age_hours: float | None = None,
+) -> list[Story]:
     """Fetch and parse all valid entries from a single RSS feed source with retry on transient network/gateway errors."""
     name = src.get("name", "Unknown")
     url = src.get("url", "")
     if not url:
         return []
+
+    feeds_cfg = (config or {}).get("feeds", {})
+    if max_age_hours is None:
+        max_age_hours = float(feeds_cfg.get("max_age_hours", 96.0))
+    timeout = int(feeds_cfg.get("request_timeout", 25))
+    max_retries = int(feeds_cfg.get("max_retries", 3))
 
     entries: list[Story] = []
     headers = {
@@ -254,18 +267,16 @@ def fetch_entries_from_source(src: dict[str, Any], hard_filters: list[str], now:
     }
 
     logger.info(f"Querying feed: {name}...")
-    max_retries = 2
     for attempt in range(1, max_retries + 1):
         try:
-            resp = requests.get(url, headers=headers, timeout=15)
+            resp = requests.get(url, headers=headers, timeout=timeout)
             # Transient server error handling
             if resp.status_code in (500, 502, 503, 504) and attempt < max_retries:
+                backoff_s = attempt * 1.5
                 logger.warning(
-                    f"  ⚠️ {name} returned HTTP {resp.status_code} (attempt {attempt}/{max_retries}). Retrying in 2s..."
+                    f"  ⚠️ {name} returned HTTP {resp.status_code} (attempt {attempt}/{max_retries}). Retrying in {backoff_s:.1f}s..."
                 )
-                import time
-
-                time.sleep(2)
+                time.sleep(backoff_s)
                 continue
             resp.raise_for_status()
 
@@ -286,7 +297,7 @@ def fetch_entries_from_source(src: dict[str, Any], hard_filters: list[str], now:
                 return []
 
             for entry in parsed.entries:
-                parsed_item = parse_feed_entry(entry, name, hard_filters, now)
+                parsed_item = parse_feed_entry(entry, name, hard_filters, now, max_age_hours=max_age_hours)
                 if parsed_item:
                     entries.append(parsed_item)
 
@@ -295,12 +306,11 @@ def fetch_entries_from_source(src: dict[str, Any], hard_filters: list[str], now:
 
         except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as net_err:
             if attempt < max_retries:
+                backoff_s = attempt * 1.5
                 logger.warning(
-                    f"  ⚠️ Timeout/Connection error on {name} (attempt {attempt}/{max_retries}): {net_err}. Retrying in 2s..."
+                    f"  ⚠️ Timeout/Connection error on {name} (attempt {attempt}/{max_retries}): {net_err}. Retrying in {backoff_s:.1f}s..."
                 )
-                import time
-
-                time.sleep(2)
+                time.sleep(backoff_s)
             else:
                 logger.warning(f"Error fetching from {name} after {max_retries} attempts: {net_err}")
         except Exception as e:
@@ -342,13 +352,17 @@ def build_candidate_pool(
 
             engine = get_laya_engine(config)
             filtered_entries: list[Story] = []
-            for item in all_entries:
+            eval_cap = max(candidate_pool_size * 3, 40)
+            items_to_eval = all_entries[:eval_cap]
+            remaining_items = all_entries[eval_cap:]
+
+            for item in items_to_eval:
                 is_hype, conf, reason = engine.filter_hype(item.title, item.summary, config)
                 if is_hype:
                     logger.info(f"🚫 LAYA Hype Filter dropped: '{item.title[:55]}' ({reason})")
                     continue
                 filtered_entries.append(item)
-            all_entries = filtered_entries
+            all_entries = filtered_entries + remaining_items
         except Exception as exc:
             logger.debug(f"LAYA hype filtering skipped due to error: {exc}")
 
@@ -383,7 +397,9 @@ def build_candidate_pool(
     return candidate_pool
 
 
-def fetch_stories_for_theme(theme_dict: dict[str, Any], config: dict[str, Any]) -> list[Story]:
+def fetch_stories_for_theme(
+    theme_dict: dict[str, Any], config: dict[str, Any], max_age_hours: float | None = None
+) -> list[Story]:
     """
     Fetch AI stories from RSS feeds specific to a chosen theme concurrently.
     Filters out noise using hard_filters, scores remaining stories,
@@ -395,13 +411,24 @@ def fetch_stories_for_theme(theme_dict: dict[str, Any], config: dict[str, Any]) 
     hard_filters = theme_dict.get("hard_filters", [])
     candidate_pool_size = config.get("feeds", {}).get("candidate_pool_size", 15)
 
+    effective_max_age = (
+        max_age_hours if max_age_hours is not None else float(config.get("feeds", {}).get("max_age_hours", 96.0))
+    )
+
     all_entries: list[Story] = []
     now = datetime.now(UTC)
 
-    logger.info(f"Fetching concurrently from {len(sources)} sources for theme '{theme_dict.get('name')}'...")
+    logger.info(
+        f"Fetching concurrently from {len(sources)} sources for theme '{theme_dict.get('name')}' (max_age: {effective_max_age:.1f}h)..."
+    )
     max_workers = min(10, max(1, len(sources)))
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_to_src = {executor.submit(fetch_entries_from_source, src, hard_filters, now): src for src in sources}
+        future_to_src = {
+            executor.submit(
+                fetch_entries_from_source, src, hard_filters, now, config=config, max_age_hours=effective_max_age
+            ): src
+            for src in sources
+        }
         for future in as_completed(future_to_src):
             src = future_to_src[future]
             try:
@@ -437,12 +464,13 @@ def sample_breaking_headlines(config: dict[str, Any], max_items: int = 12, quota
         sources = theme_dict.get("sources", [])
         if not sources:
             return []
-        # Sample top 2 sources from this theme to provide backup if primary feed is quiet or down
-        selected_sources = sources[:2]
         theme_entries: list[Story] = []
-        for src in selected_sources:
+        # Walk sources until we satisfy quota or exhaust sources
+        for src in sources:
+            if len(theme_entries) >= quota:
+                break
             try:
-                entries = fetch_entries_from_source(src, [], now)
+                entries = fetch_entries_from_source(src, [], now, config=config)
                 theme_entries.extend(entries)
             except Exception:
                 pass

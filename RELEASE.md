@@ -3,6 +3,21 @@
 All notable changes to this project are documented in this file under [Semantic Versioning](https://semver.org/).
 Major and minor releases require explicit human sign-off before version increments.
 
+## [2.2.0] - 2026-11-03
+
+### Added
+- **Weekend Ingestion Resilience & Configurable Staleness Window (ADR-13)**: Extended default RSS staleness cutoff to 96 hours (`feeds.max_age_hours`), eliminating the Monday corporate blog starvation issue where Friday posts (~65–75h old) were dropped. Preserves 7-day SQLite deduplication and soft score decay (`ADR-12`) to prevent duplicate coverage.
+- **Multi-Tier Orchestrator Ingestion Fallback**: Added Tier 1 in-theme staleness backoff (relaxing to 168h / 7 days if 96h yields zero candidates) and Tier 2 automatic alternative theme fallback before pipeline termination.
+- **Aggregator Hardening & Feed Endpoints**: Added configurable HTTP request timeouts (25s) and 3 retries with exponential backoff on HTTP 500/502/504 errors and read timeouts (specifically stabilizing `hnrss.org`). Fixed ArXiv RSS endpoint to active URL (`https://rss.arxiv.org/rss/cs.AI`), replaced dead community feeds with active feeds (`Latent Space AI`, Hacker News Anthropic & Claude query).
+- **Multi-Voice Showcase & Kokoro TTS Headroom**: Generated 11 curated local voice samples under `output/voice_samples/` demonstrating the breadth of Kokoro's 54 built-in voices. Added candidate pool evaluation capping in `build_candidate_pool` to avoid unnecessary CPU neural inferences on large RSS feeds.
+
+### Fixed & Hardened
+- **Monologue Flattery & Throat-Clearing Removal**: Redesigned spoken monologue prompt to strictly prohibit conversational filler, grandiose adjectives, theatrical preambles ("our journey through the realms", "let's embark on this mission"), and dramatic conclusions ("in conclusion, today's thematic journey", "intellectual voyage").
+- **Deterministic Script Sanitizer Gate**: Added regex filters in `clean_script_for_audio()` that scrub boilerplate flattery intros and outro summaries while guaranteeing a crisp opening and concise sign-off ("That is your briefing for today.").
+- **Unit Test Coverage**: Added dedicated unit tests in `tests/test_news_fetcher.py` and `tests/test_notifier.py` verifying staleness boundaries, retry backoff, candidate capping, and theatrical flattery stripping.
+
+---
+
 ## [2.1.0] - 2026-11-02
 
 ### Added

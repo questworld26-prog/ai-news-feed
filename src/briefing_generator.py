@@ -36,7 +36,7 @@ class CurationResponse(BaseModel):
 
 
 def clean_script_for_audio(raw_script: str) -> str:
-    """Remove URLs, bracketed paths, markdown formatting, and technical metadata from spoken scripts."""
+    """Remove URLs, bracketed paths, markdown formatting, and theatrical flattery from spoken scripts."""
     if not raw_script:
         return ""
     text = re.sub(r"(?i)\b(Article URL|Comments URL|Points|# Comments)\b:?\s*\S*", "", raw_script)
@@ -47,6 +47,29 @@ def clean_script_for_audio(raw_script: str) -> str:
     text = re.sub(r"\[[a-zA-Z0-9\.\-/_ ]+\]", "", text)
     text = re.sub(r"(?i)(The link to the original source is|available at|you can read more at)\s*", "", text)
     text = re.sub(r"[*_#`~>|-]", " ", text)
+
+    # Strip theatrical preamble flattery, throat-clearing, and grand introductions
+    text = re.sub(r"(?i)\bWelcome back\.\s*", "", text)
+    text = re.sub(
+        r"(?i)\bToday we[\x27']re looking through our [^.]*lens,\s*diving into the latest[^.]*\.\s*", "", text
+    )
+    text = re.sub(r"(?i)\bOur journey will take us through the realms of[^.]*\.\s*", "", text)
+    text = re.sub(r"(?i)\bLet[\x27']s embark on this [^.]*\.\s*", "", text)
+
+    # Strip theatrical outro flattery and philosophical wrap-ups
+    text = re.sub(
+        r"(?i)\s*\bIn conclusion,\s*today[\x27']s thematic journey.*$", " That is your briefing for today.", text
+    )
+    text = re.sub(
+        r"(?i)\s*\bThank you for joining us on this intellectual voyage.*$", " That is your briefing for today.", text
+    )
+    text = re.sub(r"(?i)\s*\bUntil next time,\s*keep innovating.*$", " That is your briefing for today.", text)
+    text = re.sub(
+        r"(?i)\s*\bAs we continue to explore and innovate,\s*let us remain.*$",
+        " That is your briefing for today.",
+        text,
+    )
+
     text = re.sub(r"\s+", " ", text).strip()
     return text
 
@@ -435,18 +458,21 @@ def generate_briefing_llm(
             )
 
             script_prompt = (
-                f"You are a professional tech podcast host briefing an engineering peer. "
-                f"Today's thematic lens is: '{theme_dict.get('name')}'. Tone: {theme_dict.get('tone')}.\n\n"
+                f"You are a concise, sharp technical news presenter briefing a software engineer or CTO. "
+                f"Today's thematic lens is: '{theme_dict.get('name')}'. Editorial tone: {theme_dict.get('tone')}.\n\n"
                 f"Here are the stories to cover:\n{stories_block}\n\n"
                 f"Task:\n"
-                f"Write a complete, natural spoken podcast monologue script of approximately {word_target} words.\n"
-                f"STRICT RULES:\n"
-                f"- Open smoothly with today's theme (e.g., 'Welcome back. Today we're looking through our {theme_dict.get('name')} lens...').\n"
-                f"- Walk through all {len(typed_stories)} stories with natural conversational transitions and genuine technical depth.\n"
-                f"- If a story has 'Status: UPDATE / Follow-up', frame it conversationally as a follow-up or update to earlier coverage (e.g. 'Following up on our earlier coverage...', 'An update to the story we tracked earlier...'), highlighting what is new.\n"
-                f"- Write phonetically clean spoken English: absolutely NO markdown asterisks, hashes, bullets, brackets, or code symbols.\n"
-                f"- Absolutely NO URLs, domain names, links, or 'available at' phrases.\n"
-                f"- Conclude with a warm, professional wrap-up.\n"
+                f"Write a spoken briefing monologue script of approximately {word_target} words covering these {len(typed_stories)} stories.\n\n"
+                f"STRICT EDITORIAL RULES:\n"
+                f"- ZERO FLATTERY & ZERO PREAMBLE: Absolutely NO conversational preamble, throat-clearing, flattery, or grandiose phrases. "
+                f"Never say things like 'Welcome back', 'our journey through the realms', 'intellectual voyage', 'let us embark on this mission', or 'pushing the boundaries of what is possible'.\n"
+                f"- DIRECT OPENING: Start immediately with a single brief sentence identifying the theme and first story. For example: "
+                f"'Today in {theme_dict.get('name')}: first up, ...' or 'Here is today's {theme_dict.get('name')} briefing. First, ...'. Jump straight into the facts with no agenda previews.\n"
+                f"- TECHNICAL DEPTH: Walk through all {len(typed_stories)} stories focusing on concrete mechanics, benchmarks, systemic implications, and facts from the source text. Keep transitions natural, collegiate, and direct.\n"
+                f"- UPDATES: If a story has 'Status: UPDATE / Follow-up', frame it conversationally as a follow-up or update to earlier coverage (e.g. 'Following up on our earlier coverage...', 'An update to the story we tracked earlier...'), highlighting what is new.\n"
+                f"- ZERO THEATRICAL CONCLUSION: Do NOT summarize the briefing, do NOT say 'In conclusion', do NOT give philosophical send-offs, and do NOT thank the listener for an 'intellectual voyage'. End cleanly immediately after the final story with a single simple sign-off: 'That is your briefing for today.'\n"
+                f"- CLEAN SPEECH: Write phonetically clean spoken English: absolutely NO markdown asterisks, hashes, bullets, brackets, or code symbols.\n"
+                f"- NO LINKS: Absolutely NO URLs, domain names, links, or 'available at' phrases.\n\n"
                 f"Output ONLY the spoken script text."
                 f"{correction_block}"
             )
@@ -482,12 +508,12 @@ def generate_briefing_llm(
 
         if not audio_script:
             logger.warning("❌ Using fallback audio script from stories after validation failures.")
-            script_parts = [f"Welcome to today's {theme_dict.get('name')} briefing. "]
+            script_parts = [f"Here is today's {theme_dict.get('name')} briefing. "]
             for idx, s in enumerate(typed_stories, 1):
                 clean_t = clean_script_for_audio(s.title)
                 clean_s = clean_script_for_audio(s.summary)
                 script_parts.append(f"Story number {idx}. From {s.source}. {clean_t}. {clean_s}. ")
-            script_parts.append("That concludes today's theme update.")
+            script_parts.append("That is your briefing for today.")
             audio_script = clean_script_for_audio(" ".join(script_parts))
 
     logger.info(f"Generated text digest and audio script (~{len(audio_script.split())} words).")

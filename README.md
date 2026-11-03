@@ -42,7 +42,7 @@ options:
 
 ### Testing & Quality Verification
 
-Run the fast-path test suite (68 tests in $< 1\text{s}$ with decoupled mock providers):
+Run the fast-path test suite (73 tests in $< 1\text{s}$ with decoupled mock providers):
 ```bash
 uv run pytest
 ```
@@ -95,7 +95,7 @@ The pipeline is built as a modular, local-first, factual-guaranteed system desig
 flowchart TD
     subgraph Ingestion["1. Ingestion, Routing & Pre-Filtering"]
         A["Curated RSS Feeds (HN, Blogs, arXiv)"] --> B["news_fetcher.py + laya_decision.py"]
-        B -->|"LAYA Dynamic Theme Routing<br/>7-Day Recurrence Soft Decay<br/>LAYA Hype Filter + 48h Cutoff"| C["Candidate Pool (15 Stories)"]
+        B -->|"LAYA Dynamic Theme Routing<br/>7-Day Recurrence Soft Decay<br/>LAYA Hype Filter + 96h Cutoff"| C["Candidate Pool (15 Stories)"]
     end
 
     subgraph Curation["2. Two-Stage Theme Curation"]
@@ -170,7 +170,7 @@ flowchart TD
 AI_news_voice_feed/
 ├── config.toml                   # Central configuration (themes, RSS sources, LAYA, voice, LLM)
 ├── pyproject.toml                # Project metadata, dependencies & pytest/ruff config
-├── ADR.md                        # Architectural Decision Records (ADR-01 through ADR-12)
+├── ADR.md                        # Architectural Decision Records (ADR-01 through ADR-13)
 ├── RELEASE.md                    # Semantic Versioning release changelog
 ├── AGENTS.md                     # Workspace engineering standards & hardware invariants
 ├── .env.example                  # Environment template for Telegram & offline eval credentials
@@ -200,7 +200,7 @@ AI_news_voice_feed/
 │   ├── quality_tracker.py        # SQLite telemetry, quality scoring & HITL benchmark promotion
 │   ├── telemetry.py              # Stage latency & RSS memory profiler
 │   └── notifier.py               # Local TTS synthesis (kokoro-mlx) & Telegram dispatch
-└── tests/                        # 68 fast-path unit tests + 30-case golden benchmark suite
+└── tests/                        # 73 fast-path unit tests + 30-case golden benchmark suite
 ```
 
 ---
@@ -234,6 +234,10 @@ Customize themes, RSS feed URLs, specialized model tags, and schedule settings i
 - `schedule.weekdays_only`: Restricts automatic runs to Monday–Friday (default: `true`).
 - `feeds.max_stories`: Number of top stories selected per briefing (default: `5`).
 - `feeds.candidate_pool_size`: Size of candidate pool collected before curation (default: `15`).
+- `feeds.max_age_hours`: Maximum publication age cutoff in hours (default: `96.0` to bridge weekends).
+- `feeds.request_timeout`: Network request timeout in seconds per feed query (default: `25`).
+- `feeds.max_retries`: Retry attempts with exponential backoff on transient HTTP 502/504 errors (default: `3`).
+- `tts.voice`: Kokoro TTS voice preset (default: `"am_michael"` or `"bm_george"`).
 - `llm.curation_model`: Model for theme-based story selection and CoT justification (default: `"phi4-mini:3.8b"`).
 - `llm.summary_model`: Model for extractive anchoring and factual distillation (default: `"qwen2.5:3b"`).
 - `llm.script_model`: Model for spoken conversational podcast monologue generation (default: `"phi4-mini:3.8b"`).

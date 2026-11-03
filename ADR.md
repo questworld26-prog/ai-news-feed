@@ -22,6 +22,7 @@
   - [ADR-10: System 1 / System 2 Cognitive Architecture with LAYA Decision Engine](#adr-10-system-1--system-2-cognitive-architecture-with-laya-decision-engine)
   - [ADR-11: Ingestion Context Hardening, Parallel Synthesis Concurrency, and Monologue Sanitization](#adr-11-ingestion-context-hardening-parallel-synthesis-concurrency-and-monologue-sanitization)
   - [ADR-12: Sliding-Window Recurrence Filter with Soft Score Decay & Update Tracking](#adr-12-sliding-window-recurrence-filter-with-soft-score-decay--update-tracking)
+  - [ADR-13: Ingestion Window Resiliency, Exponential Network Backoff & Multi-Tier Theme Fallback](#adr-13-ingestion-window-resiliency-exponential-network-backoff--multi-tier-theme-fallback)
 - [3. Testing & QA Strategy Summary](#3-testing--qa-strategy-summary)
 - [4. Consequences & Trade-offs](#4-consequences--trade-offs)
 
@@ -182,6 +183,21 @@ Engineering teams and tech executives require daily briefings on AI developments
   4. **Post-Briefing Commit**:
      - Automatically record delivered stories into SQLite upon briefing completion (bypassed in `--dry-run` mode).
 - **Rationale**: RSS news cycles linger across 48–96 hours. Stateless single-run deduplication caused consecutive daily briefings to repeat identical news items. Sliding-window recurrence with soft score decay guarantees fresh daily intelligence without blinding the system to major evolving stories.
+
+---
+
+### ADR-13: Ingestion Window Resiliency, Exponential Network Backoff & Multi-Tier Theme Fallback
+- **Decision**: Harden the RSS ingestion and orchestration layer against real-world feed dynamics, weekend publishing hiatuses, and transient network errors:
+  1. **Configurable Staleness Window (Default 96h)**:
+     - Replace hardcoded 48-hour cutoff with `feeds.max_age_hours` in `config.toml` (defaulting to 96.0h / 4 days).
+     - Bridges the corporate engineering blog gap on Mondays (where Friday posts are 65–75 hours old) while relying on SQLite 7-day deduplication (`ADR-12`) to prevent duplicate briefings.
+  2. **Transient Network Resilience & Exponential Backoff**:
+     - Configurable `request_timeout` (25s) and `max_retries` (3) for external aggregators (such as `hnrss.org`).
+     - Exponential backoff (`attempt * 1.5s`) for HTTP 500/502/503/504 errors and read timeouts.
+  3. **Multi-Tier Orchestrator Fallback**:
+     - *Tier 1 (Staleness Backoff)*: If candidate pool is 0 at the configured window, automatically re-query with a relaxed 168h (7 days) window for that theme.
+     - *Tier 2 (Theme Fallback)*: If the theme remains empty, systematically attempt alternative configured themes rather than immediately aborting the daily briefing.
+- **Rationale**: A daily briefing pipeline must reliably deliver actionable intelligence every morning. Network timeouts or a quiet weekend from corporate PR departments must never starve the pipeline or produce a zero-candidate pipeline crash.
 
 ---
 

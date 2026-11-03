@@ -2,6 +2,12 @@
 max_stories = 5
 # How many unique candidates to collect before LLM curation picks the final max_stories
 candidate_pool_size = 15
+# Maximum publication age in hours (96h = 4 days, gracefully bridging Friday-to-Monday weekend news gaps)
+max_age_hours = 96
+# Network request timeout in seconds per feed query
+request_timeout = 25
+# Retry attempts for transient 502/504 or network timeout errors
+max_retries = 3
 
 [deduplication]
 # Enable persistent sliding-window cross-day recurrence suppression
@@ -58,8 +64,8 @@ sources = [
     { name = "Hacker News (Claude, Cursor & AI Dev Tools)", url = "https://hnrss.org/newest?q=Claude+OR+Cursor+OR+Copilot&points=20" },
     { name = "Simon Willison Weblog", url = "https://simonwillison.net/atom/everything/" },
     { name = "Hacker News (Open Source & Local)", url = "https://hnrss.org/newest?q=open+source+AI+OR+local+LLM&points=20" },
-    { name = "ArXiv cs.AI", url = "https://export.arxiv.org/rss/cs.AI" },
-    { name = "Anthropic Engineering (Community)", url = "https://conoro.github.io/anthropic-engineering-rss-feed/anthropic_engineering_rss.xml" }
+    { name = "ArXiv cs.AI", url = "https://rss.arxiv.org/rss/cs.AI" },
+    { name = "Hacker News (Anthropic & Claude)", url = "https://hnrss.org/newest?q=Anthropic+OR+Claude&points=25" }
 ]
 
 [themes.innovation_scout]
@@ -71,9 +77,9 @@ hard_filters = ["funding round", "valuation", "enterprise CRM", "minor patch rel
 sources = [
     { name = "Import AI (Jack Clark)", url = "https://jack-clark.net/feed/" },
     { name = "Google DeepMind Blog", url = "https://deepmind.google/blog/feed/basic/" },
-    { name = "The Gradient", url = "https://thegradient.pub/rss/" },
+    { name = "Latent Space AI", url = "https://www.latent.space/feed" },
     { name = "Hacker News (Creative & Science)", url = "https://hnrss.org/newest?q=AI+AND+(creative+OR+medicine+OR+science)&points=25" },
-    { name = "ArXiv cs.AI", url = "https://export.arxiv.org/rss/cs.AI" }
+    { name = "ArXiv cs.AI", url = "https://rss.arxiv.org/rss/cs.AI" }
 ]
 
 [llm]
@@ -98,8 +104,8 @@ audit_model = "qwen2.5:3b"
 
 
 [tts]
-# Kokoro-mlx voice name (e.g. bm_george, af_heart, am_michael)
-voice = "bm_george"
+# Kokoro-mlx voice name (e.g. af_sky, bm_george, af_heart, am_michael)
+voice = "am_michael"
 speed = 1.0
 sample_rate = 24000
 chunk_words = 150
